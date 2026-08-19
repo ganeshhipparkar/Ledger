@@ -16,6 +16,8 @@ import { UomEntity } from 'src/item_uom/entity/uom.entity';
 import { PackageEntity } from 'src/package_master/entity/package.entity';
 import { CustomerEntity } from 'src/customer/entity/customer.entity';
 import { ItemEntity } from 'src/item/entity/item.entity';
+import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
+import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 
 @Entity('company')
 export class CompanyEntity {
@@ -124,5 +126,12 @@ export class CompanyEntity {
 
   @OneToMany(() => ItemEntity, (item) => item.company)
   items?: ItemEntity[];
+
+  @OneToMany(() => BankMasterEntity, (bank) => bank.company)
+  banks?: BankMasterEntity[];
+
+  @OneToMany(()=>BankBookEntity,(bankbook)=>bankbook.company)
+  bankBooks?:BankBookEntity[];
+  
 }
 

@@ -1,13 +1,15 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
+import { CompanyCurrencyEntity } from 'src/packages/entity/company.currency.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
 import { getCurrencyListDto, CurrencyDto, CurrencyUpdateDto } from 'src/currency/dto/currency.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { resolveAuthContext } from 'src/utilities/auth-helper';
 
 @Injectable()
 export class CurrencyService {
@@ -16,6 +18,9 @@ export class CurrencyService {
 
   @InjectRepository(CurrencyEntity)
   private readonly currencyEntity!: Repository<CurrencyEntity>;
+
+  @InjectRepository(CompanyCurrencyEntity)
+  private readonly companyCurrencyEntity!: Repository<CompanyCurrencyEntity>;
 
   @InjectRepository(UserCompanyGroupEntity)
   private readonly ucgEntity!: Repository<UserCompanyGroupEntity>;
@@ -29,24 +34,50 @@ export class CurrencyService {
   async getCurrencies(param: getCurrencyListDto, req?: any) {
     let return_data: any = {};
     try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const queryBuilder = this.currencyEntity.createQueryBuilder('currency');
-      
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [
+          authCtx.activeCompanyId,
+        ];
+        if (scopedCompanyIds.length > 0) {
+          const subQuery = this.companyCurrencyEntity
+            .createQueryBuilder('cc')
+            .select('cc.curId')
+            .where('cc.companyId IN (:...scopedCompanyIds)', {
+              scopedCompanyIds,
+            });
+          queryBuilder.andWhere(
+            `currency.curId IN (${subQuery.getQuery()})`,
+            subQuery.getParameters(),
+          );
+        } else {
+          return {
+            success: 1,
+            message: 'Currencies fetched successfully',
+            total: 0,
+            data: [],
+          };
+        }
+      }
+
       const queryString = await this.filter.makeFilterString(
         param.filters,
         'currency',
       );
       if (queryString && queryString !== '') {
         queryBuilder.andWhere(queryString);
-        queryBuilder.orderBy('name','ASC')
+        queryBuilder.orderBy('currency.name', 'ASC');
       }
 
       const [skip, limit] = (await this.filter.calcPages(
         param,
         this.currencyEntity,
       )) as [number, number];
-      
+
       queryBuilder.skip(skip).take(limit);
-      queryBuilder.orderBy('name','ASC')
+      queryBuilder.orderBy('currency.name', 'ASC');
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -63,11 +94,35 @@ export class CurrencyService {
   }
 
   async getCurrencyDetails(id: number, req?: any) {
+    const authCtx = await resolveAuthContext(req, this.ucgEntity);
     const currency = await this.currencyEntity.findOne({
       where: { curId: id },
     });
     if (!currency) {
       throw new NotFoundException('Currency not found');
+    }
+
+    if (!authCtx.isSuperAdmin) {
+      const scopedCompanyIds = req?.scopedCompanyIds || [
+        authCtx.activeCompanyId,
+      ];
+      if (scopedCompanyIds.length > 0) {
+        const mapping = await this.companyCurrencyEntity.findOne({
+          where: {
+            curId: id,
+            companyId: In(scopedCompanyIds),
+          },
+        });
+        if (!mapping) {
+          throw new ForbiddenException(
+            'Access denied: currency is not mapped to your company',
+          );
+        }
+      } else {
+        throw new ForbiddenException(
+          'Access denied: currency is not mapped to your company',
+        );
+      }
     }
 
     const addedByUser = currency.addedBy
@@ -103,6 +158,14 @@ export class CurrencyService {
 
   async insertCurrency(params: CurrencyDto, req?: any) {
     try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      if (!authCtx.isSuperAdmin) {
+        return {
+          success: 0,
+          message: 'Access denied: only superAdmin can add currencies',
+        };
+      }
+
       if (params.code) {
         const existingCode = await this.currencyEntity.findOne({
           where: { code: params.code },
@@ -119,8 +182,12 @@ export class CurrencyService {
       if (params.conversionRate !== undefined) queryParams.conversionRate = Number(params.conversionRate);
       if (params.status) queryParams.status = params.status;
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.addedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
       const performerUcg = performerId
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
@@ -169,6 +236,14 @@ export class CurrencyService {
       return { success: 0, message: 'curId is mandatory' };
     }
     try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      if (!authCtx.isSuperAdmin) {
+        return {
+          success: 0,
+          message: 'Access denied: only superAdmin can update currencies',
+        };
+      }
+
       const existingCurrency = await this.currencyEntity.findOne({
         where: { curId: Number(params.curId) },
       });
@@ -189,8 +264,12 @@ export class CurrencyService {
       if (params.conversionRate !== undefined) queryParams.conversionRate = Number(params.conversionRate);
       if (params.status) queryParams.status = params.status;
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.updatedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
       const performerUcg = performerId
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
@@ -235,6 +314,13 @@ export class CurrencyService {
 
   async syncCurrency(body: getCurrencyListDto, req: any) {
     try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      // if (!authCtx.isSuperAdmin) {
+      //   return {
+      //     success: 0,
+      //     message: 'Access denied: only superAdmin can sync currencies',
+      //   };
+      // }
       if (!process.env.EXCHANGE_API || !process.env.CURRENCY_CONVERSION) {
         return { success: 0, message: "Missing exchange API configuration in environment" };
       }

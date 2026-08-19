@@ -174,8 +174,42 @@ export class CustomerService {
     };
   }
 
+  private isFutureDate(dateVal: any): boolean {
+    if (!dateVal) return false;
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return d > today;
+  }
+
   async insertCustomer(params: CustomerDto, customerLogo?: Express.Multer.File, req?: any) {
     try {
+      if (!params.customerIncorporationDate || String(params.customerIncorporationDate).trim() === '') {
+        return {
+          success: 0,
+          message: 'Incorporation date is mandatory',
+        };
+      }
+      if (this.isFutureDate(params.customerIncorporationDate)) {
+        return {
+          success: 0,
+          message: 'Incorporation date cannot be in the future',
+        };
+      }
+      if (!params.ownerDob || String(params.ownerDob).trim() === '') {
+        return {
+          success: 0,
+          message: 'Owner date of birth is mandatory',
+        };
+      }
+      if (this.isFutureDate(params.ownerDob)) {
+        return {
+          success: 0,
+          message: 'Owner date of birth cannot be in the future',
+        };
+      }
+
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
       if (!authCtx.isSuperAdmin) {
@@ -196,11 +230,11 @@ export class CustomerService {
       );
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.addedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.addedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       const queryParams: any = {
         customerCode,
@@ -288,6 +322,35 @@ export class CustomerService {
       return { success: 0, message: 'customerId is mandatory' };
     }
     try {
+      if (params.customerIncorporationDate !== undefined) {
+        if (!params.customerIncorporationDate || String(params.customerIncorporationDate).trim() === '') {
+          return {
+            success: 0,
+            message: 'Incorporation date cannot be empty',
+          };
+        }
+        if (this.isFutureDate(params.customerIncorporationDate)) {
+          return {
+            success: 0,
+            message: 'Incorporation date cannot be in the future',
+          };
+        }
+      }
+      if (params.ownerDob !== undefined) {
+        if (!params.ownerDob || String(params.ownerDob).trim() === '') {
+          return {
+            success: 0,
+            message: 'Owner date of birth cannot be empty',
+          };
+        }
+        if (this.isFutureDate(params.ownerDob)) {
+          return {
+            success: 0,
+            message: 'Owner date of birth cannot be in the future',
+          };
+        }
+      }
+
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const existingCustomer = await this.customerEntity.findOne({
         where: { customerId: Number(params.customerId) },
@@ -346,13 +409,13 @@ export class CustomerService {
         queryParams.ownerDialCode = Number(params.ownerDialCode);
       if (params.ownerDob !== undefined) queryParams.ownerDob = params.ownerDob;
       if (params.status !== undefined) queryParams.status = params.status;
-
+      
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.updatedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

@@ -57,8 +57,8 @@ export class CustomerDto {
   @IsEmail()
   customerEmail!: string;
 
-  @IsOptional()
-  customerIncorporationDate?: Date;
+  @IsNotEmpty()
+  customerIncorporationDate!: Date;
 
   @IsNotEmpty()
   @IsInt()
@@ -82,15 +82,15 @@ export class CustomerDto {
   @IsString()
   state!: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   city?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   AddressLineOne?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsInt()
   @Transform(({ value }) => (value ? Number(value) : undefined))
   postalCode?: number;
@@ -116,8 +116,8 @@ export class CustomerDto {
   @Transform(({ value }) => (value ? Number(value) : undefined))
   ownerDialCode?: number;
 
-  @IsOptional()
-  ownerDob?: Date;
+  @IsNotEmpty()
+  ownerDob!: Date;
 
   @IsString()
   @IsNotEmpty()

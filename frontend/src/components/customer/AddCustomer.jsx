@@ -337,8 +337,9 @@ export default function AddCustomer() {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Incorporation Date</label>
-                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} onChange={handleChange} className={inputClass} />
+                                    <label className={labelClass}>Incorporation Date <span className="text-red-500">*</span></label>
+                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    {errors.customerIncorporationDate && <p className={errorClass}>{errors.customerIncorporationDate}</p>}
                                 </div>
 
                                 <div>
@@ -533,16 +534,22 @@ export default function AddCustomer() {
                                         classNamePrefix="react-select"
                                         formatCreateLabel={(inputValue) => `Use custom city "${inputValue}"`}
                                     />
+                                    {errors.city && (<p className={errorClass}>{errors.city}</p>)}
+
                                 </div>
 
                                 <div>
                                     <label className={labelClass}>Address Line 1</label>
                                     <input type="text" name="AddressLineOne" value={formData.AddressLineOne} disabled={!formData.country || !formData.state} onChange={handleChange} placeholder="Enter Address Line 1" className={inputClass} />
+                                    {errors.AddressLineOne && (<p className={errorClass}>{errors.AddressLineOne}</p>)}
+
                                 </div>
 
                                 <div>
                                     <label className={labelClass}>Postal Code</label>
                                     <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Enter Postal Code" className={inputClass} />
+                                    {errors.postalCode && (<p className={errorClass}>{errors.postalCode}</p>)}
+
                                 </div>
 
                             </div>
@@ -603,8 +610,9 @@ export default function AddCustomer() {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Owner Date of Birth</label>
-                                    <input type="date" name="ownerDob" value={formData.ownerDob} onChange={handleChange} className={inputClass} />
+                                    <label className={labelClass}>Owner Date of Birth <span className="text-red-500">*</span></label>
+                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    {errors.ownerDob && <p className={errorClass}>{errors.ownerDob}</p>}
                                 </div>
 
                             </div>

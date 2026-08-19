@@ -45,7 +45,7 @@ addedDate?: Date;
 updatedBy?: number;
 
 @Column({ nullable: true })
-updatedDate?: Date;
+updatedDate?: Date; 
 
 @Column({
     type:"enum",

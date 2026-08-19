@@ -71,6 +71,14 @@ export default function SiteMap() {
                 { label: "Package Type", redirectTo: "/package-list", show: permissions.includes("packageList") },
             ],
         },
+        {
+            title: "Item Management",
+            items: [
+                { label: "Bank", redirectTo: "/bank-list", show: permissions.includes("bankList") || superAdmin },
+                { label: "Bank Book", redirectTo: "/bank-book-list", show: permissions.includes("bankBookList") || superAdmin },
+            ]
+        },
+
 
     ];
 

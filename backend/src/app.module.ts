@@ -14,6 +14,8 @@ import { UserModule } from './user/user.module';
 import { CurrencyModule } from './currency/currency.module';
 import { ItemCategoryModule } from './item_category/item.category.module';
 import { ManufacturerModule } from './manufacturer/manufacturer.module';
+import { BankMasterModule } from './bank_master/bank.module';
+import { BankBookModule } from './bank_book_master/bank.book.module';
 import { BrandModule } from './brand_master/brand.module';
 import { UomModule } from './item_uom/uom.module';
 import { PackageModule } from './package_master/package.module';
@@ -40,6 +42,8 @@ import { ItemEntity } from './item/entity/item.entity';
     CurrencyModule,
     ItemCategoryModule,
     ManufacturerModule,
+    BankMasterModule,
+    BankBookModule,
     BrandModule,
     UomModule,
     PackageModule,

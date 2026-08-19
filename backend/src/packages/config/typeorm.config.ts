@@ -21,6 +21,8 @@ import { CustomerEntity } from 'src/customer/entity/customer.entity';
 import { CustomerCurrencyEntity } from 'src/customer/entity/customer.currency.entity';
 import { ItemEntity } from 'src/item/entity/item.entity';
 import { ItemImageEntity } from 'src/item/entity/item.image.entity';
+import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
+import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -49,6 +51,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     CustomerCurrencyEntity,
     ItemEntity,
     ItemImageEntity,
+    BankMasterEntity,
+    BankBookEntity,
   ],
   synchronize: true, 
   migrationsRun: true,

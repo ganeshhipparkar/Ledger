@@ -418,8 +418,9 @@ export default function CustomerUpdate({ id, onBack }) {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Incorporation Date</label>
-                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} onChange={handleChange} className={inputClass} />
+                                    <label className={labelClass}>Incorporation Date <span className="text-red-500">*</span></label>
+                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    {errors.customerIncorporationDate && <p className={errorClass}>{errors.customerIncorporationDate}</p>}
                                 </div>
 
                                 <div>
@@ -665,8 +666,9 @@ export default function CustomerUpdate({ id, onBack }) {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Owner Date of Birth</label>
-                                    <input type="date" name="ownerDob" value={formData.ownerDob} onChange={handleChange} className={inputClass} />
+                                    <label className={labelClass}>Owner Date of Birth <span className="text-red-500">*</span></label>
+                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    {errors.ownerDob && <p className={errorClass}>{errors.ownerDob}</p>}
                                 </div>
 
                             </div>

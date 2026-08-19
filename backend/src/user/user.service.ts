@@ -545,7 +545,6 @@ export class UserService {
         return { success: 0, message: 'Invalid profile selection' };
       }
 
-      // Re-check activeness at of company and gruop time 
       if (
         assignment.company?.status?.toLowerCase() !== 'active' ||
         assignment.group?.status?.toLowerCase() !== 'active'
@@ -556,7 +555,6 @@ export class UserService {
         };
       }
 
-      // Load full user record for the response.
       const user = await this.userEntity
         .createQueryBuilder('user')
         .leftJoinAndSelect('user.userCompanyGroups', 'ucg')
@@ -575,7 +573,6 @@ export class UserService {
         profileId: assignment.id,
       });
 
-      // Permissions for the chosen group.
       const groupPerms = assignment.groupId
         ? await this.groupPermissionEntity.find({
             where: { groupId: assignment.groupId },
@@ -587,7 +584,6 @@ export class UserService {
         .map((gp) => gp.permission?.permissionName)
         .filter(Boolean);
 
-      // 6. Full assignment list for the client (all UCG rows, for profile-switching UI).
       const assignments = (user.userCompanyGroups ?? []).map((ucg) => ({
         id: ucg.id,
         companyId: ucg.companyId,
@@ -606,7 +602,6 @@ export class UserService {
         is_parent: assignment.is_parent,
       };
 
-      // 7. Emit USER_LOGIN activity log (deferred from login() step 1).
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.USER_LOGIN,
         userId: user.userId,
@@ -1303,6 +1298,24 @@ export class UserService {
         metadata: {},
       });
 
+
+
+  this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.USER_LOGIN,
+        userId: targetUserId,
+        companyId: primary?.company?.companyId,
+        actorType: 'USER',
+        executionStatus: 'SUCCESS',
+        severity: 'INFO',
+        parameters: {
+          userEmail: target.email,
+          userGroup: primary?.group?.groupName || null,
+          selectedProfileId: primary.id,
+        },
+        metadata: {},
+      });
+
+
       const assignments = (target.userCompanyGroups ?? []).map((ucg) => ({
         id: ucg.id,
         companyId: ucg.companyId,
@@ -1360,7 +1373,8 @@ export class UserService {
       });
       const ucg = await this.ucgEntity.findOne({
         where: { userId: targetUserId },
-        relations: ['company'],
+        order: { is_parent: 'ASC' },
+        relations: ['company', 'group'],
       });
 
       const performerUcg = await this.ucgEntity.findOne({
@@ -1372,7 +1386,7 @@ export class UserService {
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.USER_STOP_IMPERSONATION,
         userId: performerId,
-        companyId: ucg?.company?.companyId,
+        companyId: ucg?.companyId || ucg?.company?.companyId,
         actorType: 'USER',
         targetType: 'USER',
         targetId: String(targetUserId),
@@ -1386,6 +1400,20 @@ export class UserService {
           targetUserId,
           targetUserEmail: target?.email,
           impersonationDetails: `Admin ${requester?.email} stopped impersonating User ${target?.email}`
+        },
+        metadata: {},
+      });
+
+      this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.USER_LOGOUT,
+        userId: target?.userId,
+        companyId: ucg?.companyId || ucg?.company?.companyId,
+        actorType: 'USER',
+        executionStatus: 'SUCCESS',
+        severity: 'INFO',
+        parameters: {
+          userEmail: target?.email,
+          userGroup: ucg?.group?.groupName || 'N/A',
         },
         metadata: {},
       });

@@ -15,14 +15,11 @@ function getServiceBase(request) {
     if (module === "uom") return "http://localhost:4000/uom";
     if (module === "package") return "http://localhost:4000/package";
     if (module === "customer") return "http://localhost:4000/customer";
+    if (module === "bank") return "http://localhost:4000/bank";
+    if (module === "bank-book") return "http://localhost:4000/bank-book";
     return "http://localhost:4000";
 }
 
-/**
- * Resolves the authentication token.
- * Since the browser has no access to tokens, it reads them directly from secure cookies.
- * Prefers the `impersonationToken` cookie if present, falling back to the `accessToken` cookie.
- */
 function getAuthToken(request) {
     const impToken = request.cookies.get("impersonationToken")?.value;
     if (impToken) {
@@ -80,7 +77,7 @@ export async function POST(request) {
             let bodyObj = {};
             try {
                 bodyObj = await request.json();
-            } catch (e) {}
+            } catch (e) { }
 
             try {
                 await fetch(`${base}/user-stop-impersonating`, {

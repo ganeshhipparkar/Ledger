@@ -63,8 +63,12 @@ export class GroupService {
       const result = await this.groupEntity.insert(queryParams);
       const insertId = result?.raw?.insertId;
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.addedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.addedBy);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.GROUP_CREATE,
@@ -183,8 +187,12 @@ export class GroupService {
         queryParams,
       );
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.updatedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.GROUP_UPDATE,

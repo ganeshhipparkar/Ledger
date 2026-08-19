@@ -236,11 +236,11 @@ export class ItemService {
       const barcodeImage = await generateBarcodeImage(barcodeText);
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.addedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.addedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       const srcCurrency = await this.currencyEntity.findOne({
         where: { curId: Number(params.sourceCurrencyId) },
@@ -407,13 +407,12 @@ export class ItemService {
         queryParams.convertedPurchasePrice = effectivePurchasePrice / conversionRate;
         queryParams.convertedCostPerUnit = effectiveCostPerUnit / conversionRate;
       }
-      console.log(req?.user,"user details")
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.updatedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();
@@ -469,6 +468,12 @@ export class ItemService {
           });
         }
       }
+      // console.log(" userEmail: ",performerEmail,
+      //     "userGroup:", authCtx.activeGroupName || 'N/A',
+      //     "itemCode: ",existingItem.itemCode,
+      //     "itemName: ",params.itemName ?? existingItem.itemName,
+      //     "status: ",params.status ?? existingItem.status,
+      //     "impersonated: ",!!req?.user?.isImpersonation,)
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.ITEM_UPDATE,

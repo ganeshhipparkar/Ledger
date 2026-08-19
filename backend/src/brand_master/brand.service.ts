@@ -254,11 +254,11 @@ export class BrandService {
       if (params.status) queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.updatedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

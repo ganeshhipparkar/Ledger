@@ -345,6 +345,57 @@ export const ManufacturerUpdateSchema = z.object({
     }),
 });
 
+export const BankFormSchema = z.object({
+    bankName: z.string()
+        .min(1, "Please enter Bank Name."),
+    companyId: z.coerce.number("Please select a Company.")
+        .min(1, "Please select a Company."),
+    remarks: z.string().optional().or(z.literal("")),
+    status: z.enum(["Active", "Inactive"], {
+        errorMap: () => ({ message: "Please select a valid Status." }),
+    }),
+});
+
+export const BankUpdateSchema = z.object({
+    bankId: z.coerce.number(),
+    bankName: z.string()
+        .min(1, "Please enter Bank Name."),
+    companyId: z.coerce.number().min(1, "Please select a Company."),
+    remarks: z.string().optional().or(z.literal("")),
+    status: z.enum(["Active", "Inactive"], {
+        errorMap: () => ({ message: "Please select a valid Status." }),
+    }),
+});
+
+export const BankBookFormSchema = z.object({
+    bankBookName: z.string().min(1, "Please enter Bank Book Name."),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+    bankId: z.coerce.number("Please select a Bank.").min(1, "Please select a Bank."),
+    currencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency."),
+    beneficiaryName: z.string().min(1, "Please enter Beneficiary Name."),
+    accountNumber: z.string().min(1, "Please enter Account Number."),
+    branchName: z.string().min(1, "Please enter Branch Name."),
+    remarks: z.string().optional().or(z.literal("")),
+    status: z.enum(["Active", "Inactive"], {
+        errorMap: () => ({ message: "Please select a valid Status." }),
+    }),
+});
+
+export const BankBookUpdateSchema = z.object({
+    bankBookId: z.coerce.number().min(1),
+    bankBookName: z.string().min(1, "Please enter Bank Book Name."),
+    companyId: z.coerce.number().min(1, "Please select a Company."),
+    bankId: z.coerce.number("Please select a Bank.").min(1, "Please select a Bank."),
+    currencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency."),
+    beneficiaryName: z.string().min(1, "Please enter Beneficiary Name."),
+    accountNumber: z.string().min(1, "Please enter Account Number."),
+    branchName: z.string().min(1, "Please enter Branch Name."),
+    remarks: z.string().optional().or(z.literal("")),
+    status: z.enum(["Active", "Inactive"], {
+        errorMap: () => ({ message: "Please select a valid Status." }),
+    }),
+});
+
 export const BrandFormSchema = z.object({
     brandName: z.string()
         .min(1, "Please enter Brand Name."),
@@ -426,7 +477,16 @@ export const CustomerFormSchema = z.object({
     customerEmail: z.string()
         .min(1, "Please enter Customer Email.")
         .email("Please enter valid Email."),
-    customerIncorporationDate: z.string().optional().or(z.literal("")),
+    customerIncorporationDate: z.string()
+        .min(1, "Please enter Incorporation Date.")
+        .refine((val) => {
+            if (!val) return true;
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return true;
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            return d <= today;
+        }, { message: "Incorporation Date cannot be in the future." }),
     dialCode: z.coerce.number("Please enter Dial Code.")
         .min(1, "Please enter Dial Code."),
     phone: z.string()
@@ -437,9 +497,12 @@ export const CustomerFormSchema = z.object({
         .min(1, "Please enter Country."),
     state: z.string()
         .min(1, "Please enter State."),
-    city: z.string().optional().or(z.literal("")),
-    AddressLineOne: z.string().optional().or(z.literal("")),
-    postalCode: z.coerce.number().optional().nullable().or(z.literal("")),
+    city: z.string()
+        .min(1, "Please enter city."),
+    AddressLineOne: z.string()
+        .min(1, "Please enter Address Line One."),
+    postalCode: z.number()
+        .min(1, "Please enter postal Code."),
     ownerFirstName: z.string()
         .min(1, "Please enter Owner First Name."),
     ownerLastName: z.string()
@@ -450,7 +513,16 @@ export const CustomerFormSchema = z.object({
     ownerPhone: z.string()
         .min(1, "Please enter Owner Phone."),
     ownerDialCode: z.coerce.number().optional().nullable().or(z.literal("")),
-    ownerDob: z.string().optional().or(z.literal("")),
+    ownerDob: z.string()
+        .min(1, "Please enter Owner Date of Birth.")
+        .refine((val) => {
+            if (!val) return true;
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return true;
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            return d <= today;
+        }, { message: "Owner Date of Birth cannot be in the future." }),
     status: z.enum(["Active", "Inactive"], {
         errorMap: () => ({ message: "Please select a valid Status." }),
     }),
@@ -466,7 +538,16 @@ export const CustomerUpdateSchema = z.object({
     customerEmail: z.string()
         .min(1, "Please enter Customer Email.")
         .email("Please enter valid Email."),
-    customerIncorporationDate: z.string().optional().or(z.literal("")),
+    customerIncorporationDate: z.string()
+        .min(1, "Please enter Incorporation Date.")
+        .refine((val) => {
+            if (!val) return true;
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return true;
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            return d <= today;
+        }, { message: "Incorporation Date cannot be in the future." }),
     dialCode: z.coerce.number("Please enter Dial Code.")
         .min(1, "Please enter Dial Code."),
     phone: z.string()
@@ -490,7 +571,16 @@ export const CustomerUpdateSchema = z.object({
     ownerPhone: z.string()
         .min(1, "Please enter Owner Phone."),
     ownerDialCode: z.coerce.number().optional().nullable().or(z.literal("")),
-    ownerDob: z.string().optional().or(z.literal("")),
+    ownerDob: z.string()
+        .min(1, "Please enter Owner Date of Birth.")
+        .refine((val) => {
+            if (!val) return true;
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return true;
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            return d <= today;
+        }, { message: "Owner Date of Birth cannot be in the future." }),
     status: z.enum(["Active", "Inactive"], {
         errorMap: () => ({ message: "Please select a valid Status." }),
     }),

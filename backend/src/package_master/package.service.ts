@@ -174,11 +174,11 @@ export class PackageService {
       );
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.addedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.addedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       const queryParams: any = {
         packageCode,
@@ -257,11 +257,11 @@ export class PackageService {
       if (params.status) queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.updatedBy);
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? '');
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

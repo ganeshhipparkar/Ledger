@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useContext, useMemo } from "react";
+import { useEffect, useState, useContext, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { authHeaders, isSuperAdmin } from "@/app/lib/auth";
@@ -10,59 +10,84 @@ import { GroupFormSchema } from "@/components/Zod";
 
 const MODULES = [
     {
-        label: "Company",
-        key: "company",
-        permissions: ["companyList", "companyView", "companyAdd", "companyUpdate"],
-    },
-    {
-        label: "Group",
-        key: "group",
-        permissions: ["groupList", "groupView", "groupAdd", "groupUpdate"],
-    },
-    {
+        section: "Users",
         label: "User",
         key: "user",
         permissions: ["userList", "userView", "userAdd", "userUpdate"],
     },
     {
+        section: "Users",
+        label: "Group",
+        key: "group",
+        permissions: ["groupList", "groupView", "groupAdd", "groupUpdate"],
+    },
+    {
+        section: "Users",
+        label: "Customer",
+        key: "customer",
+        permissions: ["customerList", "customerView", "customerAdd", "customerUpdate"],
+    },
+
+    {
+        section: "Companies",
+        label: "Company",
+        key: "company",
+        permissions: ["companyList", "companyView", "companyAdd", "companyUpdate"],
+    },
+
+    {
+        section: "Currencies",
         label: "Currency",
         key: "currency",
         permissions: ["currencyList", "currencyView", "currencyAdd", "currencyUpdate"],
     },
     {
+        section: "Bank",
+        label: "Bank",
+        key: "bank",
+        permissions: ["bankList", "bankView", "bankAdd", "bankUpdate"],
+    },
+    {
+        section: "Bank",
+        label: "Bank Book",
+        key: "bankBook",
+        permissions: ["bankBookList", "bankBookView", "bankBookAdd", "bankBookUpdate"],
+    },
+    {
+        section: "Item Management",
         label: "Item Category",
         key: "itemCategory",
         permissions: ["itemCategoryList", "itemCategoryView", "itemCategoryAdd", "itemCategoryUpdate"],
     },
     {
+        section: "Item Management",
         label: "Manufacturer",
         key: "manufacturer",
         permissions: ["manufacturerList", "manufacturerView", "manufacturerAdd", "manufacturerUpdate"],
     },
     {
+        section: "Item Management",
         label: "Brand",
         key: "brand",
         permissions: ["brandList", "brandView", "brandAdd", "brandUpdate"],
     },
     {
-        label: "UOM",
-        key: "uom",
-        permissions: ["uomList", "uomView", "uomAdd", "uomUpdate"],
-    },
-    {
-        label: "Package",
-        key: "package",
-        permissions: ["packageList", "packageView", "packageAdd", "packageUpdate"],
-    },
-    {
+        section: "Item Management",
         label: "Item",
         key: "item",
         permissions: ["itemList", "itemView", "itemAdd", "itemUpdate"],
     },
     {
-        label: "Customer",
-        key: "customer",
-        permissions: ["customerList", "customerView", "customerAdd", "customerUpdate"],
+        section: "Item Unit",
+        label: "UOM",
+        key: "uom",
+        permissions: ["uomList", "uomView", "uomAdd", "uomUpdate"],
+    },
+    {
+        section: "Item Unit",
+        label: "Package",
+        key: "package",
+        permissions: ["packageList", "packageView", "packageAdd", "packageUpdate"],
     },
 ];
 
@@ -359,33 +384,45 @@ export default function GroupCapabilities({ id }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {MODULES.map((mod) => (
-                                            <tr key={mod.key} className="border-b border-gray-100 hover:bg-gray-50">
-                                                <td className="py-3.5">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isModuleAllOn(mod.permissions)}
-                                                        disabled={!superAdmin && mod.key === "group"}
-                                                        onChange={() => toggleModule(mod.permissions)}
-                                                        className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    />
-                                                </td>
-                                                <td className={`py-3.5 pl-2 font-medium ${!superAdmin && mod.key === "group" ? "text-gray-400" : "text-gray-700"}`}>{mod.label}</td>
-                                                {mod.permissions.map((perm, idx) => (
-                                                    <td key={perm || idx} className="py-3.5 text-center px-6">
-                                                        {perm ? (
+                                        {MODULES.map((mod, index) => {
+                                            const showSectionHeader = index === 0 || mod.section !== MODULES[index - 1].section;
+                                            return (
+                                                <Fragment key={mod.key}>
+                                                    {showSectionHeader && (
+                                                        <tr className="bg-gray-100/90 border-y border-gray-200">
+                                                            <td colSpan={COL_HEADERS.length + 2} className="py-2 px-3 font-bold text-gray-700 text-xs tracking-wider uppercase">
+                                                                {mod.section}
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                    <tr className="border-b border-gray-100 hover:bg-gray-50">
+                                                        <td className="py-3.5">
                                                             <input
                                                                 type="checkbox"
-                                                                checked={!!checked[perm]}
+                                                                checked={isModuleAllOn(mod.permissions)}
                                                                 disabled={!superAdmin && mod.key === "group"}
-                                                                onChange={() => togglePerm(perm)}
+                                                                onChange={() => toggleModule(mod.permissions)}
                                                                 className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                             />
-                                                        ) : null}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
+                                                        </td>
+                                                        <td className={`py-3.5 pl-2 font-medium ${!superAdmin && mod.key === "group" ? "text-gray-400" : "text-gray-700"}`}>{mod.label}</td>
+                                                        {mod.permissions.map((perm, idx) => (
+                                                            <td key={perm || idx} className="py-3.5 text-center px-6">
+                                                                {perm ? (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!!checked[perm]}
+                                                                        disabled={!superAdmin && mod.key === "group"}
+                                                                        onChange={() => togglePerm(perm)}
+                                                                        className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    />
+                                                                ) : null}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                </Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
