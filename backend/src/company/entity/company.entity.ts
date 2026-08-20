@@ -18,6 +18,7 @@ import { CustomerEntity } from 'src/customer/entity/customer.entity';
 import { ItemEntity } from 'src/item/entity/item.entity';
 import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
 import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
+import { TermsAndConditionsEntity } from 'src/terms_conditions/entity/terms.conditions.entity';
 
 @Entity('company')
 export class CompanyEntity {
@@ -132,6 +133,9 @@ export class CompanyEntity {
 
   @OneToMany(()=>BankBookEntity,(bankbook)=>bankbook.company)
   bankBooks?:BankBookEntity[];
+
+  @OneToMany(()=>TermsAndConditionsEntity,(terms)=>terms.company)
+  termsConditions?:TermsAndConditionsEntity[];
   
 }
 

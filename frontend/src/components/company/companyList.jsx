@@ -12,7 +12,7 @@ import Loader from "../ui/Loader";
 import ImagePreviewModal from "../ui/ImagePreviewModal";
 import { ChevronDown } from "lucide-react";
 import { DataTable } from "../data-table";
-import { getCompanyColumns, companyColumns } from "./CompanyColumn";
+import { getCompanyColumns } from "./CompanyColumn";
 import CompanySidePanel from "./CompanySidePanel";
 import { createPortal } from "react-dom";
 

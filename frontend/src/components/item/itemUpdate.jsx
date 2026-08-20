@@ -247,7 +247,7 @@ export default function EditItemPage({ item, onBack }) {
 
             if (data?.success === 1) {
                 toast.success("Item updated successfully", { position: "top-right" });
-                // onBack();
+                onBack();
             } else {
                 const msg = data?.message || "Update failed.";
                 setErrors({ global: msg });

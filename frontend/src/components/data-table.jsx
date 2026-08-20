@@ -11,7 +11,6 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import Loader from "./ui/Loader";
 
 export function DataTable({

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { loginContext } from "@/components/hooks/LoginContext";
-import { ArrowUpDown, Eye } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 
 function StatusBadge({ status }) {
     if (!status) return <span className="text-gray-400 text-sm">-</span>;

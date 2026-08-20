@@ -24,6 +24,7 @@ import { ItemModule } from './item/item.module';
 import { PermissionEntity } from './group/entity/capability.entity';
 import { ActivityMasterEntity } from './activity/entity/activity-master.entity';
 import { ItemEntity } from './item/entity/item.entity';
+import { TermsAndConditionsModule } from './terms_conditions/terms.conditions.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ItemEntity } from './item/entity/item.entity';
     PackageModule,
     CustomerModule,
     ItemModule,
+    TermsAndConditionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

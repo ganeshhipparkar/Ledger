@@ -7,7 +7,7 @@ import Header from "../Header";
 import { CompanyUpdateSchema } from "../Zod";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import { isValidPhoneNumber } from "libphonenumber-js";
+
 import { City, Country, State } from "country-state-city";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";

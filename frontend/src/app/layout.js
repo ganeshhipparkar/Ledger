@@ -1,6 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Breadcrumbs from "@/components/Breadcrumbs";
 import LoginContext from "@/components/hooks/LoginContext";
 import { ToastContainer } from "react-toastify";
 import UserListContext from "@/components/hooks/UserListContext";
@@ -32,7 +31,6 @@ export default function RootLayout({ children }) {
       <LoginContext>
         <UserListContext>
           <body className="min-h-full flex flex-col">
-            {/* <Breadcrumbs className="absolute z-50" /> */}
             {children}
             <ToastContainer />
           </body>

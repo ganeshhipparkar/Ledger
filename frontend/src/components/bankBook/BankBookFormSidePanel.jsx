@@ -232,12 +232,13 @@ export default function BankBookFormSidePanel({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setErrors({});
 
         const payloadToValidate = {
             ...formData,
-            bankId: formData.bankId ? Number(formData.bankId) : "",
-            companyId: formData.companyId ? Number(formData.companyId) : "",
-            currencyId: formData.currencyId ? Number(formData.currencyId) : "",
+            bankId: formData.bankId ? Number(formData.bankId) : undefined,
+            companyId: formData.companyId ? Number(formData.companyId) : undefined,
+            currencyId: formData.currencyId ? Number(formData.currencyId) : undefined,
         };
 
         if (config.mode === "update") {
@@ -247,12 +248,12 @@ export default function BankBookFormSidePanel({
         const parseResult = config.schema.safeParse(payloadToValidate);
         if (!parseResult.success) {
             const fieldErrors = {};
-            parseResult.error.errors.forEach((err) => {
+            const issues = parseResult.error.issues || parseResult.error.errors || [];
+            issues.forEach((err) => {
                 const path = err.path[0];
                 if (path && !fieldErrors[path]) fieldErrors[path] = err.message;
             });
             setErrors(fieldErrors);
-            toast.error("Please resolve validation errors.", { position: "top-right" });
             return;
         }
 
@@ -294,7 +295,9 @@ export default function BankBookFormSidePanel({
                 onSuccess?.();
                 onClose();
             } else {
-                toast.error(data?.message || "Failed to save bank book.", { position: "top-right" });
+                const msg = data?.message || "Failed to save bank book.";
+                setErrors({ global: msg });
+                toast.error(msg, { position: "top-right" });
             }
         } catch (err) {
             toast.error("An unexpected error occurred.", { position: "top-right" });
@@ -315,7 +318,7 @@ export default function BankBookFormSidePanel({
             <div
                 className={`absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"
                     }`}
-                onClick={handleClose}
+                onClick={onClose}
             />
 
             {/* Panel Drawer */}
@@ -337,7 +340,7 @@ export default function BankBookFormSidePanel({
                             )}
                         </div>
                         <button
-                            onClick={handleClose}
+                            onClick={onClose}
                             className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                             ✕
@@ -352,10 +355,15 @@ export default function BankBookFormSidePanel({
                             </div>
                         ) : (
                             <form id="bank-book-form" onSubmit={handleSubmit} className="space-y-5">
+                                {errors.global && (
+                                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
+                                        {errors.global}
+                                    </div>
+                                )}
+
                                 {config.fields.map((field) => {
                                     if (field.hidden) return null;
 
-                                    // Special rendering logic per field type
                                     if (field.type === "company-select") {
                                         return (
                                             <div key={field.name} className="space-y-1">
@@ -368,7 +376,7 @@ export default function BankBookFormSidePanel({
                                                         value={formData[field.name]}
                                                         onChange={handleChange}
                                                         disabled={field.readOnly || companiesLoading}
-                                                        className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                        className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                             }`}
                                                     >
                                                         <option value="">Select Company</option>
@@ -391,7 +399,7 @@ export default function BankBookFormSidePanel({
                                                     />
                                                 )}
                                                 {errors[field.name] && (
-                                                    <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                    <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
                                             </div>
                                         );
@@ -408,7 +416,7 @@ export default function BankBookFormSidePanel({
                                                     value={formData[field.name]}
                                                     onChange={handleChange}
                                                     disabled={field.readOnly || banksLoading || !formData.companyId}
-                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                         }`}
                                                 >
                                                     <option value="">
@@ -425,7 +433,7 @@ export default function BankBookFormSidePanel({
                                                     ))}
                                                 </select>
                                                 {errors[field.name] && (
-                                                    <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                    <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
                                             </div>
                                         );
@@ -442,7 +450,7 @@ export default function BankBookFormSidePanel({
                                                     value={formData[field.name]}
                                                     onChange={handleChange}
                                                     disabled={field.readOnly || currenciesLoading}
-                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                         }`}
                                                 >
                                                     <option value="">Select Currency</option>
@@ -453,7 +461,7 @@ export default function BankBookFormSidePanel({
                                                     ))}
                                                 </select>
                                                 {errors[field.name] && (
-                                                    <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                    <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
                                             </div>
                                         );
@@ -472,11 +480,11 @@ export default function BankBookFormSidePanel({
                                                     onChange={handleChange}
                                                     placeholder={field.placeholder}
                                                     readOnly={field.readOnly}
-                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                         }`}
                                                 />
                                                 {errors[field.name] && (
-                                                    <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                    <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
                                             </div>
                                         );
@@ -493,7 +501,7 @@ export default function BankBookFormSidePanel({
                                                     value={formData[field.name]}
                                                     onChange={handleChange}
                                                     disabled={field.readOnly}
-                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                         }`}
                                                 >
                                                     {field.options?.map((opt) => (
@@ -503,7 +511,7 @@ export default function BankBookFormSidePanel({
                                                     ))}
                                                 </select>
                                                 {errors[field.name] && (
-                                                    <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                    <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
                                             </div>
                                         );
@@ -523,11 +531,11 @@ export default function BankBookFormSidePanel({
                                                 placeholder={field.placeholder}
                                                 readOnly={field.readOnly}
                                                 className={`w-full px-3.5 py-2.5 ${field.readOnly ? "bg-gray-100 cursor-not-allowed text-gray-600" : "bg-gray-50 text-gray-800"
-                                                    } border rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all ${errors[field.name] ? "border-red-500" : "border-gray-300"
+                                                    } border rounded-lg text-sm outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
                                                     }`}
                                             />
                                             {errors[field.name] && (
-                                                <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                                                <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                             )}
                                         </div>
                                     );

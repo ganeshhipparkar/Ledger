@@ -12,7 +12,7 @@ import { columns, getColumns } from "../Column";
 import { loginContext } from "../hooks/LoginContext";
 import { isSuperAdmin, isCompanyAdmin, authHeaders } from "../../app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { ArrowUpDown, LogIn, RotateCw, ChevronDown, MoreVertical } from "lucide-react";
+import { ChevronDown, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import CompanySidePanel from "../company/CompanySidePanel";
 import UserSidePanel from "./UserSidePanel";

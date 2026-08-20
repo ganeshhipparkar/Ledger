@@ -1,7 +1,6 @@
 "use client";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authHeaders } from "@/app/lib/auth";
 import Header from "../Header";
 import CompanyUpdate from "./CompanyUpdate";
 import { loginContext } from "../hooks/LoginContext";
