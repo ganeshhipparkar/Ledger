@@ -78,6 +78,12 @@ export default function SiteMap() {
                 { label: "Bank Book", redirectTo: "/bank-book-list", show: permissions.includes("bankBookList") || superAdmin },
             ]
         },
+        {
+            title: "Master",
+            items: [
+                { label: "Terms & Conditions", redirectTo: "/terms-conditions-list", show: permissions.includes("termsConditionsList") || superAdmin },
+            ],
+        },
 
 
     ];

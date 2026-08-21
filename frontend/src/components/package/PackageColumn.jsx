@@ -42,11 +42,10 @@ function PackageNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-medium text-sm ${
-                    can("packageView")
-                        ? "text-blue-600 cursor-pointer hover:underline"
-                        : "text-gray-900"
-                }`}
+                className={`font-medium text-sm ${can("packageView")
+                    ? "text-blue-600 cursor-pointer hover:underline"
+                    : "text-gray-900"
+                    }`}
                 onClick={(e) => {
                     if (!can("packageView")) return;
                     e.stopPropagation();
@@ -76,16 +75,7 @@ export const getPackageColumns = (onPreview, onEdit, router) => [
         ),
         filterFn: "includesString",
     },
-    {
-        accessorKey: "description",
-        header: sortableHeader("Description"),
-        cell: ({ row }) => (
-            <span className="text-gray-700 text-sm">
-                {row.getValue("description") || "-"}
-            </span>
-        ),
-        filterFn: "includesString",
-    },
+
     {
         accessorKey: "companyName",
         header: sortableHeader("Company"),

@@ -10,17 +10,17 @@ import { authHeaders } from "@/app/lib/auth";
 import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
-import { getPackageColumns } from "./PackageColumn";
-import PackageSidePanel from "./PackageSidePanel";
-import PackageFormSidePanel from "./PackageFormSidePanel";
+import { getTermsConditionsColumns } from "./TermsConditionsColumn";
+import TermsConditionsSidePanel from "./TermsConditionsSidePanel";
+import TermsConditionsFormSidePanel from "./TermsConditionsFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
-export default function PackageList() {
+export default function TermsConditionsList() {
     const router = useRouter();
     const { can } = useContext(loginContext);
 
-    const [packages, setPackages] = useState([]);
+    const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [limit, setLimit] = useState(10);
@@ -32,7 +32,7 @@ export default function PackageList() {
     const [viewId, setViewId] = useState(null);
 
     const [formPanelOpen, setFormPanelOpen] = useState(false);
-    const [formContext, setFormContext] = useState("package-add");
+    const [formContext, setFormContext] = useState("termsConditions-add");
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
@@ -55,8 +55,8 @@ export default function PackageList() {
                 method: "POST",
                 headers: {
                     ...authHeaders(),
-                    endpoint: "package-list",
-                    module: "package",
+                    endpoint: "terms-conditions-list",
+                    module: "terms-conditions",
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(body),
@@ -72,7 +72,7 @@ export default function PackageList() {
 
             const payload = await response.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-            setPackages(data?.data ?? []);
+            setItems(data?.data ?? []);
             setTotalPages(Math.ceil((data?.total || 1) / limitOverride));
             setTotalRecords(data?.total || 0);
         } catch (err) {
@@ -109,13 +109,13 @@ export default function PackageList() {
 
     const openAdd = () => {
         setEditId(null);
-        setFormContext("package-add");
+        setFormContext("termsConditions-add");
         setFormPanelOpen(true);
     };
 
     const openEdit = (id) => {
         setEditId(id);
-        setFormContext("package-update");
+        setFormContext("termsConditions-update");
         setFormPanelOpen(true);
         setViewId(null);
     };
@@ -126,7 +126,7 @@ export default function PackageList() {
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
-            <Header page="packages" onSearch={handleSearch} />
+            <Header page="terms-conditions" onSearch={handleSearch} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 {/* Breadcrumbs */}
@@ -138,13 +138,13 @@ export default function PackageList() {
                         Home
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Packages</span>
+                    <span className="text-gray-800">Terms & Conditions</span>
                 </nav>
 
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
-                            <Loader label="Loading Packages..." />
+                            <Loader label="Loading terms & conditions..." />
                         </div>
                     )}
 
@@ -156,34 +156,32 @@ export default function PackageList() {
 
                     {!loading && !error && (
                         <DataTable
-                            title="Package Master"
+                            title="Terms & Conditions"
                             actions={
-                                can && can("packageAdd") ? (
+                                can && can("termsConditionsAdd") ? (
                                     <button
-                                        id="add-package-btn"
+                                        id="add-terms-btn"
                                         onClick={openAdd}
                                         className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
                                     >
                                         <Plus className="h-4 w-4" />
-                                        Add Package
+                                        Add Terms
                                     </button>
                                 ) : null
                             }
-                            columns={getPackageColumns(
+                            columns={getTermsConditionsColumns(
                                 (id) => setViewId(id),
-                                openEdit,
-                                router
+                                openEdit
                             )}
-                            data={packages}
+                            data={items}
                             filterableColumns={[
-                                { id: "packageName", label: "Package Name", filterKey: "packageName" },
-                                { id: "packageCode", label: "Code", filterKey: "packageCode" },
+                                { id: "title", label: "Title", filterKey: "title" },
+                                { id: "code", label: "Code", filterKey: "code" },
                                 { id: "companyName", label: "Company", filterKey: "companyName" },
-                                { id: "status", label: "Status", filterKey: "status" },
                             ]}
                             onColumnFilterChange={handleSearch}
                             loading={loading}
-                            emptyMessage="No packages found."
+                            emptyMessage="No terms & conditions found."
                             containerClassName="flex-1 overflow-y-auto"
                         />
                     )}
@@ -225,21 +223,25 @@ export default function PackageList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <PackageSidePanel
-                        packageId={viewId}
+                    <TermsConditionsSidePanel
+                        termsConditionsId={viewId}
                         onClose={() => setViewId(null)}
-                    />,
+                    />, 
                     document.body
                 )}
 
             {/* Add / Edit form side panel */}
-            <PackageFormSidePanel
-                isOpen={formPanelOpen}
-                onClose={() => setFormPanelOpen(false)}
-                context={formContext}
-                id={editId}
-                onSuccess={handleFormSuccess}
-            />
+            {typeof document !== "undefined" &&
+                createPortal(
+                    <TermsConditionsFormSidePanel
+                        isOpen={formPanelOpen}
+                        onClose={() => setFormPanelOpen(false)}
+                        context={formContext}
+                        id={editId}
+                        onSuccess={handleFormSuccess}
+                    />,
+                    document.body
+                )}
         </div>
     );
 }

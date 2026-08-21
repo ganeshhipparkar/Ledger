@@ -49,7 +49,7 @@ export class TermsAndConditionsDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(500)
+  @MaxLength(10000)
   content!: string;
 
   @IsInt()
@@ -70,6 +70,6 @@ export class TermsAndConditionsUpdateDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(10000)
   content?: string;
 }

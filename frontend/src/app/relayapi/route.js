@@ -17,6 +17,7 @@ function getServiceBase(request) {
     if (module === "customer") return "http://localhost:4000/customer";
     if (module === "bank") return "http://localhost:4000/bank";
     if (module === "bank-book") return "http://localhost:4000/bank-book";
+    if (module === "terms-conditions") return "http://localhost:4000/terms-conditions";
     return "http://localhost:4000";
 }
 

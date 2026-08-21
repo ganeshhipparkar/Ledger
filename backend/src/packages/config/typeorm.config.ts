@@ -56,7 +56,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     BankBookEntity,
     TermsAndConditionsEntity,
   ],
-  synchronize: false, 
+  synchronize: true, 
   migrationsRun: true,
   logging: false,
   migrations: [__dirname + '/../../migration/*{.ts,.js}'],

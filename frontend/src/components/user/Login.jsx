@@ -117,7 +117,6 @@ function ProfileCard({ assignment, selected, onSelect }) {
     );
 }
 
-// ─── Main Login Page ──────────────────────────────────────────────────────────
 
 export default function LoginPage() {
     const { login } = useContext(loginContext);
@@ -130,7 +129,6 @@ export default function LoginPage() {
     const [errors, setErrors] = useState({ email: "", password: "" });
     const [formData, setFormData] = useState({ email: "", password: "" });
 
-    // Two-step state
     const [step, setStep] = useState("credentials"); // 'credentials' | 'select-profile'
     const [pendingAuth, setPendingAuth] = useState(null); // { userId, email, name, activeAssignments }
     const [selectedAssignment, setSelectedAssignment] = useState(null);

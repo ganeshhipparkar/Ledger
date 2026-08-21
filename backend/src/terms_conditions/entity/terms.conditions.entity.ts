@@ -12,7 +12,7 @@ export class TermsAndConditionsEntity{
     @Column()
     code!:string;
 
-    @Column({ type: 'varchar', length: 500 })
+    @Column({ type: 'text' })
     content!:string;
 
     @Column()

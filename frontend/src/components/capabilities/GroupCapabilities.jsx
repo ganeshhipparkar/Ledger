@@ -89,6 +89,12 @@ const MODULES = [
         key: "package",
         permissions: ["packageList", "packageView", "packageAdd", "packageUpdate"],
     },
+    {
+        section: "Master",
+        label: "Terms & Conditions",
+        key: "termsConditions",
+        permissions: ["termsConditionsList", "termsConditionsView", "termsConditionsAdd", "termsConditionsUpdate"],
+    },
 ];
 
 const COL_HEADERS = ["List", "View", "Add", "Update"];

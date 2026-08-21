@@ -633,3 +633,16 @@ export const ItemUpdateSchema = z.object({
     archive: z.enum(["true", "false"]).optional(),
     status: z.enum(["Active", "Inactive"]).optional(),
 });
+
+export const TermsConditionsFormSchema = z.object({
+    title: z.string().min(1, "Please enter Title."),
+    content: z.string().min(1, "Please enter Content.").max(10000, "Content cannot exceed 10000 characters."),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+});
+
+export const TermsConditionsUpdateSchema = z.object({
+    termsConditionsId: z.coerce.number(),
+    title: z.string().min(1, "Please enter Title."),
+    content: z.string().min(1, "Please enter Content.").max(10000, "Content cannot exceed 10000 characters."),
+    companyId: z.coerce.number().optional(),
+});

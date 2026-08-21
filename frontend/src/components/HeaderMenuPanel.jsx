@@ -43,6 +43,7 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 { label: "Companies", redirectTo: "/company-list", show: activePermissions.includes("companyList") || isSuper },
                 { label: "Roles", redirectTo: "/roles", show: activePermissions.includes("groupList") || isSuper },
                 { label: "Currencies", redirectTo: "/currency-list", show: activePermissions.includes("currencyList") || isSuper },
+                { label: "Terms & Conditions", redirectTo: "/terms-conditions-list", show: activePermissions.includes("termsConditionsList") || isSuper },
                 {
                     groupLabel: "Item Management",
                     children: [
