@@ -41,6 +41,7 @@ export default function CompanyDetails({ id }) {
             const data = resJson?.encrypted ? decryptResponse(resJson.encrypted) : resJson;
             if (res.ok && data && !data.statusCode && data.companyId) {
                 setCompany(data);
+                console.log(data, "details")
             } else {
                 console.error("Failed to fetch company details:", data);
             }
@@ -215,10 +216,15 @@ export default function CompanyDetails({ id }) {
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Location</p><p className="font-medium text-gray-800">{company.city || "-"}</p></div>
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Currency</p>
+                                            <p className="font-medium text-gray-800">
+                                                {company?.currencies?.map((currency) => currency.code).join(", ") || "-"}
+                                            </p>
+                                        </div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Website</p><p className="font-medium text-gray-800">{company.website || "N/A"}</p></div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Added By</p><p className="font-medium text-gray-800">{company.addedByName || "-"}</p></div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Updated By</p><p className="font-medium text-gray-800">{company.updatedByName || "-"}</p></div>
-                                        {/* <div className="grid grid-cols-2"><p className="text-gray-500">Status</p><span className={statusBadge(company.status)}>{company.status.charAt(0).toUpperCase() + company.status.slice(1).toLowerCase()}</span></div> */}
                                     </div>
                                 </div>
 

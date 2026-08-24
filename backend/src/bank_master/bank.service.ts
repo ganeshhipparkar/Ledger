@@ -13,6 +13,7 @@ import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.e
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import {
   bankListDto,
   BankMasterDto,
@@ -23,6 +24,9 @@ import {
 export class BankMasterService {
   @Inject()
   private readonly filter!: Filter;
+
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
 
   @InjectRepository(BankMasterEntity)
   private readonly bankRepository!: Repository<BankMasterEntity>;
@@ -35,24 +39,6 @@ export class BankMasterService {
 
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
-
-  private async generateBankCode(
-    bankName: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = bankName.trim().replace(/\s/g, '').substring(0, 8).toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.bankRepository.findOne({
-        where: { bankCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
 
   async bankList(param: bankListDto, req?: any) {
     let return_data: any = {};
@@ -172,9 +158,11 @@ export class BankMasterService {
         }
       }
 
-      const bankCode = await this.generateBankCode(
+      const bankCode = await this.codeGeneratorService.generateCode(
+        this.bankRepository,
         params.bankName,
-        Number(params.companyId),
+        params.companyId,
+        'bankCode',
       );
 
       const performerId = req?.user?.isImpersonation

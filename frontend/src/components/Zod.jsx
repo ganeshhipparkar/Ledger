@@ -301,13 +301,13 @@ export const ItemCategoryFormSchema = z.object({
     itemCategoryName: z.string()
         .min(1, "Please enter Item Category Name."),
     type: z.enum(["Goods", "Service"], {
-        errorMap: () => ({ message: "Please select a valid Type." }),
+        message: "Please select a valid Type.",
     }),
     companyId: z.coerce.number("Please select a Company.")
         .min(1, "Please select a Company."),
     parentCategoryId: z.coerce.number().nullable().optional().or(z.literal("")),
     status: z.enum(["Active", "Inactive"], {
-        errorMap: () => ({ message: "Please select a valid Status." }),
+        message: "Please select a valid Status.",
     }),
 });
 
@@ -316,7 +316,7 @@ export const ItemCategoryUpdateSchema = z.object({
     itemCategoryName: z.string()
         .min(1, "Please enter Item Category Name."),
     type: z.enum(["Goods", "Service"], {
-        errorMap: () => ({ message: "Please select a valid Type." }),
+        message: "Please select a valid Type.",
     }),
     companyId: z.coerce.number().min(1, "Please select a Company."),
     parentCategoryId: z.coerce.number().nullable().optional().or(z.literal("")),

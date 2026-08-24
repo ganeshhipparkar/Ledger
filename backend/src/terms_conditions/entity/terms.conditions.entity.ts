@@ -1,5 +1,6 @@
 import { CompanyEntity } from "src/company/entity/company.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { QuotationEntity } from "src/quotation/entity/quotation.entity";
 
 @Entity('terms_conditions')
 export class TermsAndConditionsEntity{
@@ -23,8 +24,11 @@ export class TermsAndConditionsEntity{
       })
     @JoinColumn({ name: 'companyId' })
     company!: CompanyEntity;
-    
 
+    @OneToMany(() => QuotationEntity, (quotation) => quotation.termsConditions)
+    quotations?: QuotationEntity[];
+
+    
 }
 
 

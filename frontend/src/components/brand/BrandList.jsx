@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getBrandColumns } from "./BrandColumn";
-import BrandSidePanel from "./BrandSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { brandSidePanelConfig } from "./configs/brandSidePanel.config";
 import BrandFormSidePanel from "./BrandFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -226,8 +227,9 @@ export default function BrandList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <BrandSidePanel
-                        brandId={viewId}
+                    <DetailsSidePanel
+                        config={brandSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

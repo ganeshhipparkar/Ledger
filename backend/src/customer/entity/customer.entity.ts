@@ -1,6 +1,7 @@
 import { CompanyEntity } from "src/company/entity/company.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { CustomerCurrencyEntity } from "./customer.currency.entity";
+import { QuotationEntity } from "src/quotation/entity/quotation.entity";
 
 export enum Status {
     ACTIVE = "Active",
@@ -96,4 +97,7 @@ export class CustomerEntity {
 
     @OneToMany(() => CustomerCurrencyEntity, (customerCurrency) => customerCurrency.customer)
     customerCurrencies?: CustomerCurrencyEntity[];
+
+    @OneToMany(() => QuotationEntity, (quotation) => quotation.customer)
+    quotations?: QuotationEntity[];
 }

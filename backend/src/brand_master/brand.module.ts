@@ -5,6 +5,7 @@ import { GroupPermissionEntity } from "src/group/entity/capability.entity";
 import { UserCompanyGroupEntity } from "src/packages/entity/user.company.group.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
+import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BrandController } from "./brand.controller";
 import { BrandService } from "./brand.service";
 import { BrandEntity } from "./entity/brand.entity";
@@ -22,7 +23,7 @@ import { ItemEntity } from "src/item/entity/item.entity";
     ]),
   ],
   controllers: [BrandController],
-  providers: [BrandService, Filter],
+  providers: [BrandService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule, BrandService],
 })
 export class BrandModule {}

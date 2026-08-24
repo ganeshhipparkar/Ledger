@@ -24,6 +24,11 @@ import { ItemImageEntity } from 'src/item/entity/item.image.entity';
 import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
 import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 import { TermsAndConditionsEntity } from 'src/terms_conditions/entity/terms.conditions.entity';
+import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
+import { QuotationItemEntity } from 'src/quotation/entity/quotation.item.entity';
+import { QuotationDiscountEntity } from 'src/quotation/entity/quotation.discount.entity';
+import { QuotationExtraChargeEntity } from 'src/quotation/entity/quotation.extra.charge.entity';
+import { QuotationAttachmentsEntity } from 'src/quotation/entity/quotation.attachments';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -55,8 +60,13 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     BankMasterEntity,
     BankBookEntity,
     TermsAndConditionsEntity,
+    QuotationEntity,
+    QuotationItemEntity,
+    QuotationDiscountEntity,
+    QuotationExtraChargeEntity,
+    QuotationAttachmentsEntity,
   ],
-  synchronize: true, 
+  synchronize: false, 
   migrationsRun: true,
   logging: false,
   migrations: [__dirname + '/../../migration/*{.ts,.js}'],

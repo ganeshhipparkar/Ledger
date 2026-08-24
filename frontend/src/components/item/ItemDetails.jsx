@@ -127,7 +127,7 @@ export default function ItemDetails({ id }) {
 
                 <div className="grid grid-cols-12 gap-6">
                     {/* Sidebar */}
-                    <div className="col-span-12 sm:col-span-3">
+                    <div className="col-span-12 sm:col-span-2">
                         <div className="rounded-2xl bg-white p-5 shadow-sm">
                             <div className="border-b pb-5">
                                 <h2 className="text-xl font-semibold capitalize text-gray-800">{item.itemName || "N/A"}</h2>
@@ -142,10 +142,11 @@ export default function ItemDetails({ id }) {
                     </div>
 
 
-                    <div className="col-span-12 lg:col-span-9">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="col-span-12 lg:col-span-10">
+                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
 
-                            <div className="space-y-6">
+                            {/* Column 1: Basic Information, Other Images */}
+                            <div className="lg:col-span-2 space-y-6">
                                 {/* Basic Information Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <div className="flex items-center gap-4 border-b pb-5 mb-6">
@@ -172,7 +173,7 @@ export default function ItemDetails({ id }) {
                                     </div>
 
                                     {/* Fields */}
-                                    <div className="space-y-4 text-sm">
+                                    <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Item Name</p>
                                             <p className="font-medium text-gray-800">{item.itemName || "-"}</p>
@@ -243,49 +244,14 @@ export default function ItemDetails({ id }) {
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Audit Info Card */}
-                                <div className="rounded-2xl bg-white p-6 shadow-sm">
-                                    <h3 className="mb-5 text-xl font-semibold text-gray-800">Audit Info</h3>
-                                    <div className="space-y-4 text-sm">
-                                        <div className="grid grid-cols-2">
-                                            <p className="text-gray-500">Added By</p>
-                                            <p className="font-medium text-gray-800">
-                                                {item.addedByName ? (
-                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(item.addedBy)}>
-                                                        {item.addedByName}
-                                                    </span>
-                                                ) : "-"}
-                                            </p>
-                                        </div>
-                                        <div className="grid grid-cols-2">
-                                            <p className="text-gray-500">Added Date</p>
-                                            <p className="font-medium text-gray-800">{formatDate(item.addedDate)}</p>
-                                        </div>
-                                        <div className="grid grid-cols-2">
-                                            <p className="text-gray-500">Updated By</p>
-                                            <p className="font-medium text-gray-800">
-                                                {item.updatedByName ? (
-                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(item.updatedBy)}>
-                                                        {item.updatedByName}
-                                                    </span>
-                                                ) : "-"}
-                                            </p>
-                                        </div>
-                                        <div className="grid grid-cols-2">
-                                            <p className="text-gray-500">Updated Date</p>
-                                            <p className="font-medium text-gray-800">{formatDate(item.updatedDate)}</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
-                            {/* Right Column of Main Content */}
-                            <div className="space-y-6">
+                            {/* Column 2: Other Details, Currency Details */}
+                            <div className="lg:col-span-2 space-y-6">
                                 {/* Other Details Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Other Details</h3>
-                                    <div className="space-y-4 text-sm">
+                                    <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Category</p>
                                             <p className="font-medium text-blue-600">{item.categoryName || "-"}</p>
@@ -324,7 +290,7 @@ export default function ItemDetails({ id }) {
                                 {/* Currency Details Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Currency Details</h3>
-                                    <div className="space-y-4 text-sm">
+                                    <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Source Currency</p>
                                             <p className="font-medium text-gray-800">
@@ -338,23 +304,25 @@ export default function ItemDetails({ id }) {
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Purchase Price {item.baseCurrencySymbol}</p>
                                             <p className="font-semibold text-gray-800">
-                                                {item.convertedPurchasePrice != null ? `${item.baseCurrencySymbol}${item.baseCurrencySymbol} ${Number(item.convertedPurchasePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                                                {item.convertedPurchasePrice != null ? `${item.baseCurrencySymbol} ${Number(item.convertedPurchasePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Cost Per Unit {item.baseCurrencySymbol}</p>
                                             <p className="font-semibold text-gray-800">
-                                                {item.convertedCostPerUnit != null ? `$ ${Number(item.convertedCostPerUnit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                                                {item.convertedCostPerUnit != null ? `${item.baseCurrencySymbol} ${Number(item.convertedCostPerUnit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
                                             </p>
                                         </div>
-
                                     </div>
                                 </div>
+                            </div>
 
+                            {/* Column 3: Unit(s), Remarks, Audit Info */}
+                            <div className="lg:col-span-2 space-y-6">
                                 {/* Unit(s) Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Unit(s)</h3>
-                                    <div className="space-y-4 text-sm">
+                                    <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Check Shelf Life</p>
                                             <p className="font-medium text-gray-800">{item.checkShelfLife === "true" ? "Yes" : "No"}</p>
@@ -377,10 +345,45 @@ export default function ItemDetails({ id }) {
                                 {/* Remarks Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-3 text-xl font-semibold text-gray-800">Remarks</h3>
-                                    <div className="text-sm text-gray-600 whitespace-pre-wrap break-words min-h-[60px]">
+                                    <div className="text-[15px] text-gray-600 whitespace-pre-wrap break-words min-h-[60px]">
                                         {item.remarks ? item.remarks : (
                                             <p className="flex items-center justify-center text-gray-400 py-4">No Remarks found.</p>
                                         )}
+                                    </div>
+                                </div>
+
+                                {/* Audit Info Card */}
+                                <div className="rounded-2xl bg-white p-6 shadow-sm">
+                                    <h3 className="mb-5 text-xl font-semibold text-gray-800">Audit Info</h3>
+                                    <div className="space-y-4 text-[15px]">
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Added By</p>
+                                            <p className="font-medium text-gray-800">
+                                                {item.addedByName ? (
+                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(item.addedBy)}>
+                                                        {item.addedByName}
+                                                    </span>
+                                                ) : "-"}
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Added Date</p>
+                                            <p className="font-medium text-gray-800">{formatDate(item.addedDate)}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Updated By</p>
+                                            <p className="font-medium text-gray-800">
+                                                {item.updatedByName ? (
+                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(item.updatedBy)}>
+                                                        {item.updatedByName}
+                                                    </span>
+                                                ) : "-"}
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Updated Date</p>
+                                            <p className="font-medium text-gray-800">{formatDate(item.updatedDate)}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

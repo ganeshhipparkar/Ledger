@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getManufacturerColumns } from "./ManufacturerColumn";
-import ManufacturerSidePanel from "./ManufacturerSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { manufacturerSidePanelConfig } from "./configs/manufacturerSidePanel.config";
 import ManufacturerFormSidePanel from "./ManufacturerFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -224,8 +225,9 @@ export default function ManufacturerList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <ManufacturerSidePanel
-                        manufacturerId={viewId}
+                    <DetailsSidePanel
+                        config={manufacturerSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

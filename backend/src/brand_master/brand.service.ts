@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityCode } from '../activity/enums/activity-code.enum';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
@@ -30,23 +31,8 @@ export class BrandService {
   @Inject()
   private readonly filter!: Filter;
 
-  private async generateBrandCode(
-    brandName: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = brandName.trim().replace(/\s/g, '').substring(0, 8).toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.brandEntity.findOne({
-        where: { brandCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
 
   async brandList(param: BrandListDto, req?: any) {
     let return_data: any = {};
@@ -165,9 +151,11 @@ export class BrandService {
         }
       }
 
-      const brandCode = await this.generateBrandCode(
+      const brandCode = await this.codeGeneratorService.generateCode(
+        this.brandEntity,
         params.brandName,
-        Number(params.companyId),
+        params.companyId,
+        'brandCode',
       );
 
       const performerId = req?.user?.isImpersonation

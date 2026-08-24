@@ -15,6 +15,7 @@ import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import {
@@ -46,27 +47,8 @@ export class CustomerService {
   @Inject()
   private readonly filter!: Filter;
 
-  private async generateCustomerCode(
-    customerName: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = customerName
-      .trim()
-      .replace(/\s/g, '')
-      .substring(0, 8)
-      .toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.customerEntity.findOne({
-        where: { customerCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
 
   async customerList(param: CustomerListDto, req?: any) {
     let return_data: any = {};
@@ -224,9 +206,11 @@ export class CustomerService {
         }
       }
 
-      const customerCode = await this.generateCustomerCode(
+      const customerCode = await this.codeGeneratorService.generateCode(
+        this.customerEntity,
         params.customerName,
-        Number(params.companyId),
+        params.companyId,
+        'customerCode',
       );
 
       const performerId = req?.user?.isImpersonation

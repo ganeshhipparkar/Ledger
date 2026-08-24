@@ -5,6 +5,7 @@ import { GroupPermissionEntity } from "src/group/entity/capability.entity";
 import { UserCompanyGroupEntity } from "src/packages/entity/user.company.group.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
+import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { ManufacturerContorller } from "./manufacturer.controller";
 import { ManufacturerService } from "./manufacturer.service";
 import { ManufacturerEntity } from "./entity/manufacturer.entity";
@@ -20,7 +21,7 @@ import { ManufacturerEntity } from "./entity/manufacturer.entity";
     ]),
   ],
   controllers: [ManufacturerContorller],
-  providers: [ManufacturerService,Filter],
+  providers: [ManufacturerService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class ManufacturerModule {}

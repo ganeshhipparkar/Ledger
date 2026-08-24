@@ -12,6 +12,7 @@ import { ItemCategoryEntity } from 'src/item_category/entity/item-category.entit
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import {
   categoryListDto,
@@ -24,6 +25,9 @@ export class ItemCategoryService {
   @Inject()
   private readonly filter!: Filter;
 
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
+
   @InjectRepository(ItemCategoryEntity)
   private readonly itemCategoryEntity!: Repository<ItemCategoryEntity>;
 
@@ -35,24 +39,6 @@ export class ItemCategoryService {
 
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
-
-  private async generateCategoryCode(
-    itemCategoryName: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = itemCategoryName.trim().replace(/\s/g, "").substring(0, 8).toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.itemCategoryEntity.findOne({
-        where: { itemCategoryCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
 
   // cycle prevention
   private async validateParentCategory(
@@ -237,9 +223,11 @@ export class ItemCategoryService {
         }
       }
 
-      const itemCategoryCode = await this.generateCategoryCode(
+      const itemCategoryCode = await this.codeGeneratorService.generateCode(
+        this.itemCategoryEntity,
         params.itemCategoryName,
-        Number(params.companyId),
+        params.companyId,
+        'itemCategoryCode',
       );
 
       const performerId = req?.user?.isImpersonation

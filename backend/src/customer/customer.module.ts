@@ -13,6 +13,7 @@ import { CompanyCurrencyEntity } from 'src/packages/entity/company.currency.enti
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 
 import { FileTransfer } from 'src/utilities/file.transfer';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { FileTransfer } from 'src/utilities/file.transfer';
     ]),
   ],
   controllers: [CustomerContorller],
-  providers: [CustomerService, Filter, FileTransfer],
+  providers: [CustomerService, Filter, FileTransfer, CodeGeneratorService],
   exports: [TypeOrmModule, CustomerService],
 })
 export class CustomerModule {}

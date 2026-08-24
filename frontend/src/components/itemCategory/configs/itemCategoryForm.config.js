@@ -30,7 +30,7 @@ export const itemCategoryFormConfig = {
                     label: "Type",
                     type: "select",
                     required: true,
-                    defaultValue: "Goods",
+                    defaultValue: "",
                     readOnly: false,
                     hidden: false,
                     options: [

@@ -1,6 +1,8 @@
 import { BrandEntity } from "src/brand_master/entity/brand.entity";
 import { CompanyEntity } from "src/company/entity/company.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { QuotationDiscountEntity } from "src/quotation/entity/quotation.discount.entity";
+import { QuotationExtraChargeEntity } from "src/quotation/entity/quotation.extra.charge.entity";
 
 export enum Status{
     ACTIVE="Active",
@@ -48,5 +50,11 @@ updatedDate?: Date;
     default :Status.ACTIVE,
 })
 status!: string;
+
+@OneToMany(() => QuotationDiscountEntity, (d) => d.manufacturer)
+quotationDiscounts?: QuotationDiscountEntity[];
+
+@OneToMany(() => QuotationExtraChargeEntity, (ec) => ec.manufacturer)
+quotationExtraCharges?: QuotationExtraChargeEntity[];
 
 }

@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getBankColumns } from "./BankColumn";
-import BankSidePanel from "./BankSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { bankSidePanelConfig } from "./configs/bankSidePanel.config";
 import BankFormSidePanel from "./BankFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -224,8 +225,9 @@ export default function BankList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <BankSidePanel
-                        bankId={viewId}
+                    <DetailsSidePanel
+                        config={bankSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

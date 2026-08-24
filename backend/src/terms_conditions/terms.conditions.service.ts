@@ -12,6 +12,7 @@ import { TermsAndConditionsEntity } from './entity/terms.conditions.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import {
   termsConditionsListDto,
@@ -24,6 +25,9 @@ export class TermsAndConditionsService {
   @Inject()
   private readonly filter!: Filter;
 
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
+
   @InjectRepository(TermsAndConditionsEntity)
   private readonly termsConditionsRepository!: Repository<TermsAndConditionsEntity>;
 
@@ -35,24 +39,6 @@ export class TermsAndConditionsService {
 
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
-
-  private async generateCode(
-    title: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = title.trim().replace(/\s/g, '').substring(0, 8).toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.termsConditionsRepository.findOne({
-        where: { code: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
 
   async termsConditionsList(param: termsConditionsListDto, req?: any) {
     let return_data: any = {};
@@ -161,9 +147,11 @@ export class TermsAndConditionsService {
         }
       }
 
-      const code = await this.generateCode(
+      const code = await this.codeGeneratorService.generateCode(
+        this.termsConditionsRepository,
         params.title,
-        Number(params.companyId),
+        params.companyId,
+        'code',
       );
 
       const performerId = req?.user?.isImpersonation

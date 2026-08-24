@@ -4,24 +4,6 @@ This document outlines structural, performance, and maintainability improvements
 
 ## 1. Cross-Module Duplication
 
-### **A. Code Generation Loop (`generate<X>Code`)**
-- **Files Affected:** `brand.service.ts`, `item.service.ts`, `package.service.ts`, `customer.service.ts`, `bank.book.service.ts`, `manufacturer.service.ts`, `item.category.service.ts`, `bank.service.ts`, `uom.service.ts`.
-- **Why it matters:** Every master service duplicates a near-identical `do...while` loop that queries the database to generate a unique sequential code.
-- **Proposed Fix:** Create a shared `CodeGeneratorService` utility or base class that takes the entity repository, prefix string, and company ID as arguments. 
-  ```typescript
-  @Injectable()
-  export class CodeGeneratorService {
-    async generateCode<T>(
-      repository: Repository<T>,
-      prefix: string,
-      companyId: number,
-      codeField: string
-    ): Promise<string> {
-      // implementation (see Scalability Concerns for the optimized query)
-    }
-  }
-  ```
-
 ### **B. Company Scoping and SuperAdmin Checks**
 - **Files Affected:** All services and controllers (e.g., `brand.service.ts:57`, `item.service.ts`).
 - **Why it matters:** There is a repeated boilerplate block across almost every `find`, `update`, and `insert` method checking `if (!authCtx.isSuperAdmin) { const scoped = req?.scopedCompanyIds || [authCtx.activeCompanyId]; ... }` to append `.andWhere('...companyId IN...')` to queries. This clutters business logic.

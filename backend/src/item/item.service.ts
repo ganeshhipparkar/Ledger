@@ -21,6 +21,7 @@ import { FileTransfer } from 'src/utilities/file.transfer';
 import { ItemEntity } from './entity/item.entity';
 import { ItemImageEntity } from './entity/item.image.entity';
 import { ItemDto, ItemListDto, ItemUpdateDto } from './dto/item.dto';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 
 @Injectable()
 export class ItemService {
@@ -44,24 +45,8 @@ export class ItemService {
   @Inject()
   private readonly filter!: Filter;
 
-  private async generateItemCode(
-    itemName: string,
-    companyId: number,
-  ): Promise<string> {
-    const rawPrefix = itemName.trim().replace(/\s/g, '').substring(0, 8).toUpperCase();
-    const prefix = rawPrefix.length > 0 ? rawPrefix : 'ITEM';
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.itemEntity.findOne({
-        where: { itemCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
 
   async itemList(param: ItemListDto, req?: any) {
     let return_data: any = {};
@@ -222,9 +207,12 @@ export class ItemService {
         }
       }
 
-      const itemCode = await this.generateItemCode(
+      const itemCode = await this.codeGeneratorService.generateCode(
+        this.itemEntity,
         params.itemName,
-        Number(params.companyId),
+        params.companyId,
+        'itemCode',
+        'ITEM',
       );
 
       const company = await this.companyEntity.findOne({

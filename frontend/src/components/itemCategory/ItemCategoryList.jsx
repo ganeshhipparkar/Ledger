@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getItemCategoryColumns } from "./ItemCategoryColumn";
-import ItemCategorySidePanel from "./ItemCategorySidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { itemCategorySidePanelConfig } from "./configs/itemCategorySidePanel.config";
 import ItemCategoryFormSidePanel from "./ItemCategoryFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -197,9 +198,9 @@ export default function ItemCategoryList() {
                 <div className="text-sm font-medium text-gray-800">
                     {totalRecords > 0
                         ? `View ${(currentPage - 1) * limit + 1} - ${Math.min(
-                              currentPage * limit,
-                              totalRecords
-                          )} of ${totalRecords}`
+                            currentPage * limit,
+                            totalRecords
+                        )} of ${totalRecords}`
                         : "View 0 of 0"}
                 </div>
                 <div className="flex items-center gap-3">
@@ -227,8 +228,9 @@ export default function ItemCategoryList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <ItemCategorySidePanel
-                        itemCategoryId={viewId}
+                    <DetailsSidePanel
+                        config={itemCategorySidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

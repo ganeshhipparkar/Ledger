@@ -12,6 +12,7 @@ import { ManufacturerEntity } from './entity/manufacturer.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import {
   manufacturerListDto,
@@ -24,6 +25,9 @@ export class ManufacturerService {
   @Inject()
   private readonly filter!: Filter;
 
+  @Inject()
+  private readonly codeGeneratorService!: CodeGeneratorService;
+
   @InjectRepository(ManufacturerEntity)
   private readonly manufacturerEntity!: Repository<ManufacturerEntity>;
 
@@ -35,24 +39,6 @@ export class ManufacturerService {
 
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
-
-  private async generateManufacturerCode(
-    manufacturerName: string,
-    companyId: number,
-  ): Promise<string> {
-    const prefix = manufacturerName.trim().replace(/\s/g, "").substring(0, 8).toUpperCase();
-    let counter = 1;
-    let code: string;
-    do {
-      code = `${prefix}${String(counter).padStart(3, '0')}`;
-      const existing = await this.manufacturerEntity.findOne({
-        where: { manufacturerCode: code, companyId: Number(companyId) },
-      });
-      if (!existing) break;
-      counter++;
-    } while (true);
-    return code;
-  }
 
   async manufacturerList(param: manufacturerListDto, req?: any) {
     let return_data: any = {};
@@ -172,9 +158,11 @@ export class ManufacturerService {
         }
       }
 
-      const manufacturerCode = await this.generateManufacturerCode(
+      const manufacturerCode = await this.codeGeneratorService.generateCode(
+        this.manufacturerEntity,
         params.manufacturerName,
-        Number(params.companyId),
+        params.companyId,
+        'manufacturerCode',
       );
 
       const performerId = req?.user?.isImpersonation

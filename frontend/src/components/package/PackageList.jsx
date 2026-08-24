@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getPackageColumns } from "./PackageColumn";
-import PackageSidePanel from "./PackageSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { packageSidePanelConfig } from "./configs/packageSidePanel.config";
 import PackageFormSidePanel from "./PackageFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -225,8 +226,9 @@ export default function PackageList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <PackageSidePanel
-                        packageId={viewId}
+                    <DetailsSidePanel
+                        config={packageSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

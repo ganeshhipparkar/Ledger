@@ -11,7 +11,8 @@ import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
 import { getUomColumns } from "./UomColumn";
-import UomSidePanel from "./UomSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { uomSidePanelConfig } from "./configs/uomSidePanel.config";
 import UomFormSidePanel from "./UomFormSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
@@ -227,8 +228,9 @@ export default function UomList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <UomSidePanel
-                        uomId={viewId}
+                    <DetailsSidePanel
+                        config={uomSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
                     />,
                     document.body

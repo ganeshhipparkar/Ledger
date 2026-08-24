@@ -13,8 +13,6 @@ import { DataTable } from "../data-table";
 import { getItemColumns } from "./ItemColumn";
 import ItemListRow from "./ItemListRow";
 import ItemGridCard from "./ItemGridCard";
-import ItemSidePanel from "./ItemSidePanel";
-import { createPortal } from "react-dom";
 
 export default function ItemList() {
     const router = useRouter();
@@ -31,8 +29,6 @@ export default function ItemList() {
 
     // View mode: "table" | "list" | "grid"
     const [viewMode, setViewMode] = useState("table");
-
-    const [viewId, setViewId] = useState(null);
 
     useEffect(() => {
         fetchData(1, {});
@@ -104,6 +100,10 @@ export default function ItemList() {
         router.push(`/item/${id}?edit=true`);
     };
 
+    const openDetails = (id) => {
+        router.push(`/item/${id}`);
+    };
+
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
             <Header
@@ -141,7 +141,7 @@ export default function ItemList() {
                         <DataTable
                             title="Item Master"
                             columns={getItemColumns(
-                                (id) => setViewId(id),
+                                openDetails,
                                 openEdit,
                                 router
                             )}
@@ -171,7 +171,7 @@ export default function ItemList() {
                                         <ItemListRow
                                             key={item.itemId}
                                             item={item}
-                                            onPreview={(id) => setViewId(id)}
+                                            onPreview={openDetails}
                                             onEdit={openEdit}
                                             router={router}
                                         />
@@ -193,7 +193,7 @@ export default function ItemList() {
                                         <ItemGridCard
                                             key={item.itemId}
                                             item={item}
-                                            onPreview={(id) => setViewId(id)}
+                                            onPreview={openDetails}
                                             onEdit={openEdit}
                                             router={router}
                                         />
@@ -232,16 +232,6 @@ export default function ItemList() {
                     </select>
                 </div>
             </div>
-
-            {/* Read-only view side panel */}
-            {viewId && typeof document !== "undefined" &&
-                createPortal(
-                    <ItemSidePanel
-                        itemId={viewId}
-                        onClose={() => setViewId(null)}
-                    />,
-                    document.body
-                )}
         </div>
     );
 }

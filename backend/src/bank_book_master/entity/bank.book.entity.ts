@@ -1,7 +1,8 @@
 import { BankMasterEntity } from "src/bank_master/entity/bank.master.entity";
 import { CompanyEntity } from "src/company/entity/company.entity";
 import { CurrencyEntity } from "src/currency/entity/currency.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { QuotationEntity } from "src/quotation/entity/quotation.entity";
 
 export enum Status {
   ACTIVE = "Active",
@@ -77,4 +78,7 @@ export class BankBookEntity {
     default: Status.ACTIVE,
   })
   status!: string;
+
+  @OneToMany(() => QuotationEntity, (quotation) => quotation.bankBook)
+  quotations?: QuotationEntity[];
 }

@@ -7,6 +7,7 @@ import { GroupPermissionEntity } from "src/group/entity/capability.entity";
 import { UserCompanyGroupEntity } from "src/packages/entity/user.company.group.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
+import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BankBookController } from "./bank.book.controller";
 import { BankBookService } from "./bank.book.service";
 import { BankBookEntity } from "./entity/bank.book.entity";
@@ -24,7 +25,7 @@ import { BankBookEntity } from "./entity/bank.book.entity";
     ]),
   ],
   controllers: [BankBookController],
-  providers: [BankBookService, Filter],
+  providers: [BankBookService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule, BankBookService],
 })
 export class BankBookModule {}

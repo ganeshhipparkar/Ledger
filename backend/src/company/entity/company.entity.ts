@@ -19,6 +19,7 @@ import { ItemEntity } from 'src/item/entity/item.entity';
 import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
 import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 import { TermsAndConditionsEntity } from 'src/terms_conditions/entity/terms.conditions.entity';
+import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 
 @Entity('company')
 export class CompanyEntity {
@@ -136,6 +137,9 @@ export class CompanyEntity {
 
   @OneToMany(()=>TermsAndConditionsEntity,(terms)=>terms.company)
   termsConditions?:TermsAndConditionsEntity[];
+
+  @OneToMany(() => QuotationEntity, (quotation) => quotation.company)
+  quotations?: QuotationEntity[];
   
 }
 

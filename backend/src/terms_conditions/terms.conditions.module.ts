@@ -5,6 +5,7 @@ import { GroupPermissionEntity } from "src/group/entity/capability.entity";
 import { UserCompanyGroupEntity } from "src/packages/entity/user.company.group.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
+import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { TermsAndConditionsController } from "./terms.conditions.controller";
 import { TermsAndConditionsService } from "./terms.conditions.service";
 import { TermsAndConditionsEntity } from "./entity/terms.conditions.entity";
@@ -20,7 +21,7 @@ import { TermsAndConditionsEntity } from "./entity/terms.conditions.entity";
     ]),
   ],
   controllers: [TermsAndConditionsController],
-  providers: [TermsAndConditionsService, Filter],
+  providers: [TermsAndConditionsService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class TermsAndConditionsModule {}

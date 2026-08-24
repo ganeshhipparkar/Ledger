@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserCompanyGroupEntity } from '../../packages/entity/user.company.group.entity';
+import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -78,7 +79,9 @@ export class UserEntity {
   @Column({ nullable: true })
   updatedDate!: Date;
 
-  /** All company+role assignments for this user */
   @OneToMany(() => UserCompanyGroupEntity, (ucg) => ucg.user, { cascade: true })
   userCompanyGroups!: UserCompanyGroupEntity[];
+
+  @OneToMany(() => QuotationEntity, (quotation) => quotation.salesPerson)
+  quotationsAsSalesPerson?: QuotationEntity[];
 }

@@ -5,6 +5,7 @@ import { GroupPermissionEntity } from "src/group/entity/capability.entity";
 import { UserCompanyGroupEntity } from "src/packages/entity/user.company.group.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
+import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { PackageContorller } from "./package.controller";
 import { PackageService } from "./package.service";
 import { PackageEntity } from "./entity/package.entity";
@@ -20,7 +21,7 @@ import { PackageEntity } from "./entity/package.entity";
     ]),
   ],
   controllers: [PackageContorller],
-  providers: [PackageService,Filter],
+  providers: [PackageService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class PackageModule {}

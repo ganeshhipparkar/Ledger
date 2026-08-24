@@ -7,6 +7,7 @@ import { UserCompanyGroupEntity } from '../packages/entity/user.company.group.en
 import { UserEntity } from '../user/entity/user.entity';
 import { GroupPermissionEntity } from '../group/entity/capability.entity';
 import { Filter } from 'src/utilities/filter';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { ItemEntity } from 'src/item/entity/item.entity';
 
@@ -22,7 +23,7 @@ import { ItemEntity } from 'src/item/entity/item.entity';
     ]),
   ],
   controllers: [ItemCategoryController],
-  providers: [ItemCategoryService, Filter],
+  providers: [ItemCategoryService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class ItemCategoryModule {}
