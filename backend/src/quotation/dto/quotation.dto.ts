@@ -201,6 +201,15 @@ export class QuotationDto {
 
 
   @IsOptional()
+  @IsInt() 
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  parentQuotationId?: number;
+
+  @IsOptional()
+  @IsString() 
+  versionCode?: string;
+
+  @IsOptional()
   @IsInt()
   @Transform(({ value }) => Number(value))
   addedBy?: number;

@@ -258,8 +258,9 @@ export class CustomerService {
       const insertId = result?.raw?.insertId;
 
       if (customerLogo?.filename && insertId) {
-        await this.fileTransfer.fileTransfer4(customerLogo.filename, insertId, insertId);
+        await this.fileTransfer.fileTransfer(customerLogo.filename, insertId, 'customer', { deleteExisting: true });
       }
+
 
       if (params.curIds && Array.isArray(params.curIds) && insertId) {
         const currencyInsertions = params.curIds.map((curId: number) => ({
@@ -452,12 +453,14 @@ export class CustomerService {
       });
 
       if (customerLogo?.filename) {
-        await this.fileTransfer.fileTransfer4(
+        await this.fileTransfer.fileTransfer(
           customerLogo.filename,
           params.customerId,
-          params.customerId,
+          'customer',
+          { deleteExisting: true },
         );
       }
+
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.CUSTOMER_UPDATE,

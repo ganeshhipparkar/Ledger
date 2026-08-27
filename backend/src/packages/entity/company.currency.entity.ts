@@ -9,7 +9,7 @@ import { CurrencyEntity } from '../../currency/entity/currency.entity';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 
 @Entity('company_currency')
-export class CompanyCurrencyEntity {
+export class CompanyCurrencyEntity {  
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -27,3 +27,4 @@ export class CompanyCurrencyEntity {
   @JoinColumn({ name: 'curId' })
   currency!: CurrencyEntity;
 }
+

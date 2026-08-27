@@ -152,7 +152,8 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
         };
     }, []);
 
-    let image = `http://localhost:4000/upload/${displayUser?.userId}/${displayUser?.userFile}`;
+    let image = `http://localhost:4000/upload/user/${displayUser?.userId}/${displayUser?.userFile}`;
+
 
     const gotoLogout = async (e) => {
         e.preventDefault();

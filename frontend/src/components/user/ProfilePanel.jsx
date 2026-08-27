@@ -18,7 +18,8 @@ export default function ProfilePage() {
     const assignments = Array.isArray(displayUser.assignments) ? displayUser.assignments : [];
     const selectedAssignment = activeAssignment || assignments.find(a => a.is_parent === 0) || assignments[0] || null;
 
-    const imageurl = `http://localhost:4000/upload/${displayUser.userId}/${displayUser.userFile}`;
+    const imageurl = `http://localhost:4000/upload/user/${displayUser.userId}/${displayUser.userFile}`;
+
 
     const formattedGroupName = selectedAssignment?.groupName
         ? selectedAssignment.groupName.replace(/([A-Z])/g, " $1").trim()

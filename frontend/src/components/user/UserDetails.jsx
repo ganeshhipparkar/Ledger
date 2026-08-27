@@ -224,7 +224,8 @@ export default function UserDetailsPage({ id }) {
         router.back();
     };
 
-    const imageurl = `http://localhost:4000/upload/${userData.user_userId}/${userData.user_userFile}`;
+    const imageurl = `http://localhost:4000/upload/user/${userData.user_userId}/${userData.user_userFile}`;
+
     const assignments = Array.isArray(userData.assignments) ? userData.assignments : [];
 
     const selectedAssignment = user.activeAssignment || assignments[selectedProfileIndex] || null;

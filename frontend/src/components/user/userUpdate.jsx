@@ -158,7 +158,8 @@ export default function EditUserPage({ user, onBack }) {
 
         setPreview(
             user.user_userFile
-                ? `http://localhost:4000/upload/${user.user_userId}/${user.user_userFile}`
+                ? `http://localhost:4000/upload/user/${user.user_userId}/${user.user_userFile}`
+
                 : ""
         );
 

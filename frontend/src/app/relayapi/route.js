@@ -18,6 +18,8 @@ function getServiceBase(request) {
     if (module === "bank") return "http://localhost:4000/bank";
     if (module === "bank-book") return "http://localhost:4000/bank-book";
     if (module === "terms-conditions") return "http://localhost:4000/terms-conditions";
+    if (module === 'tax-group') return "http://localhost:4000/tax-group";
+    if (module === "payment-transaction") return "http://localhost:4000/payment-transaction";
     return "http://localhost:4000";
 }
 

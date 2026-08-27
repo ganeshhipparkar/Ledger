@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { QuotationEntity } from "./quotation.entity";
 
-@Entity('Quotation attachments')
+@Entity('quotation_attachments')
 export class QuotationAttachmentsEntity{
     @PrimaryGeneratedColumn()
     quotationAttachmentId!:number;

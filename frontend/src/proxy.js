@@ -40,7 +40,10 @@ export const config = {
         '/profile',
         '/currency-list',
         '/currency:path*',
-        '/add-currency'
+        '/add-currency',
+        '/payment-transaction-list',
+        '/payment-transaction-add',
+        '/payment-transaction:path*'
     ],
 }
 

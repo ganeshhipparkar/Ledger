@@ -25,6 +25,8 @@ import { PermissionEntity } from './group/entity/capability.entity';
 import { ActivityMasterEntity } from './activity/entity/activity-master.entity';
 import { ItemEntity } from './item/entity/item.entity';
 import { TermsAndConditionsModule } from './terms_conditions/terms.conditions.module';
+import { TaxGroupModule } from './tax_group/tax.group.module';
+import { PaymentTransactionModule } from './payment_transaction/payment.transaction.module';
 
 @Module({
   imports: [
@@ -51,8 +53,11 @@ import { TermsAndConditionsModule } from './terms_conditions/terms.conditions.mo
     CustomerModule,
     ItemModule,
     TermsAndConditionsModule,
+    TaxGroupModule,
+    PaymentTransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+

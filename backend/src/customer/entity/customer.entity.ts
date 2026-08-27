@@ -2,6 +2,7 @@ import { CompanyEntity } from "src/company/entity/company.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { CustomerCurrencyEntity } from "./customer.currency.entity";
 import { QuotationEntity } from "src/quotation/entity/quotation.entity";
+import { PaymentTransactionEntity } from "src/payment_transaction/entity/payment.transaction.entity";
 
 export enum Status {
     ACTIVE = "Active",
@@ -100,4 +101,7 @@ export class CustomerEntity {
 
     @OneToMany(() => QuotationEntity, (quotation) => quotation.customer)
     quotations?: QuotationEntity[];
+
+    @OneToMany(() => PaymentTransactionEntity, (paymentTransaction) => paymentTransaction.customer)
+    paymentTransactions?: PaymentTransactionEntity[];
 }

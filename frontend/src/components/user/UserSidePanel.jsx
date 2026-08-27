@@ -104,7 +104,8 @@ export default function UserSidePanel({ userId, onClose, onMoreDetails }) {
         : [];
 
     const avatarUrl = user?.userFile
-        ? `http://localhost:4000/upload/${user.userId}/${user.userFile}`
+        ? `http://localhost:4000/upload/user/${user.userId}/${user.userFile}`
+
         : null;
 
     return (

@@ -44,6 +44,8 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 { label: "Roles", redirectTo: "/roles", show: activePermissions.includes("groupList") || isSuper },
                 { label: "Currencies", redirectTo: "/currency-list", show: activePermissions.includes("currencyList") || isSuper },
                 { label: "Terms & Conditions", redirectTo: "/terms-conditions-list", show: activePermissions.includes("termsConditionsList") || isSuper },
+                { label: "Tax Group", redirectTo: "/tax-group-list", show: activePermissions.includes("taxGroupList") },
+
                 {
                     groupLabel: "Item Management",
                     children: [
@@ -53,8 +55,10 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                         { label: "Bank Book", redirectTo: "/bank-book-list", show: activePermissions.includes("bankBookList") },
                         { label: "Brand", redirectTo: "/brand-list", show: activePermissions.includes("brandList") },
                         { label: "Items", redirectTo: "/item-list", show: activePermissions.includes("itemList") },
+
                     ]
                 },
+
                 {
                     groupLabel: "Item Unit",
                     children: [
@@ -62,6 +66,13 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                         { label: "Package", redirectTo: "/package-list", show: activePermissions.includes("packageList") },
                     ]
                 },
+            ]
+        },
+        {
+            id: "finance",
+            title: "Finance",
+            items: [
+                { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: activePermissions.includes("paymentTransactionList") || isSuper },
             ]
         }
     ];

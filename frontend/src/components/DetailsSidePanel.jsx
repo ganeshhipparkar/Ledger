@@ -79,6 +79,31 @@ function renderField(field, data, can, onLinkedRecordClick) {
                 : "-";
         }
 
+        case "attachments": {
+            const list = data[field.key];
+            if (!Array.isArray(list) || list.length === 0) return "-";
+            return (
+                <div className="flex flex-col gap-1.5 pt-1">
+                    {list.map((att, idx) => {
+                        const url = typeof att === "string" ? att : att?.attachmentUrl;
+                        if (!url) return null;
+                        const fileName = url.split("/").pop() || `Attachment ${idx + 1}`;
+                        return (
+                            <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 truncate max-w-xs font-medium"
+                            >
+                                📎 <span className="truncate">{fileName}</span>
+                            </a>
+                        );
+                    })}
+                </div>
+            );
+        }
+
         default:
             return data[field.key] ?? "-";
     }

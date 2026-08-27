@@ -239,7 +239,8 @@ export class UserService {
       const creatorUcg = await this.ucgEntity.findOne({
         where: { userId: creatorId },
         order: { is_parent: 'ASC' },
-        relations: ['group'],
+        relations: { group: true },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -295,8 +296,9 @@ export class UserService {
     };
 
     if (userFile?.filename) {
-      await this.fileTransfer.fileTransfer(userFile.filename, userId, userId);
+      await this.fileTransfer.fileTransfer(userFile.filename, userId, 'user', { deleteExisting: true });
     }
+
 
     return output;
   }
@@ -408,9 +410,11 @@ export class UserService {
         await this.fileTransfer.fileTransfer(
           userFile.filename,
           params.userId,
-          params.userId,
+          'user',
+          { deleteExisting: true },
         );
       }
+
 
       // Emit user update activity after commit
       const actorId = params.updatedBy ?? params.userId;
@@ -421,7 +425,8 @@ export class UserService {
       const actorUcg = await this.ucgEntity.findOne({
         where: { userId: actorId },
         order: { is_parent: 'ASC' },
-        relations: ['group'],
+        relations: { group: true },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -437,7 +442,7 @@ export class UserService {
           userEmail: actorUser?.email ?? 'Unknown',
           targetEmail: user.email,
           userGroup: actorUcg?.group?.groupName || 'N/A',
-          updatedFields: Object.keys(params),
+          updatedFields: Object.keys(params), 
         },
         metadata: {},
       });
@@ -472,9 +477,15 @@ export class UserService {
       const loginValue = body.email ?? body.name;
       const user = await this.userEntity
         .createQueryBuilder('user')
-        .leftJoinAndSelect('user.userCompanyGroups', 'ucg')
-        .leftJoinAndSelect('ucg.company', 'company')
-        .leftJoinAndSelect('ucg.group', 'group')
+        .select([
+          'user.userId', 'user.email', 'user.name', 'user.password', 'user.status',
+        ])
+        .leftJoin('user.userCompanyGroups', 'ucg')
+        .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
+        .leftJoin('ucg.company', 'company')
+        .addSelect(['company.companyName', 'company.status'])
+        .leftJoin('ucg.group', 'group')
+        .addSelect(['group.groupName', 'group.status'])
         .where('user.email = :login OR user.name = :login', {
           login: loginValue,
         })
@@ -538,7 +549,12 @@ export class UserService {
     try {
       const assignment = await this.ucgEntity.findOne({
         where: { id: body.ucgId, userId: body.userId },
-        relations: ['company', 'group'],
+        relations: { company: true, group: true },
+        select: {
+          id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+          company: { companyName: true, status: true },
+          group: { groupName: true, status: true },
+        },
       });
 
       if (!assignment) {
@@ -557,9 +573,17 @@ export class UserService {
 
       const user = await this.userEntity
         .createQueryBuilder('user')
-        .leftJoinAndSelect('user.userCompanyGroups', 'ucg')
-        .leftJoinAndSelect('ucg.company', 'company')
-        .leftJoinAndSelect('ucg.group', 'group')
+        .select([
+          'user.userId', 'user.email', 'user.name', 'user.firstName', 'user.middleName',
+          'user.surname', 'user.dob', 'user.phone', 'user.alternatePhone', 'user.status',
+          'user.userFile', 'user.createdAt', 'user.updatedDate', 'user.createdBy', 'user.updatedBy',
+        ])
+        .leftJoin('user.userCompanyGroups', 'ucg')
+        .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
+        .leftJoin('ucg.company', 'company')
+        .addSelect(['company.companyName'])
+        .leftJoin('ucg.group', 'group')
+        .addSelect(['group.groupName'])
         .where('user.userId = :userId', { userId: body.userId })
         .getOne();
 
@@ -576,7 +600,8 @@ export class UserService {
       const groupPerms = assignment.groupId
         ? await this.groupPermissionEntity.find({
             where: { groupId: assignment.groupId },
-            relations: ['permission'],
+            relations: { permission: true },
+            select: { id: true, groupId: true, permission: { permissionName: true } },
           })
         : [];
 
@@ -680,7 +705,8 @@ export class UserService {
       const primaryForLogout = await this.ucgEntity.findOne({
         where: { userId },
         order: { is_parent: 'ASC' },
-        relations: ['group'],
+        relations: { group: true },
+        select: { id: true, userId: true, companyId: true, is_parent: true, group: { groupName: true } },
       });
       if (!companyId) {
         companyId = primaryForLogout?.companyId;
@@ -761,9 +787,16 @@ export class UserService {
         ? await this.userEntity
             .createQueryBuilder('user')
             .whereInIds(pageIds)
-            .leftJoinAndSelect('user.userCompanyGroups', 'ucg')
-            .leftJoinAndSelect('ucg.company', 'company')
-            .leftJoinAndSelect('ucg.group', 'group')
+            .select([
+              'user.userId', 'user.name', 'user.email', 'user.firstName', 'user.surname',
+              'user.phone', 'user.dialCode', 'user.status', 'user.userFile', 'user.dob',
+            ])
+            .leftJoin('user.userCompanyGroups', 'ucg')
+            .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
+            .leftJoin('ucg.company', 'company')
+            .addSelect(['company.companyId', 'company.companyName'])
+            .leftJoin('ucg.group', 'group')
+            .addSelect(['group.groupId', 'group.groupName'])
             .orderBy('user.name', 'ASC')
             .getMany()
         : [];
@@ -827,11 +860,18 @@ export class UserService {
 
       const user = await this.userEntity.findOne({
         where: { userId: targetId },
-        relations: [
-          'userCompanyGroups',
-          'userCompanyGroups.company',
-          'userCompanyGroups.group',
-        ],
+        relations: { userCompanyGroups: { company: true, group: true } },
+        select: {
+          userId: true, name: true, firstName: true, middleName: true, surname: true,
+          email: true, dob: true, dialCode: true, phone: true, alternatePhone: true,
+          status: true, remarks: true, createdBy: true, updatedBy: true,
+          userFile: true, createdAt: true, updatedDate: true,
+          userCompanyGroups: {
+            id: true, companyId: true, groupId: true, is_parent: true,
+            company: { companyName: true },
+            group: { groupName: true },
+          },
+        },
       });
 
       if (!user) return { success: 0, message: 'User not found' };
@@ -900,7 +940,8 @@ export class UserService {
       const groupPerms = groupId
         ? await this.groupPermissionEntity.find({
             where: { groupId },
-            relations: ['permission'],
+            relations: { permission: true },
+            select: { id: true, groupId: true, permission: { permissionName: true } },
           })
         : [];
       const permissions = groupPerms
@@ -1222,7 +1263,11 @@ export class UserService {
     try {
       const requester = await this.userEntity.findOne({
         where: { userId: requestingUserId },
-        relations: ['userCompanyGroups', 'userCompanyGroups.group'],
+        relations: { userCompanyGroups: { group: true } },
+        select: {
+          userId: true, email: true,
+          userCompanyGroups: { id: true, is_parent: true, group: { groupName: true } },
+        },
       });
 
       const isSuperAdmin = requester?.userCompanyGroups?.some(
@@ -1234,9 +1279,17 @@ export class UserService {
 
       const target = await this.userEntity
         .createQueryBuilder('user')
-        .leftJoinAndSelect('user.userCompanyGroups', 'ucg')
-        .leftJoinAndSelect('ucg.company', 'company')
-        .leftJoinAndSelect('ucg.group', 'group')
+        .select([
+          'user.userId', 'user.name', 'user.firstName', 'user.middleName', 'user.surname',
+          'user.email', 'user.dob', 'user.phone', 'user.alternatePhone', 'user.status',
+          'user.userFile', 'user.createdAt', 'user.updatedDate', 'user.createdBy', 'user.updatedBy',
+        ])
+        .leftJoin('user.userCompanyGroups', 'ucg')
+        .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
+        .leftJoin('ucg.company', 'company')
+        .addSelect(['company.companyId', 'company.companyName'])
+        .leftJoin('ucg.group', 'group')
+        .addSelect(['group.groupName'])
         .where('user.userId = :userId', { userId: targetUserId })
         .getOne();
 
@@ -1256,7 +1309,8 @@ export class UserService {
       const groupPerms = groupId
         ? await this.groupPermissionEntity.find({
             where: { groupId },
-            relations: ['permission'],
+            relations: { permission: true },
+            select: { id: true, groupId: true, permission: { permissionName: true } },
           })
         : [];
 
@@ -1374,13 +1428,19 @@ export class UserService {
       const ucg = await this.ucgEntity.findOne({
         where: { userId: targetUserId },
         order: { is_parent: 'ASC' },
-        relations: ['company', 'group'],
+        relations: { company: true, group: true },
+        select: {
+          id: true, userId: true, companyId: true, is_parent: true,
+          company: { companyId: true },
+          group: { groupName: true },
+        },
       });
 
       const performerUcg = await this.ucgEntity.findOne({
         where: { userId: performerId },
         order: { is_parent: 'ASC' },
-        relations: ['group'],
+        relations: { group: true },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -1436,7 +1496,12 @@ export class UserService {
       // where: { id, userId } means a profileId from any other user returns null and is rejected here.
       const assignment = await this.ucgEntity.findOne({
         where: { id: body.profileId, userId: targetUserId },
-        relations: ['company', 'group'],
+        relations: { company: true, group: true },
+        select: {
+          id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+          company: { companyName: true },
+          group: { groupName: true },
+        },
       });
 
       if (!assignment) {
@@ -1448,7 +1513,12 @@ export class UserService {
       let oldAssignment = oldProfileId
         ? await this.ucgEntity.findOne({
             where: { id: oldProfileId, userId: targetUserId },
-            relations: ['company', 'group'],
+            relations: { company: true, group: true },
+            select: {
+              id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+              company: { companyName: true },
+              group: { groupName: true },
+            },
           })
         : null;
 
@@ -1456,7 +1526,12 @@ export class UserService {
         oldAssignment = await this.ucgEntity.findOne({
           where: { userId: targetUserId },
           order: { is_parent: 'ASC' },
-          relations: ['company', 'group'],
+          relations: { company: true, group: true },
+          select: {
+            id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+            company: { companyName: true },
+            group: { groupName: true },
+          },
         });
       }
 
@@ -1464,7 +1539,8 @@ export class UserService {
       const groupPerms = assignment.groupId
         ? await this.groupPermissionEntity.find({
             where: { groupId: assignment.groupId },
-            relations: ['permission'],
+            relations: { permission: true },
+            select: { id: true, groupId: true, permission: { permissionName: true } },
           })
         : [];
 

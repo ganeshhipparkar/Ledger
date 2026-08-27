@@ -646,3 +646,48 @@ export const TermsConditionsUpdateSchema = z.object({
     content: z.string().min(1, "Please enter Content.").max(10000, "Content cannot exceed 10000 characters."),
     companyId: z.coerce.number().optional(),
 });
+
+export const TaxGroupFormSchema = z.object({
+    taxName: z.string().min(1, "Please enter Tax Name."),
+    taxValue: z.coerce.number({ required_error: "Please enter Tax Value.", invalid_type_error: "Tax Value must be a number." }).min(0, "Tax Value cannot be negative."),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+});
+
+export const TaxGroupUpdateSchema = z.object({
+    taxId: z.coerce.number(),
+    taxName: z.string().min(1, "Please enter Tax Name.").optional(),
+    taxValue: z.coerce.number({ required_error: "Please enter Tax Value.", invalid_type_error: "Tax Value must be a number." }).min(0, "Tax Value cannot be negative.").optional(),
+    companyId: z.coerce.number().optional(),
+});
+
+export const PaymentTransactionFormSchema = z.object({
+    customerId: z.coerce.number("Please select a Customer.").min(1, "Please select a Customer."),
+    currencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency."),
+    bankBookId: z.coerce.number("Please select a Bank Account.").min(1, "Please select a Bank Account."),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+    paymentMode: z.enum(["Cash", "Credit Card", "Debit Card", "Digital Wallet", "Bank Transfer", "UPI", "Buy Now Pay Later"], {
+        errorMap: () => ({ message: "Please select a valid Payment Mode." }),
+    }),
+    paymentDate: z.string().min(1, "Please select Payment Date."),
+    exchangeRate: z.coerce.number({ required_error: "Please enter Exchange Rate.", invalid_type_error: "Exchange Rate must be a number." }).min(0.000001, "Exchange Rate must be positive."),
+    exchangeDate: z.string().min(1, "Please select Exchange Date."),
+    narration: z.string().min(1, "Please enter Narration."),
+    transactionAmount: z.coerce.number({ required_error: "Please enter Transaction Amount.", invalid_type_error: "Transaction Amount must be a number." }).min(0.0001, "Transaction Amount must be positive."),
+    description: z.string().min(1, "Please enter Description."),
+});
+
+export const PaymentTransactionUpdateSchema = z.object({
+    paymentTransactionId: z.coerce.number().min(1),
+    customerId: z.coerce.number("Please select a Customer.").min(1, "Please select a Customer.").optional(),
+    currencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency.").optional(),
+    bankBookId: z.coerce.number("Please select a Bank Account.").min(1, "Please select a Bank Account.").optional(),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company.").optional(),
+    paymentMode: z.enum(["Cash", "Credit Card", "Debit Card", "Digital Wallet", "Bank Transfer", "UPI", "Buy Now Pay Later"]).optional(),
+    paymentDate: z.string().optional(),
+    exchangeRate: z.coerce.number().optional(),
+    exchangeDate: z.string().optional(),
+    narration: z.string().optional(),
+    transactionAmount: z.coerce.number().optional(),
+    description: z.string().optional(),
+    deletedAttachmentIds: z.array(z.number()).optional(),
+});

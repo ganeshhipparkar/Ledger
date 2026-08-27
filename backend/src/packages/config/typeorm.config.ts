@@ -29,6 +29,9 @@ import { QuotationItemEntity } from 'src/quotation/entity/quotation.item.entity'
 import { QuotationDiscountEntity } from 'src/quotation/entity/quotation.discount.entity';
 import { QuotationExtraChargeEntity } from 'src/quotation/entity/quotation.extra.charge.entity';
 import { QuotationAttachmentsEntity } from 'src/quotation/entity/quotation.attachments';
+import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
+import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment.transaction.entity';
+import { PaymentTransactionAttachmentsEntity } from 'src/payment_transaction/entity/payment.transaction.attachments';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -65,6 +68,9 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     QuotationDiscountEntity,
     QuotationExtraChargeEntity,
     QuotationAttachmentsEntity,
+    taxGroupEntity,
+    PaymentTransactionEntity,
+    PaymentTransactionAttachmentsEntity,
   ],
   synchronize: false, 
   migrationsRun: true,

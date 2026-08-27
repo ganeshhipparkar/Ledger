@@ -130,7 +130,8 @@ export class CompanyService {
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
             order: { is_parent: 'ASC' },
-            relations: ['group'],
+            relations: { group: true },
+            select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
           })
         : null;
 
@@ -194,8 +195,9 @@ export class CompanyService {
 
     const fid: number = parseInt(output.settings.id);
     if (companyFile?.filename) {
-      await this.fileTransfer.fileTransfer3(companyFile.filename, fid, fid);
+      await this.fileTransfer.fileTransfer(companyFile.filename, fid, 'company', { deleteExisting: true });
     }
+
     return output;
   }
 
@@ -259,6 +261,7 @@ export class CompanyService {
 
           const parentComp = await this.companyEntity.findOne({
             where: { companyId: newParentId },
+            select:{companyId:true}
           });
           if (!parentComp) {
             return { success: 0, message: 'Parent company not found' };
@@ -279,7 +282,7 @@ export class CompanyService {
 
             const ancestor = await this.companyEntity.findOne({
               where: { companyId: currentId },
-              select: ['companyId', 'parentCompanyId'],
+              select: {'companyId':true, 'parentCompanyId':true},
             });
             currentId = ancestor?.parentCompanyId
               ? Number(ancestor.parentCompanyId)
@@ -298,6 +301,7 @@ export class CompanyService {
             companyCode: params.companyCode,
             companyId: Not(Number(params.companyId)),
           },
+          select:{companyCode:true}
         });
         if (existingCode) codeExists = true;
       }
@@ -307,6 +311,7 @@ export class CompanyService {
             email: params.email,
             companyId: Not(Number(params.companyId)),
           },
+          select:{email:true}
         });
         if (existingEmail) emailExists = true;
       }
@@ -396,12 +401,14 @@ export class CompanyService {
       });
 
       if (companyFile) {
-        await this.fileTransfer.fileTransfer3(
+        await this.fileTransfer.fileTransfer(
           companyFile.filename,
           params.companyId,
-          params.companyId,
+          'company',
+          { deleteExisting: true },
         );
       }
+
 
       const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
@@ -527,7 +534,16 @@ export class CompanyService {
 
       const company = await this.companyEntity.findOne({
         where: { companyId: targetCompanyId },
-        relations: ['parentCompany'],
+        relations: { parentCompany: true },
+        select: {
+          companyId: true, companyName: true, companyCode: true, companyFile: true,
+          email: true, website: true, dialCode: true, phone: true, country: true,
+          state: true, city: true, postalCode: true, AddressLineOne: true,
+          ownerName: true, ownerEmail: true, ownerPhone: true, ownerDialCode: true,
+          status: true, addedBy: true, updatedBy: true, createdAt: true,
+          updatedDate: true, parentCompanyId: true,
+          parentCompany: { companyName: true },
+        },
       });
 
       if (!company) {
@@ -544,11 +560,17 @@ export class CompanyService {
       ] = await Promise.all([
         this.ucgEntity.find({
           where: { companyId: targetCompanyId },
-          relations: ['user', 'group'],
+          relations: { user: true, group: true },
+          select: {
+            id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+            user: { name: true, email: true },
+            group: { groupName: true },
+          },
         }),
         this.companyCurrencyEntity.find({
           where: { companyId: targetCompanyId },
-          relations: ['currency'],
+          relations: { currency: true },
+          select: { id: true, companyId: true, curId: true, currency: true },
         }),
         this.currencyEntity.find({where:{status:"Active"}, order: { name: 'ASC' } }),
         company.addedBy

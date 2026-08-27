@@ -307,7 +307,7 @@ export default function UsersPage() {
                                         <div className="flex h-20 w-20 min-w-[80px] items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl font-bold uppercase text-blue-600 shadow-md">
                                             {user.user_userFile ? (
                                                 <img
-                                                    src={`http://localhost:4000/upload/${user.user_userId}/${user.user_userFile}`}
+                                                    src={`http://localhost:4000/upload/user/${user.user_userId}/${user.user_userFile}`}
                                                     alt="userImage"
                                                     className="h-full w-full object-cover cursor-pointer"
                                                     onClick={(e) => {
@@ -428,7 +428,7 @@ export default function UsersPage() {
                                                     <div className="flex h-10 w-10 min-w-[40px] items-center justify-center overflow-hidden rounded-full bg-blue-600 text-base font-bold uppercase text-white">
                                                         {user.user_userFile ? (
                                                             <img
-                                                                src={`http://localhost:4000/upload/${user.user_userId}/${user.user_userFile}`}
+                                                                src={`http://localhost:4000/upload/user/${user.user_userId}/${user.user_userFile}`}
                                                                 alt="userImage"
                                                                 className="h-full w-full object-cover cursor-pointer"
                                                                 onClick={(e) => {
@@ -634,7 +634,7 @@ export default function UsersPage() {
             <ImagePreviewModal
                 open={!!previewUser}
                 onClose={() => setPreviewUser(null)}
-                imageUrl={previewUser ? `http://localhost:4000/upload/${previewUser.user_userId}/${previewUser.user_userFile}` : ""}
+                imageUrl={previewUser ? `http://localhost:4000/upload/user/${previewUser.user_userId}/${previewUser.user_userFile}` : ""}
             />
         </div>
     );

@@ -78,14 +78,21 @@ export default function SiteMap() {
                 { label: "Bank Book", redirectTo: "/bank-book-list", show: permissions.includes("bankBookList") || superAdmin },
             ]
         },
+
         {
             title: "Master",
             items: [
                 { label: "Terms & Conditions", redirectTo: "/terms-conditions-list", show: permissions.includes("termsConditionsList") || superAdmin },
+                { label: "Tax Group", redirectTo: "/tax-group-list", show: permissions.includes("taxGroupList") || superAdmin },
+
             ],
         },
-
-
+        {
+            title: "Finance",
+            items: [
+                { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: permissions.includes("paymentTransactionList") || superAdmin },
+            ],
+        },
     ];
 
     const dashboardSections = rawSections.filter((s) => s.items.some((i) => i.show));

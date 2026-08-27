@@ -126,10 +126,16 @@ export class CurrencyService {
     }
 
     const addedByUser = currency.addedBy
-      ? await this.userEntity.findOne({ where: { userId: currency.addedBy } })
+      ? await this.userEntity.findOne({
+          where: { userId: currency.addedBy },
+          select: ['name'],
+        })
       : null;
     const updatedByUser = currency.updatedBy
-      ? await this.userEntity.findOne({ where: { userId: currency.updatedBy } })
+      ? await this.userEntity.findOne({
+          where: { userId: currency.updatedBy },
+          select: ['name'],
+        })
       : null;
 
     const baseCurrency: string = process.env.CURRENCY_CONVERSION || "";
@@ -192,7 +198,8 @@ export class CurrencyService {
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
             order: { is_parent: 'ASC' },
-            relations: ['group'],
+            relations: { group: true },
+            select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
           })
         : null;
 
@@ -274,7 +281,8 @@ export class CurrencyService {
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
             order: { is_parent: 'ASC' },
-            relations: ['group'],
+            relations: { group: true },
+            select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
           })
         : null;
 
@@ -341,7 +349,9 @@ export class CurrencyService {
         return { success: 0, message: 'Invalid API response format: missing conversion_rates' };
       }
 
-      const existingCurrencies = await this.currencyEntity.find();
+      const existingCurrencies = await this.currencyEntity.find({
+        select: ['curId', 'code'],
+      });
       const updates: Promise<any>[] = [];
 
       for (const cur of existingCurrencies) {
@@ -365,7 +375,8 @@ export class CurrencyService {
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
             order: { is_parent: 'ASC' },
-            relations: ['group'],
+            relations: { group: true },
+            select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
           })
         : null;
 

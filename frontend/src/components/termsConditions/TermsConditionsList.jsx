@@ -10,11 +10,13 @@ import { authHeaders } from "@/app/lib/auth";
 import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
-import { getTermsConditionsColumns } from "./TermsConditionsColumn";
-import TermsConditionsSidePanel from "./TermsConditionsSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { termsConditionsSidePanelConfig } from "./configs/termsConditionsSidePanel.config";
 import TermsConditionsFormSidePanel from "./TermsConditionsFormSidePanel";
+
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
+import { getTermsConditionsColumns } from "./TermsConditionsColumn";
 
 export default function TermsConditionsList() {
     const router = useRouter();
@@ -223,12 +225,14 @@ export default function TermsConditionsList() {
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
-                    <TermsConditionsSidePanel
-                        termsConditionsId={viewId}
+                    <DetailsSidePanel
+                        config={termsConditionsSidePanelConfig}
+                        id={viewId}
                         onClose={() => setViewId(null)}
-                    />, 
+                    />,
                     document.body
                 )}
+
 
             {/* Add / Edit form side panel */}
             {typeof document !== "undefined" &&

@@ -280,7 +280,8 @@ export class ItemService {
         for (let idx = 0; idx < itemImages.length; idx++) {
           const file = itemImages[idx];
           const filename = file.filename || file.originalname;
-          await this.fileTransfer.fileTransferItem(filename, insertId);
+          await this.fileTransfer.fileTransfer(filename, insertId, 'item');
+
 
           const itemImageUrl = `/upload/item/${insertId}/${filename}`;
           const isParent = idx === 0 ? 0 : insertId;
@@ -441,7 +442,8 @@ export class ItemService {
         for (let idx = 0; idx < itemImages.length; idx++) {
           const file = itemImages[idx];
           const filename = file.filename || file.originalname;
-          await this.fileTransfer.fileTransferItem(filename, itemId);
+          await this.fileTransfer.fileTransfer(filename, itemId, 'item');
+
 
           const itemImageUrl = `/upload/item/${itemId}/${filename}`;
 

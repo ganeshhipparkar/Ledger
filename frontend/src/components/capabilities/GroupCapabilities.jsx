@@ -71,12 +71,14 @@ const MODULES = [
         key: "brand",
         permissions: ["brandList", "brandView", "brandAdd", "brandUpdate"],
     },
+
     {
         section: "Item Management",
         label: "Item",
         key: "item",
         permissions: ["itemList", "itemView", "itemAdd", "itemUpdate"],
     },
+
     {
         section: "Item Unit",
         label: "UOM",
@@ -94,6 +96,18 @@ const MODULES = [
         label: "Terms & Conditions",
         key: "termsConditions",
         permissions: ["termsConditionsList", "termsConditionsView", "termsConditionsAdd", "termsConditionsUpdate"],
+    },
+    {
+        section: "Master",
+        label: "Tax Group",
+        key: "taxGroup",
+        permissions: ["taxGroupList", "taxGroupView", "taxGroupAdd", "taxGroupUpdate"],
+    },
+    {
+        section: "Finance",
+        label: "Payment Transaction",
+        key: "paymentTransaction",
+        permissions: ["paymentTransactionList", "paymentTransactionView", "paymentTransactionAdd", "paymentTransactionUpdate"],
     },
 ];
 

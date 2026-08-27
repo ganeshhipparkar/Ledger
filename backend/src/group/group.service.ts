@@ -341,7 +341,12 @@ export class GroupService {
               ? {}
               : { companyId: In(scopedCompanyIds) }),
           },
-          relations: ['user', 'company'],
+          relations: { user: true, company: true },
+          select: {
+            id: true, userId: true, companyId: true, groupId: true, is_parent: true,
+            user: { name: true, email: true },
+            company: { companyName: true },
+          },
         }),
         group.addedBy
           ? userRepo.findOne({
@@ -388,7 +393,8 @@ export class GroupService {
     try {
       const groupPerms = await this.groupPermissionEntity.find({
         where: { groupId },
-        relations: ['permission'],
+        relations: { permission: true },
+        select: { id: true, groupId: true, permission: { permissionName: true } },
       });
       const permissions = groupPerms
         .map((gp) => gp.permission?.permissionName)
@@ -405,7 +411,8 @@ export class GroupService {
       if (!authCtx.isSuperAdmin) {
         const existingGroupPerms = await this.groupPermissionEntity.find({
           where: { groupId },
-          relations: ['permission'],
+          relations: { permission: true },
+          select: { id: true, groupId: true, permission: { permissionName: true } },
         });
         const existingGroupPermNames = existingGroupPerms
           .map((gp) => gp.permission?.permissionName)
