@@ -33,11 +33,10 @@ function CustomerNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("customerView")
-                        ? "text-blue-600 cursor-pointer hover:underline"
-                        : "text-gray-800"
-                }`}
+                className={`font-semibold text-base ${can("customerView")
+                    ? "text-blue-600 cursor-pointer hover:underline"
+                    : "text-gray-800"
+                    }`}
                 onClick={(e) => {
                     if (!can("customerView")) return;
                     e.stopPropagation();
@@ -130,55 +129,58 @@ export const getCustomerColumns = (onPreview, onEdit, router) => [
             const { can } = useContext(loginContext);
             const customer = row.original;
             return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <span
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
-                            title="Actions"
+                // <DropdownMenu>
+                //     <DropdownMenuTrigger asChild>
+                //         <span
+                //             onClick={(e) => e.stopPropagation()}
+                //             className="inline-flex p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+                //             title="Actions"
+                //         >
+                //             <MoreVertical className="h-4 w-4" />
+                //         </span>
+                //     </DropdownMenuTrigger>
+                //     <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
+                //         {can("customerView") && (
+                //             <DropdownMenuItem
+                //                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                //                 onClick={(e) => {
+                //                     e.stopPropagation();
+                //                     if (onPreview) onPreview(customer.customerId);
+                //                 }}
+                //             >
+                //                 <Eye className="h-4 w-4 text-blue-600" />
+                //                 View Details
+                //             </DropdownMenuItem>
+                //         )}
+                //         {can("customerUpdate") && (
+                //             <DropdownMenuItem
+                //                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                //                 onClick={(e) => {
+                //                     e.stopPropagation();
+                //                     if (onEdit) onEdit(customer.customerId);
+                //                 }}
+                //             >
+                //                 <Pencil className="h-4 w-4 text-amber-600" />
+                //                 Edit
+                //             </DropdownMenuItem>
+                //         )}
+
+                //     </DropdownMenuContent>
+                // </DropdownMenu>
+                <div>
+                    {can("customerUpdate") && (
+                        <button
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onEdit) onEdit(customer.customerId);
+                            }}
                         >
-                            <MoreVertical className="h-4 w-4" />
-                        </span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
-                        {can("customerView") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onPreview) onPreview(customer.customerId);
-                                }}
-                            >
-                                <Eye className="h-4 w-4 text-blue-600" />
-                                View Details
-                            </DropdownMenuItem>
-                        )}
-                        {can("customerUpdate") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onEdit) onEdit(customer.customerId);
-                                }}
-                            >
-                                <Pencil className="h-4 w-4 text-amber-600" />
-                                Edit
-                            </DropdownMenuItem>
-                        )}
-                        {can("customerView") && router && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/customer/${customer.customerId}`);
-                                }}
-                            >
-                                <ExternalLink className="h-4 w-4 text-gray-600" />
-                                Full Page View
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                            <Pencil className="h-4 w-4 text-amber-600" />
+                            Edit
+                        </button>
+                    )}
+                </div>
             );
         },
     },

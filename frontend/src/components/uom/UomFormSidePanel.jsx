@@ -25,9 +25,7 @@ export default function UomFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = uomFormConfig.contexts[context] || uomFormConfig.contexts["uom-add"];
 
-    const isSuperAdmin = displayUser?.assignments?.some(
-        (a) => a.is_parent === 1
-    ) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {

@@ -129,10 +129,10 @@ export default function ItemCategoryList() {
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
-            <Header page="item-categories" onSearch={handleSearch} />
+            <Header page="item-categories" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
+
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -160,18 +160,6 @@ export default function ItemCategoryList() {
                     {!loading && !error && (
                         <DataTable
                             title="Item Categories"
-                            actions={
-                                can && can("itemCategoryAdd") ? (
-                                    <button
-                                        id="add-item-category-btn"
-                                        onClick={openAdd}
-                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Add Item Category
-                                    </button>
-                                ) : null
-                            }
                             columns={getItemCategoryColumns(
                                 (id) => setViewId(id),
                                 openEdit
@@ -193,7 +181,6 @@ export default function ItemCategoryList() {
                 </div>
             </div>
 
-            {/* Pagination footer */}
             <div className="w-full flex items-center justify-between bg-white border-t border-gray-200 px-6 py-3 z-30">
                 <div className="text-sm font-medium text-gray-800">
                     {totalRecords > 0
@@ -224,7 +211,6 @@ export default function ItemCategoryList() {
                 </div>
             </div>
 
-            {/* Read-only view side panel */}
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
@@ -236,7 +222,6 @@ export default function ItemCategoryList() {
                     document.body
                 )}
 
-            {/* Add / Edit form side panel */}
             {typeof document !== "undefined" &&
                 createPortal(
                     <ItemCategoryFormSidePanel

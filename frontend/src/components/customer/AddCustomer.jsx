@@ -21,9 +21,7 @@ export default function AddCustomer() {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
 
-    const isSuperAdmin = displayUser?.assignments?.some(
-        (a) => a.is_parent === 1
-    ) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const [customerCountryCode, setCustomerCountryCode] = useState("in");
     const [ownerCountryCode, setOwnerCountryCode] = useState("in");

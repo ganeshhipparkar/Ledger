@@ -86,6 +86,7 @@ export class BankBookService {
       queryBuilder.leftJoinAndSelect('bankBook.currency', 'currency');
       queryBuilder.skip(skip).take(limit);
       queryBuilder.orderBy('bankBook.bankBookName', 'ASC');
+      
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -193,7 +194,6 @@ export class BankBookService {
 
       if (params.accountNumber !== undefined) queryParams.accountNumber = params.accountNumber;
       if (params.branchName !== undefined) queryParams.branchName = params.branchName;
-      if (params.iban !== undefined) queryParams.iban = params.iban;
       if (params.remarks !== undefined) queryParams.remarks = params.remarks;
       if (performerId) queryParams.addedBy = Number(performerId);
       queryParams.addedDate = new Date();
@@ -264,7 +264,6 @@ export class BankBookService {
       if (params.beneficiaryName !== undefined) queryParams.beneficiaryName = params.beneficiaryName;
       if (params.accountNumber !== undefined) queryParams.accountNumber = params.accountNumber;
       if (params.branchName !== undefined) queryParams.branchName = params.branchName;
-      if (params.iban !== undefined) queryParams.iban = params.iban;
       if (params.remarks !== undefined) queryParams.remarks = params.remarks;
       if (params.status) queryParams.status = params.status;
 

@@ -59,3 +59,13 @@ export function getImageUrl(path) {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `http://localhost:4000${cleanPath}`;
 }
+
+export function limitDecimals(val, maxDec = 4) {
+  if (val === null || val === undefined || val === "") return val;
+  const str = String(val);
+  const parts = str.split(".");
+  if (parts.length > 1 && parts[1].length > maxDec) {
+    return `${parts[0]}.${parts[1].slice(0, maxDec)}`;
+  }
+  return str;
+}

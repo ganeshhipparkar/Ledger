@@ -49,32 +49,19 @@ export const paymentTransactionSidePanelConfig = {
             title: "Amounts & Conversion",
             fields: [
                 { label: "Transaction Amount", type: "text", key: "transactionAmount" },
-                { label: "Exchange Rate",      type: "text", key: "exchangeRate" },
-                { label: "Exchange Date",      type: "date", key: "exchangeDate" },
-                { label: "Base Amount",        type: "text", key: "baseAmount" },
+                { label: "Exchange Rate", type: "text", key: "exchangeRate" },
+                { label: "Exchange Date", type: "date", key: "exchangeDate" },
+                { label: "Base Amount", type: "text", key: "baseAmount" },
             ],
         },
         {
-            title: "Details & Remarks",
+            title: "Status & Approval",
             fields: [
-                { label: "Narration",   type: "text", key: "narration" },
-                { label: "Description", type: "text", key: "description" },
+                { label: "Status", type: "text", key: "status" },
+                { label: "Status Remarks", type: "text", key: "statusRemarks" },
             ],
         },
-        {
-            title: "Attachments",
-            fields: [
-                { label: "Files", type: "attachments", key: "attachments" },
-            ],
-        },
-        {
-            title: "Audit Information",
-            fields: [
-                { label: "Added By",     type: "text", key: "addedByName" },
-                { label: "Added Date",   type: "date", key: "addedDate" },
-                { label: "Updated By",   type: "text", key: "updatedByName" },
-                { label: "Updated Date", type: "date", key: "updatedDate" },
-            ],
-        },
+
+
     ],
 };

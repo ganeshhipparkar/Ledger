@@ -127,7 +127,7 @@ export default function ManufacturerList() {
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
-            <Header page="manufacturers" onSearch={handleSearch} />
+            <Header page="manufacturers" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 {/* Breadcrumbs */}
@@ -158,18 +158,6 @@ export default function ManufacturerList() {
                     {!loading && !error && (
                         <DataTable
                             title="Manufacturers"
-                            actions={
-                                can && can("manufacturerAdd") ? (
-                                    <button
-                                        id="add-manufacturer-btn"
-                                        onClick={openAdd}
-                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Add Manufacturer
-                                    </button>
-                                ) : null
-                            }
                             columns={getManufacturerColumns(
                                 (id) => setViewId(id),
                                 openEdit

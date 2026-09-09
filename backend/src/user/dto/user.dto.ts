@@ -15,6 +15,8 @@ import {
   registerDecorator,
   ValidationOptions,
   ValidationArguments,
+  IsIn,
+  IsBoolean,
 } from 'class-validator';
 
 export function IsAdult(minAge = 18, validationOptions?: ValidationOptions) {
@@ -329,6 +331,12 @@ export class getUserListDto {
   @ValidateNested({ each: true })
   @Type(() => filterDto)
   filters: any;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => Boolean(value))
+  self?:boolean;
+
 }
 
 export class adminResetPass {

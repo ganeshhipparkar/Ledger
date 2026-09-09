@@ -11,6 +11,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DesktopDatePicker } from "@mui/x-date-pickers/DesktopDatePicker";
 import Header from "@/components/Header";
 import { AddFormSchema } from "@/components/Zod";
+import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "@/components/hooks/LoginContext";
 import RouteGuard from "@/components/RouteGuard";
@@ -95,16 +96,18 @@ export default function AddUserPage() {
     useEffect(() => {
         const fetchGroups = async () => {
             try {
-                const res = await fetch("http://localhost:3000/relayapi", {
+                const res = await fetch("/relayapi", {
                     method: "POST",
                     headers: {
+                        ...authHeaders(),
                         "Content-Type": "application/json",
                         endpoint: "group-dropdown-list",
                         module: "group",
                     },
                     body: JSON.stringify({ page: 1, limit: 200 }),
                 });
-                const data = await res.json();
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
                 setGroups(Array.isArray(data?.data) ?
                     data.data.filter((group) => group.status == "active") : []);
 
@@ -118,16 +121,18 @@ export default function AddUserPage() {
     useEffect(() => {
         const fetchCompanies = async () => {
             try {
-                const res = await fetch("http://localhost:3000/relayapi", {
+                const res = await fetch("/relayapi", {
                     method: "POST",
                     headers: {
+                        ...authHeaders(),
                         "Content-Type": "application/json",
                         endpoint: "company-list",
                         module: "company",
                     },
                     body: JSON.stringify({ page: 1, limit: 200 }),
                 });
-                const data = await res.json();
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
                 setCompanies(Array.isArray(data?.data) ?
                     data.data.filter((company) => company.status == "active") : []);
             } catch (err) {
@@ -238,7 +243,7 @@ export default function AddUserPage() {
                         payload.append("userFile", formData.userFile);
                     }
 
-                    const response = await fetch("http://localhost:3000/relayapi", {
+                    const response = await fetch("/relayapi", {
                         method: "POST",
                         headers: {
                             endpoint: "user-add", module: "user"

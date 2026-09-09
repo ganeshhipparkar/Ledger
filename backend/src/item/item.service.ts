@@ -410,27 +410,7 @@ export class ItemService {
         await this.itemEntity.update({ itemId }, queryParams);
       }
 
-      // Delete selective images if deletedImageIds specified
-      if (params.deletedImageIds && params.deletedImageIds.length > 0) {
-        const imagesToDelete = await this.itemImageEntity.find({
-          where: { id: In(params.deletedImageIds), itemId },
-        });
 
-        for (const img of imagesToDelete) {
-          const relativePath = img.itemImageUrl.startsWith('/')
-            ? img.itemImageUrl.substring(1)
-            : img.itemImageUrl;
-          const fullPath = path.resolve('.', relativePath);
-          if (fs.existsSync(fullPath)) {
-            try {
-              await fs.promises.unlink(fullPath);
-            } catch {
-
-            }
-          }
-        }
-        await this.itemImageEntity.delete({ id: In(params.deletedImageIds), itemId });
-      }
 
       // Append new images 
       if (itemImages && itemImages.length > 0) {
@@ -488,6 +468,54 @@ export class ItemService {
       return {
         success: 1,
         message: 'Item updated successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+  async deleteItemImage(imageId: number, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const img = await this.itemImageEntity.findOne({
+        where: { id: imageId },
+      });
+      if (!img) {
+        throw new NotFoundException('Item image not found');
+      }
+
+      const item = await this.itemEntity.findOne({
+        where: { itemId: img.itemId },
+      });
+      if (!item) {
+        throw new NotFoundException('Associated item not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(Number(item.companyId))) {
+          throw new ForbiddenException(
+            'Access denied: item image belongs to another company',
+          );
+        }
+      }
+
+      const relativePath = img.itemImageUrl.startsWith('/')
+        ? img.itemImageUrl.substring(1)
+        : img.itemImageUrl;
+      const fullPath = path.resolve('.', relativePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          await fs.promises.unlink(fullPath);
+        } catch {
+        }
+      }
+
+      await this.itemImageEntity.delete({ id: imageId });
+
+      return {
+        success: 1,
+        message: 'Item image deleted successfully',
       };
     } catch (err: any) {
       return { success: 0, message: err.message };

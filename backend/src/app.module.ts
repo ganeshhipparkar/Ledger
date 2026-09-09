@@ -27,6 +27,8 @@ import { ItemEntity } from './item/entity/item.entity';
 import { TermsAndConditionsModule } from './terms_conditions/terms.conditions.module';
 import { TaxGroupModule } from './tax_group/tax.group.module';
 import { PaymentTransactionModule } from './payment_transaction/payment.transaction.module';
+import { QuotationModule } from './quotation/quotation.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { PaymentTransactionModule } from './payment_transaction/payment.transact
     TermsAndConditionsModule,
     TaxGroupModule,
     PaymentTransactionModule,
+    QuotationModule,
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -127,7 +127,7 @@ export default function BankList() {
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
-            <Header page="banks" onSearch={handleSearch} />
+            <Header page="banks" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 {/* Breadcrumbs */}
@@ -158,18 +158,6 @@ export default function BankList() {
                     {!loading && !error && (
                         <DataTable
                             title="Banks"
-                            actions={
-                                can && can("bankAdd") ? (
-                                    <button
-                                        id="add-bank-btn"
-                                        onClick={openAdd}
-                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Add Bank
-                                    </button>
-                                ) : null
-                            }
                             columns={getBankColumns(
                                 (id) => setViewId(id),
                                 openEdit

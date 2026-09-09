@@ -42,7 +42,6 @@ export default function ActivityList() {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [viewMode, setViewMode] = useState('list'); // default to list view (timeline)
   const [filters, setFilters] = useState({});
 
   const fetchData = async (page = 1, customFilters = filters, append = false) => {
@@ -83,20 +82,9 @@ export default function ActivityList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLoadMore = () => {
-    if (currentPage >= totalPages) return;
-    fetchData(currentPage + 1, filters, true);
-  };
-
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
     fetchData(1, newFilters, false);
-  };
-
-  const severityColor = (severity) => {
-    if (severity === 'HIGH') return 'bg-red-100 text-red-700';
-    if (severity === 'MEDIUM') return 'bg-yellow-100 text-yellow-700';
-    return 'bg-green-100 text-green-700';
   };
 
   return (
@@ -112,124 +100,19 @@ export default function ActivityList() {
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-[#1f2937]">Activity Log</h1>
-          <div className="flex gap-2">
-            {["list", "grid", "table"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-4 py-2 text-sm font-medium transition cursor-pointer rounded-xl ${viewMode === mode ? 'bg-[#1d6fdc] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
-              >
-                {mode === "list" ? "Timeline" : mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
         </div>
 
         {error && (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-red-600 font-semibold mb-4">{error}</div>
         )}
 
-        {/* Timeline View (list view mode) */}
-        {!error && viewMode === 'list' && (
-          <div className="relative pl-8 border-l border-gray-200 ml-4 space-y-6">
-            {activities.map((a) => (
-              <div key={a.id || a.logId} className="relative">
-                <span className="absolute -left-[48px] top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm">
-                  {getIcon(a.actionCode || a.activityCode)}
-                </span>
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        {a.actionName || a.activityName || 'Activity'}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {a.generatedMessage}
-                      </p>
-                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
-                        {a.actorName && (
-                          <span>Actor: <span className="text-gray-600">{a.actorName}</span></span>
-                        )}
-                        {a.targetType && (
-                          <span>Target: <span className="text-gray-600">{a.targetType} #{a.targetId}</span></span>
-                        )}
-                        {a.companyName && (
-                          <span>Company: <span className="text-gray-600">{a.companyName}</span></span>
-                        )}
-                        <span>Status: <span className={`font-medium ${a.executionStatus === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}`}>{a.executionStatus}</span></span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${severityColor(a.severity)}`}>
-                        {a.severity}
-                      </span>
-                      <span className="text-xs text-gray-400 whitespace-nowrap">
-                        {new Date(a.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {activities.length === 0 && !loading && (
-              <div className="text-center text-gray-400 py-16 bg-white rounded-xl border border-gray-200 -ml-8">
-                No activity records found.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Grid View */}
-        {!error && viewMode === 'grid' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activities.map((a) => (
-              <div key={a.id || a.logId} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold">
-                    {(a.actionCode || a.activityCode)?.charAt(0) ?? 'A'}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-lg">{a.actionName || a.activityName}</h3>
-                    <p className="text-sm text-gray-500">{a.actorName}</p>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p><span className="font-medium">Target:</span> {a.targetType} ({a.targetId})</p>
-                  <p><span className="font-medium">Company:</span> {a.companyName || '-'}</p>
-                  <p><span className="font-medium">Status:</span> {a.executionStatus}</p>
-                  <p><span className="font-medium">Time:</span> {new Date(a.createdAt).toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
-            {activities.length === 0 && !loading && (
-              <div className="col-span-full text-center text-gray-400 py-20 bg-white rounded-xl border border-gray-200">
-                No activity records found.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Table View */}
-        {!error && viewMode === 'table' && (
+        {!error && (
           <DataTable columns={activityColumns} data={activities} />
         )}
 
         {loading && (
           <div className="text-center py-8 text-gray-500 font-medium">
-            Loading older activities...
-          </div>
-        )}
-
-        {/* Lazy Loading load-more triggers for List and Grid view */}
-        {!loading && currentPage < totalPages && viewMode !== 'table' && (
-          <div className="mt-8 text-center">
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 cursor-pointer"
-            >
-              Show older activities
-            </button>
+            Loading activities...
           </div>
         )}
       </div>

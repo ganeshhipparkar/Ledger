@@ -25,7 +25,7 @@ export default function AddItem() {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = itemFormConfig.contexts["item-add"];
-    const isSuperAdmin = displayUser?.assignments?.some((a) => a.is_parent === 1) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const buildInitial = () => ({
         itemName: "",
@@ -76,12 +76,15 @@ export default function AddItem() {
         }
         setFormData(initial);
         if (isSuperAdmin) fetchCompanies();
+    }, [isSuperAdmin, activeAssignment]);
+
+    useEffect(() => {
         fetchCategories();
         fetchManufacturers();
         fetchBrands();
         fetchUoms();
         fetchPackages();
-    }, []);
+    }, [formData.companyId]);
 
     useEffect(() => {
         if (formData.companyId) {
@@ -127,32 +130,42 @@ export default function AddItem() {
             .catch(() => { });
     }, [formData.sourceCurrencyId]);
 
-    // Base price = source price / conversion rate
     useEffect(() => {
         const rate = currencyRate?.conversionRate;
         setConvertedPurchasePrice(rate && formData.purchasePrice !== "" ? (Number(formData.purchasePrice) / rate).toFixed(2) : "");
         setConvertedCostPerUnit(rate && formData.costPerUnit !== "" ? (Number(formData.costPerUnit) / rate).toFixed(2) : "");
     }, [formData.purchasePrice, formData.costPerUnit, currencyRate]);
 
-    const fetchList = async (endpoint, module, setter) => {
+    const fetchList = async (endpoint, module, setter, extraFilters = []) => {
         try {
             const res = await fetch("/relayapi", {
                 method: "POST",
-                headers: { ...authHeaders(), endpoint, module, "Content-Type": "application/json" },
-                body: JSON.stringify({ page: 1, limit: 500, filters: [{ key: "status", value: "Active", operator: "=" }], condition: "All" }),
+                headers: { ...authHeaders(), endpoint: endpoint, module: module },
+                body: JSON.stringify({
+                    page: 1,
+                    limit: 500,
+                    filters: [{ key: "status", value: "Active", operator: "=" }, ...extraFilters],
+                    condition: "All"
+                }),
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             setter(data?.data ?? []);
         } catch { }
-    };
+    }
+
 
     const fetchCompanies = () => fetchList("company-list", "company", setCompanies);
-    const fetchCategories = () => fetchList("item-category-list", "item-category", setCategories);
-    const fetchManufacturers = () => fetchList("manufacturer-list", "manufacturer", setManufacturers);
-    const fetchBrands = () => fetchList("brand-list", "brand", setBrands);
-    const fetchUoms = () => fetchList("uom-list", "uom", setUoms);
-    const fetchPackages = () => fetchList("package-list", "package", setPackages);
+    const fetchCategories = () => fetchList("item-category-list", "item-category", setCategories,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
+    const fetchManufacturers = () => fetchList("manufacturer-list", "manufacturer", setManufacturers,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
+    const fetchBrands = () => fetchList("brand-list", "brand", setBrands,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
+    const fetchUoms = () => fetchList("uom-list", "uom", setUoms,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
+    const fetchPackages = () => fetchList("package-list", "package", setPackages,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -205,6 +218,7 @@ export default function AddItem() {
         const parseRes = config.schema.safeParse(payloadToValidate);
         if (!parseRes.success) {
             const fieldErrors = {};
+            console.log(fieldErrors, "############# field errors")
             parseRes.error.issues.forEach((err) => {
                 const field = err.path[0];
                 if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
@@ -260,10 +274,6 @@ export default function AddItem() {
         `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"} bg-white text-gray-800`;
     const readonlyClass = "w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed";
 
-    // Filters dependent options by active companyId
-    const byCompany = (list) =>
-        !formData.companyId ? list : list.filter((x) => String(x.companyId) === String(formData.companyId));
-
     const srcCode = currencyRate?.code || "Source";
     const baseCurrency = currencies.find((c) => Number(c.conversionRate) === 1);
     const baseCode = baseCurrency?.code || "Base";
@@ -290,12 +300,12 @@ export default function AddItem() {
                     <div className="w-full rounded-2xl bg-white p-8 shadow-sm mb-6">
                         <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Item Details</h2>
 
-                        {/* Sole full-width row at top */}
-                        <div className="mb-6">
-                            <label className="mb-2 block text-sm font-medium text-gray-700">
-                                Company <span className="text-red-500 text-base">*</span>
-                            </label>
-                            {isSuperAdmin ? (
+                        {isSuperAdmin && (
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium text-gray-700">
+                                    Company <span className="text-red-500 text-base">*</span>
+                                </label>
+
                                 <select
                                     name="companyId"
                                     value={formData.companyId}
@@ -307,15 +317,12 @@ export default function AddItem() {
                                         <option key={c.companyId} value={String(c.companyId)}>{c.companyName}</option>
                                     ))}
                                 </select>
-                            ) : (
-                                <input type="text" readOnly value={activeAssignment?.companyName || "Your Company"} className={readonlyClass} />
-                            )}
-                            {errors.companyId && <p className="mt-1 text-sm text-red-500">{errors.companyId}</p>}
-                        </div>
 
-                        {/* Two-column grid: every field belongs in its column, no full-width fields inside grid */}
+                                {errors.companyId && <p className="mt-1 text-sm text-red-500">{errors.companyId}</p>}
+                            </div>
+                        )}
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                            {/* Row 1 */}
+
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Item Name <span className="text-red-500 text-base">*</span>
@@ -331,14 +338,13 @@ export default function AddItem() {
                                 {errors.shortName && <p className="mt-1 text-sm text-red-500">{errors.shortName}</p>}
                             </div>
 
-                            {/* Row 2 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Item Category <span className="text-red-500 text-base">*</span>
                                 </label>
                                 <select name="categoryId" value={formData.categoryId} onChange={handleChange} className={selectClass("categoryId")}>
                                     <option value="">Select Item Category</option>
-                                    {byCompany(categories).map((c) => (
+                                    {categories.map((c) => (
                                         <option key={c.itemCategoryId} value={String(c.itemCategoryId)}>{c.itemCategoryName}</option>
                                     ))}
                                 </select>
@@ -346,14 +352,13 @@ export default function AddItem() {
                             </div>
                             <div />
 
-                            {/* Row 3 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Manufacturer Name <span className="text-red-500 text-base">*</span>
                                 </label>
                                 <select name="manufacturerId" value={formData.manufacturerId} onChange={handleChange} className={selectClass("manufacturerId")}>
                                     <option value="">Select Manufacturer</option>
-                                    {byCompany(manufacturers).map((m) => (
+                                    {manufacturers.map((m) => (
                                         <option key={m.manufacturerId} value={String(m.manufacturerId)}>{m.manufacturerName}</option>
                                     ))}
                                 </select>
@@ -365,19 +370,18 @@ export default function AddItem() {
                                 </label>
                                 <select name="brandId" value={formData.brandId} onChange={handleChange} className={selectClass("brandId")}>
                                     <option value="">Select Brand Name</option>
-                                    {byCompany(brands).map((b) => (
+                                    {brands.map((b) => (
                                         <option key={b.brandId} value={String(b.brandId)}>{b.brandName}</option>
                                     ))}
                                 </select>
                                 {errors.brandId && <p className="mt-1 text-sm text-red-500">{errors.brandId}</p>}
                             </div>
 
-                            {/* Row 4 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">Package Type</label>
                                 <select name="packageUom" value={formData.packageUom} onChange={handleChange} className={selectClass("packageUom")}>
                                     <option value="">Select Package UOM</option>
-                                    {byCompany(packages).map((p) => (
+                                    {packages.map((p) => (
                                         <option key={p.packageId} value={String(p.packageId)}>{p.packageName}</option>
                                     ))}
                                 </select>
@@ -385,14 +389,13 @@ export default function AddItem() {
                             </div>
                             <div />
 
-                            {/* Row 5 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Item UOM <span className="text-red-500 text-base">*</span>
                                 </label>
                                 <select name="itemUom" value={formData.itemUom} onChange={handleChange} className={selectClass("itemUom")}>
                                     <option value="">Select Item UOM</option>
-                                    {byCompany(uoms).map((u) => (
+                                    {uoms.map((u) => (
                                         <option key={u.uomId} value={String(u.uomId)}>{u.uomName}</option>
                                     ))}
                                 </select>
@@ -407,7 +410,6 @@ export default function AddItem() {
                                 {errors.primitiveQuantity && <p className="mt-1 text-sm text-red-500">{errors.primitiveQuantity}</p>}
                             </div>
 
-                            {/* Row 6 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Source Currency <span className="text-red-500 text-base">*</span>
@@ -428,7 +430,6 @@ export default function AddItem() {
                                     placeholder="Auto-filled on currency selection" />
                             </div>
 
-                            {/* Row 7 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Purchase Price ({srcCode}) <span className="text-red-500 text-base">*</span>
@@ -445,7 +446,6 @@ export default function AddItem() {
                                     placeholder="Auto-computed" />
                             </div>
 
-                            {/* Row 8 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Cost Per Unit ({srcCode}) <span className="text-red-500 text-base">*</span>
@@ -462,7 +462,6 @@ export default function AddItem() {
                                     placeholder="Auto-computed" />
                             </div>
 
-                            {/* Row 9 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">Check Shelf Life</label>
                                 <select name="checkShelfLife" value={formData.checkShelfLife} onChange={handleChange} className={selectClass("checkShelfLife")}>
@@ -493,7 +492,6 @@ export default function AddItem() {
                                 <div />
                             )}
 
-                            {/* Row 10 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">Is Decimal Allowed</label>
                                 <select name="isDecimalAllowed" value={formData.isDecimalAllowed} onChange={handleChange} className={selectClass("isDecimalAllowed")}>
@@ -507,7 +505,6 @@ export default function AddItem() {
                                     placeholder="Optional notes..." className={inputClass("remarks")} />
                             </div>
 
-                            {/* Row 11 */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">Archive</label>
                                 <select name="archive" value={formData.archive} onChange={handleChange} className={selectClass("archive")}>
@@ -525,7 +522,6 @@ export default function AddItem() {
                         </div>
                     </div>
 
-                    {/* Item Images Card — standard file input styling matching AddCompany.jsx */}
                     <div className="w-full rounded-2xl bg-white p-8 shadow-sm mb-6">
                         <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Item Images</h2>
                         <div>

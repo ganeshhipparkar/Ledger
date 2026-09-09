@@ -8,9 +8,12 @@ import HeaderMenuPanel from "./HeaderMenuPanel";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
-export default function Header({ onSearch, page, viewMode, onViewModeChange, onAddClick }) {
+export default function Header({ onSearch, page, viewMode: propViewMode, onViewModeChange: propOnViewModeChange, onAddClick }) {
     const router = useRouter();
-    const { displayUser, activeAssignment, logout, can, switchProfile, impersonating, stopImpersonating } = useContext(loginContext);
+    const { displayUser, activeAssignment, logout, can, switchProfile, impersonating, stopImpersonating, viewModes } = useContext(loginContext);
+
+    const activeViewMode = propViewMode || viewModes?.[page] || "table";
+    const handleViewModeChange = propOnViewModeChange;
 
     const [showMenuPanel, setShowMenuPanel] = useState(false);
 
@@ -63,16 +66,107 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
                         { id: "companyName", label: "Company" },
                         { id: "status", label: "Status" }
                     ]
-                    : [
-                        { id: "name", label: "Name" },
-                        { id: "email", label: "Email" },
-                        { id: "phone", label: "Phone" },
-                        { id: "groupName", label: "Group Name" },
-                        { id: "status", label: "Status" }
-                    ];
+                    : page === "item-categories"
+                        ? [
+                            { id: "categoryName", label: "Category Name" },
+                            { id: "categoryCode", label: "Category Code" },
+                            { id: "companyName", label: "Company" },
+                            { id: "status", label: "Status" }
+                        ]
+                        : page === "manufacturers"
+                            ? [
+                                { id: "manufacturerName", label: "Manufacturer Name" },
+                                { id: "manufacturerCode", label: "Manufacturer Code" },
+                                { id: "companyName", label: "Company" },
+                                { id: "status", label: "Status" }
+                            ]
+                            : page === "brands"
+                                ? [
+                                    { id: "brandName", label: "Brand Name" },
+                                    { id: "brandCode", label: "Brand Code" },
+                                    { id: "companyName", label: "Company" },
+                                    { id: "status", label: "Status" }
+                                ]
+                                : page === "customers"
+                                    ? [
+                                        { id: "customerName", label: "Customer Name" },
+                                        { id: "customerCode", label: "Customer Code" },
+                                        { id: "companyName", label: "Company" },
+                                        { id: "customerEmail", label: "Email" },
+                                        { id: "phone", label: "Phone" },
+                                        { id: "status", label: "Status" }
+                                    ]
+                                    : page === "banks"
+                                        ? [
+                                            { id: "bankName", label: "Bank Name" },
+                                            { id: "bankCode", label: "Bank Code" },
+                                            { id: "companyName", label: "Company" },
+                                            { id: "status", label: "Status" }
+                                        ]
+                                        : page === "bank-books"
+                                            ? [
+                                                { id: "bankBookName", label: "Bank Book Name" },
+                                                { id: "bankBookCode", label: "Bank Book Code" },
+                                                { id: "bankName", label: "Bank Name" },
+                                                { id: "companyName", label: "Company" },
+                                                { id: "beneficiaryName", label: "Beneficiary" },
+                                                { id: "accountNumber", label: "Account No." },
+                                                { id: "status", label: "Status" }
+                                            ]
+                                            : page === "uoms"
+                                                ? [
+                                                    { id: "uomName", label: "UOM Name" },
+                                                    { id: "uomCode", label: "UOM Code" },
+                                                    { id: "companyName", label: "Company" },
+                                                    { id: "status", label: "Status" }
+                                                ]
+                                                : page === "packages"
+                                                    ? [
+                                                        { id: "packageName", label: "Package Name" },
+                                                        { id: "packageCode", label: "Package Code" },
+                                                        { id: "companyName", label: "Company" },
+                                                        { id: "status", label: "Status" }
+                                                    ]
+                                                    : page === "payment-transactions"
+                                                        ? [
+                                                            { id: "paymentCode", label: "Payment Code" },
+                                                            { id: "narration", label: "Narration" },
+                                                            { id: "customerName", label: "Customer" },
+                                                            { id: "bankBookName", label: "Bank Account" },
+                                                            { id: "companyName", label: "Company" },
+                                                            { id: "currencyCode", label: "Currency" },
+                                                            { id: "paymentMode", label: "Payment Mode" },
+                                                            { id: "status", label: "Status" }
+                                                        ]
+                                                        : page === "terms-conditions"
+                                                            ? [
+                                                                { id: "title", label: "Title" },
+                                                                { id: "termsConditionsCode", label: "Terms Code" },
+                                                                { id: "companyName", label: "Company" },
+                                                                { id: "status", label: "Status" }
+                                                            ]
+                                                            : page === "tax-groups"
+                                                                ? [
+                                                                    { id: "taxName", label: "Tax Name" },
+                                                                    { id: "taxGroupCode", label: "Tax Group Code" },
+                                                                    { id: "taxRate", label: "Tax Rate" },
+                                                                    { id: "companyName", label: "Company" },
+                                                                    { id: "status", label: "Status" }
+                                                                ]
+                                                                : [
+                                                                    { id: "name", label: "Name" },
+                                                                    { id: "email", label: "Email" },
+                                                                    { id: "phone", label: "Phone" },
+                                                                    { id: "groupName", label: "Group Name" },
+                                                                    { id: "status", label: "Status" }
+                                                                ];
 
     const defaultField = fieldsConfig[0]?.id || "name";
-    const isListPage = page === "users" || page === "companies" || page === "currencies" || page === "groups" || page === "items";
+    const isListPage = page === "users" || page === "companies" || page === "currencies" || page === "groups" || page === "items"
+        || page === "item-categories" || page === "manufacturers" || page === "brands" || page === "customers"
+        || page === "banks" || page === "bank-books" || page === "uoms" || page === "packages"
+        || page === "payment-transactions" || page === "terms-conditions" || page === "tax-groups"
+        || page === "quotation-list" || page === "order-list";
 
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => {
@@ -363,7 +457,20 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
                             users: { perm: "userAdd", label: "Add User" },
                             groups: { perm: "groupAdd", label: "Add Group" },
                             currencies: { perm: "currencyAdd", label: "Add Currency" },
-                            items: { perm: "itemAdd", label: "Add Item" }
+                            items: { perm: "itemAdd", label: "Add Item" },
+                            "item-categories": { perm: "itemCategoryAdd", label: "Add Item Category" },
+                            manufacturers: { perm: "manufacturerAdd", label: "Add Manufacturer" },
+                            brands: { perm: "brandAdd", label: "Add Brand" },
+                            customers: { perm: "customerAdd", label: "Add Customer" },
+                            banks: { perm: "bankAdd", label: "Add Bank" },
+                            "bank-books": { perm: "bankBookAdd", label: "Add Bank Book" },
+                            uoms: { perm: "uomAdd", label: "Add UOM" },
+                            packages: { perm: "packageAdd", label: "Add Package" },
+                            "payment-transactions": { perm: "paymentTransactionAdd", label: "Add Payment Transaction" },
+                            "terms-conditions": { perm: "termsConditionsAdd", label: "Add Terms & Conditions" },
+                            "tax-groups": { perm: "taxGroupAdd", label: "Add Tax Group" },
+                            "quotation-list": { perm: "quotationAdd", label: "Add Quotation" },
+                            "order-list": { perm: "orderAdd", label: "Add Order" },
                         };
 
                         const currentAddConfig = addBtnConfigs[page];
@@ -565,7 +672,7 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
 
                         </button>
                     </div>}
-                    {onViewModeChange && (
+                    {handleViewModeChange && (
                         <div className="relative group">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -574,22 +681,22 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
                                     </span>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-40">
-                                    <DropdownMenuRadioGroup value={viewMode} onValueChange={onViewModeChange}>
+                                    <DropdownMenuRadioGroup value={activeViewMode} onValueChange={handleViewModeChange}>
                                         <DropdownMenuRadioItem
                                             value="table"
-                                            className={`gap-2 ${viewMode === "table" ? "text-blue-600 font-semibold" : ""}`}
+                                            className={`gap-2 ${activeViewMode === "table" ? "text-blue-600 font-semibold" : ""}`}
                                         >
                                             <TableIcon size={16} /> Table View
                                         </DropdownMenuRadioItem>
                                         <DropdownMenuRadioItem
                                             value="list"
-                                            className={`gap-2 ${viewMode === "list" ? "text-blue-600 font-semibold" : ""}`}
+                                            className={`gap-2 ${activeViewMode === "list" ? "text-blue-600 font-semibold" : ""}`}
                                         >
                                             <List size={16} /> List View
                                         </DropdownMenuRadioItem>
                                         <DropdownMenuRadioItem
                                             value="grid"
-                                            className={`gap-2 ${viewMode === "grid" ? "text-blue-600 font-semibold" : ""}`}
+                                            className={`gap-2 ${activeViewMode === "grid" ? "text-blue-600 font-semibold" : ""}`}
                                         >
                                             <LayoutGrid size={16} /> Grid View
                                         </DropdownMenuRadioItem>
@@ -743,8 +850,8 @@ export default function Header({ onSearch, page, viewMode, onViewModeChange, onA
                     <button
                         onClick={() => setShowMenuPanel(!showMenuPanel)}
                         className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer ${showMenuPanel
-                                ? "text-blue-600 bg-blue-50 border border-blue-200"
-                                : "text-gray-700 hover:text-blue-600 hover:bg-gray-100"
+                            ? "text-blue-600 bg-blue-50 border border-blue-200"
+                            : "text-gray-700 hover:text-blue-600 hover:bg-gray-100"
                             }`}
                     >
                         <span>{showMenuPanel ? "✕" : "☰"}</span>

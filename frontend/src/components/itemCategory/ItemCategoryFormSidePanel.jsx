@@ -24,9 +24,7 @@ export default function ItemCategoryFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = itemCategoryFormConfig.contexts[context];
 
-    const isSuperAdmin = displayUser?.assignments?.some(
-        (a) => a.is_parent === 1
-    ) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {
@@ -223,7 +221,7 @@ export default function ItemCategoryFormSidePanel({
         if (config.mode === "update") {
             validationInput.itemCategoryId = numericId;
         }
-
+        console.log(validationInput, "validatoin lkasdjf")
         const result = config.schema.safeParse(validationInput);
         if (!result.success) {
             const fieldErrors = {};
@@ -408,7 +406,6 @@ export default function ItemCategoryFormSidePanel({
                 );
             }
 
-            // Company Admin: locked to their active company
             const lockedName = activeAssignment?.companyName || "Your Company";
             return (
                 <div key={field.name}>
@@ -428,7 +425,6 @@ export default function ItemCategoryFormSidePanel({
             );
         }
 
-        // Default: text input
         return (
             <div key={field.name}>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -489,7 +485,6 @@ export default function ItemCategoryFormSidePanel({
                             {config.fields.map((field) => renderField(field))}
                         </div>
 
-                        {/* Footer buttons */}
                         <div className="border-t bg-white px-6 py-4 flex gap-3">
                             <button
                                 type="button"

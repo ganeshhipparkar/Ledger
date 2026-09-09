@@ -13,6 +13,7 @@ import { DataTable } from "../data-table";
 import { getPaymentTransactionColumns } from "./PaymentTransactionColumn";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { paymentTransactionSidePanelConfig } from "./configs/paymentTransactionSidePanelConfig";
+import PaymentTransactionStatusSidePanel from "./PaymentTransactionStatusSidePanel";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
@@ -31,9 +32,12 @@ export default function PaymentTransactionList() {
 
     const [viewId, setViewId] = useState(null);
 
-    const [formPanelOpen, setFormPanelOpen] = useState(false);
-    const [formContext, setFormContext] = useState("payment-transaction-add");
-    const [editId, setEditId] = useState(null);
+    // Status action side panel state (Approve / Cancel)
+    const [statusModal, setStatusModal] = useState({
+        open: false,
+        transactionId: null,
+        action: "approve",
+    });
 
     useEffect(() => {
         fetchData(1, {});
@@ -111,16 +115,15 @@ export default function PaymentTransactionList() {
         router.push("/payment-transaction-add");
     };
 
-    const openEdit = (id) => {
-        router.push(`/payment-transaction/${id}/edit`);
+    const handleAction = (id, actionType) => {
+        setStatusModal({ open: true, transactionId: id, action: actionType });
     };
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f5f6fa] overflow-hidden">
-            <Header page="paymentTransactions" onSearch={handleSearch} />
+            <Header page="payment-transactions" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -128,8 +131,7 @@ export default function PaymentTransactionList() {
                     >
                         Home
                     </span>
-                    <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-500 font-medium">Finance</span>
+
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800 font-semibold">Payment Transaction</span>
                 </nav>
@@ -150,21 +152,9 @@ export default function PaymentTransactionList() {
                     {!loading && !error && (
                         <DataTable
                             title="Payment Transactions"
-                            actions={
-                                can && can("paymentTransactionAdd") ? (
-                                    <button
-                                        id="add-payment-transaction-btn"
-                                        onClick={openAdd}
-                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Add Payment Transaction
-                                    </button>
-                                ) : null
-                            }
                             columns={getPaymentTransactionColumns(
                                 (id) => setViewId(id),
-                                openEdit
+                                handleAction
                             )}
                             data={paymentTransactions}
                             filterableColumns={[
@@ -174,6 +164,7 @@ export default function PaymentTransactionList() {
                                 { id: "companyName", label: "Company", filterKey: "companyName" },
                                 { id: "currencyCode", label: "Currency", filterKey: "currencyCode" },
                                 { id: "paymentMode", label: "Payment Mode", filterKey: "paymentMode" },
+                                { id: "status", label: "Status", filterKey: "status" },
                             ]}
                             onColumnFilterChange={handleSearch}
                             loading={loading}
@@ -184,7 +175,6 @@ export default function PaymentTransactionList() {
                 </div>
             </div>
 
-            {/* Pagination footer */}
             <div className="w-full flex items-center justify-between bg-white border-t border-gray-200 px-6 py-3 z-30">
                 <div className="text-sm font-medium text-gray-800">
                     {totalRecords > 0
@@ -215,7 +205,6 @@ export default function PaymentTransactionList() {
                 </div>
             </div>
 
-            {/* Read-only view side panel */}
             {viewId &&
                 typeof document !== "undefined" &&
                 createPortal(
@@ -226,6 +215,14 @@ export default function PaymentTransactionList() {
                     />,
                     document.body
                 )}
+
+            <PaymentTransactionStatusSidePanel
+                isOpen={statusModal.open}
+                onClose={() => setStatusModal({ open: false, transactionId: null, action: "approve" })}
+                transactionId={statusModal.transactionId}
+                action={statusModal.action}
+                onSuccess={() => fetchData(currentPage, currentFilters)}
+            />
         </div>
     );
 }

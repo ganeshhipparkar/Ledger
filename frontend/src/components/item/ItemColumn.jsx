@@ -17,9 +17,10 @@ function StatusBadge({ status }) {
     let style = "bg-sky-100 text-sky-700";
     if (s === "active") style = "bg-green-100 text-green-700";
     if (s === "inactive") style = "bg-red-100 text-red-700";
+    const label = status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : "-";
     return (
         <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${style}`}>
-            {status || "-"}
+            {label}
         </span>
     );
 }
@@ -124,46 +125,48 @@ export const getItemColumns = (onPreview, onEdit, router) => [
             const { can } = useContext(loginContext);
             const item = row.original;
             return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <span
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
-                            title="Actions"
+                // <DropdownMenu>
+                //     <DropdownMenuTrigger asChild>
+                //         <span
+                //             onClick={(e) => e.stopPropagation()}
+                //             className="inline-flex p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+                //             title="Actions"
+                //         >
+                //             <MoreVertical className="h-4 w-4" />
+                //         </span>
+                //     </DropdownMenuTrigger>
+                //     <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
+                //         {can("itemView") && (
+                //             <DropdownMenuItem
+                //                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                //                 onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(item.itemId); }}
+                //             >
+                //                 <Eye className="h-4 w-4 text-blue-600" />
+                //                 View Details
+                //             </DropdownMenuItem>
+                //         )}
+                //         {can("itemUpdate") && (
+                //             <DropdownMenuItem
+                //                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                //                 onClick={(e) => { e.stopPropagation(); if (onEdit) onEdit(item.itemId); }}
+                //             >
+                //                 <Pencil className="h-4 w-4 text-amber-600" />
+                //                 Edit
+                //             </DropdownMenuItem>
+                //         )}
+                //     </DropdownMenuContent>
+                // </DropdownMenu>
+                <div>
+                    {can("itemUpdate") && (
+                        <button
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            onClick={(e) => { e.stopPropagation(); if (onEdit) onEdit(item.itemId); }}
                         >
-                            <MoreVertical className="h-4 w-4" />
-                        </span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
-                        {can("itemView") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(item.itemId); }}
-                            >
-                                <Eye className="h-4 w-4 text-blue-600" />
-                                View Details
-                            </DropdownMenuItem>
-                        )}
-                        {can("itemUpdate") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => { e.stopPropagation(); if (onEdit) onEdit(item.itemId); }}
-                            >
-                                <Pencil className="h-4 w-4 text-amber-600" />
-                                Edit
-                            </DropdownMenuItem>
-                        )}
-                        {can("itemView") && router && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => { e.stopPropagation(); router.push(`/item/${item.itemId}`); }}
-                            >
-                                <ExternalLink className="h-4 w-4 text-gray-600" />
-                                Full Page View
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                            <Pencil className="h-4 w-4 text-amber-600" />
+
+                        </button>
+                    )}
+                </div>
             );
         },
     },

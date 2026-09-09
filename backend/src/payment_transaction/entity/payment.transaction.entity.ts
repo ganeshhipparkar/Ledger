@@ -22,10 +22,19 @@ export enum PaymentMode {
   BNPL = 'Buy Now Pay Later',
 }
 
+export enum PaymentTransactionStatus {
+  PENDING = 'Pending',
+  APPROVED = 'Approved',
+  CANCELLED = 'Cancelled',
+}
+
 @Entity('payment_transaction')
 export class PaymentTransactionEntity {
   @PrimaryGeneratedColumn()
   paymentTransactionId!: number;
+
+  @Column({ unique: true })
+  paymentCode!: string;
 
   @Column()
   customerId!: number;
@@ -36,7 +45,7 @@ export class PaymentTransactionEntity {
   @JoinColumn({ name: 'customerId' })
   customer!: CustomerEntity;
 
-  @Column()
+  @Column({ type: 'int', unsigned: true })
   currencyId!: number;
 
   @ManyToOne(() => CurrencyEntity, { onDelete: 'RESTRICT' })
@@ -84,6 +93,16 @@ export class PaymentTransactionEntity {
 
   @Column()
   description!: string;
+
+  @Column({
+    type: 'enum',
+    enum: PaymentTransactionStatus,
+    default: PaymentTransactionStatus.PENDING,
+  })
+  status!: PaymentTransactionStatus;
+
+  @Column({ type: 'text', nullable: true })
+  statusRemarks?: string;
 
   @Column({ nullable: true })
   addedBy?: number;

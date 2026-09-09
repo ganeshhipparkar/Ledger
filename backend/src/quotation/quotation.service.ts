@@ -47,6 +47,7 @@ interface ComputedQuotationTotals {
   taxAmount: number;
   discount: number;
   extraCharge: number;
+  vatWithheldAmount: number;
   finalAmount: number;
 }
 
@@ -114,7 +115,7 @@ export class QuotationService {
     const rateMap = new Map<string, number>();
 
     for (const item of items) {
-      if (item.taxCalculation !== TaxCalculation.EXCLUSIVE || !item.taxGroup) continue;
+      if (item.taxCalculation === TaxCalculation.NA || !item.taxGroup) continue;
       if (rateMap.has(item.taxGroup)) continue; 
 
       const rec = await this.taxGroupRepo.findOne({
@@ -137,26 +138,60 @@ export class QuotationService {
     return { valid: true, rateMap };
   }
 
+  private toValidNumber(val: any, fallback: number = 0): number {
+    if (val === undefined || val === null || val === '') return fallback;
+    const n = Number(val);
+    return isNaN(n) ? fallback : n;
+  }
+
+  private toOptionalNumber(val: any): number | undefined {
+    if (val === undefined || val === null || val === '' || val === 'undefined' || val === 'null') return undefined;
+    const n = Number(val);
+    return isNaN(n) ? undefined : n;
+  }
+
   private computeItemAmounts(
     item: QuotationItemInputDto,
     taxRate: number,
   ): ComputedItemAmounts {
-    const rawAmount = Number(item.quantity) * Number(item.unitPrice);
+    const qty = this.toValidNumber(item.quantity, 0);
+    const up = this.toValidNumber(item.unitPrice, 0);
+    const rawAmount = qty * up;
     const itemDiscount = (item.discounts ?? []).reduce(
-      (s, d) => s + Number(d.discountPrice),
+      (s, d) => s + this.toValidNumber(d.discountPrice, 0),
       0,
     );
     const itemExtraCharge = (item.extraCharges ?? []).reduce(
-      (s, ec) => s + Number(ec.extraChargesPrice),
+      (s, ec) => s + this.toValidNumber(ec.extraChargesPrice, 0),
       0,
     );
-    const totalAmount = rawAmount - itemDiscount + itemExtraCharge;
-    const taxableAmount =
-      item.taxCalculation === TaxCalculation.EXCLUSIVE ? totalAmount : 0;
-    const taxAmount =
-      Math.round(taxableAmount * taxRate / 100 * 10000) / 10000;
-    const finalAmount = totalAmount + taxAmount;
-    return { totalAmount, taxableAmount, taxAmount, finalAmount };
+    const totalAmount = Math.max(0, rawAmount - itemDiscount + itemExtraCharge);
+    const validRate = this.toValidNumber(taxRate, 0);
+    let taxableAmount = 0;
+    let taxAmount = 0;
+    let finalAmount = totalAmount;
+
+    if (item.taxCalculation === TaxCalculation.INCLUSIVE) {
+      taxableAmount = validRate > 0 ? totalAmount / (1 + validRate / 100) : totalAmount;
+      taxAmount = totalAmount - taxableAmount;
+      taxAmount = Math.round(taxAmount * 10000) / 10000;
+      taxableAmount = Math.round(taxableAmount * 10000) / 10000;
+      finalAmount = totalAmount;
+    } else if (item.taxCalculation === TaxCalculation.EXCLUSIVE) {
+      taxableAmount = totalAmount;
+      taxAmount = Math.round(((taxableAmount * validRate) / 100) * 10000) / 10000;
+      finalAmount = totalAmount + (isNaN(taxAmount) ? 0 : taxAmount);
+    } else {
+      taxableAmount = 0;
+      taxAmount = 0;
+      finalAmount = totalAmount;
+    }
+    return {
+      totalAmount: isNaN(totalAmount) ? 0 : totalAmount,
+      taxableAmount: isNaN(taxableAmount) ? 0 : taxableAmount,
+      taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
+      finalAmount: isNaN(finalAmount) ? 0 : finalAmount,
+    };
   }
 
 
@@ -164,20 +199,30 @@ export class QuotationService {
     computedItems: ComputedItemAmounts[],
     quotationDiscounts: QuotationDiscountInputDto[] | undefined,
     quotationExtraCharges: QuotationExtraChargeInputDto[] | undefined,
+    vatWithheld: string,
   ): ComputedQuotationTotals {
-    const totalAmount = computedItems.reduce((s, i) => s + i.totalAmount, 0);
-    const taxableAmount = computedItems.reduce((s, i) => s + i.taxableAmount, 0);
-    const taxAmount = computedItems.reduce((s, i) => s + i.taxAmount, 0);
+    const totalAmount = computedItems.reduce((s, i) => s + this.toValidNumber(i.totalAmount, 0), 0);
+    const taxableAmount = computedItems.reduce((s, i) => s + this.toValidNumber(i.taxableAmount, 0), 0);
+    const taxAmount = computedItems.reduce((s, i) => s + this.toValidNumber(i.taxAmount, 0), 0);
     const discount = (quotationDiscounts ?? []).reduce(
-      (s, d) => s + Number(d.discountPrice),
+      (s, d) => s + this.toValidNumber(d.discountPrice, 0),
       0,
     );
     const extraCharge = (quotationExtraCharges ?? []).reduce(
-      (s, ec) => s + Number(ec.extraChargesPrice),
+      (s, ec) => s + this.toValidNumber(ec.extraChargesPrice, 0),
       0,
     );
-    const finalAmount = totalAmount + taxAmount + extraCharge - discount;
-    return { totalAmount, taxableAmount, taxAmount, discount, extraCharge, finalAmount };
+    const vatWithheldAmount = vatWithheld === 'YES' ? taxAmount : 0;
+    const finalAmount = totalAmount + taxAmount + extraCharge - discount - vatWithheldAmount;
+    return {
+      totalAmount: isNaN(totalAmount) ? 0 : totalAmount,
+      taxableAmount: isNaN(taxableAmount) ? 0 : taxableAmount,
+      taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
+      discount: isNaN(discount) ? 0 : discount,
+      extraCharge: isNaN(extraCharge) ? 0 : extraCharge,
+      vatWithheldAmount: isNaN(vatWithheldAmount) ? 0 : vatWithheldAmount,
+      finalAmount: isNaN(finalAmount) ? 0 : finalAmount,
+    };
   }
 
   private validateDates(issueDate: string, expiryDate: string): string | null {
@@ -200,7 +245,7 @@ export class QuotationService {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const queryBuilder = this.quotationRepo.createQueryBuilder('quotation');
 
-      if (!authCtx.isSuperAdmin) {
+      if (!authCtx.isSuperAdmin) {  
         const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
         if (scopedCompanyIds.length > 0) {
           queryBuilder.andWhere(
@@ -227,7 +272,6 @@ export class QuotationService {
         queryBuilder.andWhere(queryString);
       }
 
-      // Filter out older superseded versions (only list main/current quotations)
       queryBuilder.andWhere('(quotation.parentQuotationId IS NULL OR quotation.parentQuotationId = 0)');
 
       const [skip, limit] = (await this.filter.calcPages(
@@ -247,6 +291,18 @@ export class QuotationService {
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
+      const addedByIds = Array.from(
+        new Set(data.map((q) => q.addedBy).filter(Boolean)),
+      );
+      const userMap = new Map<number, string>();
+      if (addedByIds.length > 0) {
+        const users = await this.userEntity.find({
+          where: { userId: In(addedByIds) },
+          select: ['userId', 'name'],
+        });
+        users.forEach((u) => userMap.set(u.userId, u.name));
+      }
+
       const formattedData = data.map((q) => ({
         ...q,
         customerName: q.customer?.customerName ?? null,
@@ -254,6 +310,7 @@ export class QuotationService {
         companyName: q.company?.companyName ?? null,
         salesPersonName: q.salesPerson?.name ?? null,
         bankBookName: q.bankBook?.accountNumber ?? null,
+        addedByName: q.addedBy ? (userMap.get(q.addedBy) ?? null) : null,
       }));
 
       return_data = {
@@ -268,7 +325,6 @@ export class QuotationService {
     return return_data;
   }
 
-// details 
   async getQuotationDetails(id: number, req?: any) {
     const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
@@ -289,6 +345,7 @@ export class QuotationService {
         'extraCharges',
         'attachments',
       ],
+
     });
 
     if (!quotation) {
@@ -311,7 +368,6 @@ export class QuotationService {
       ? await this.userEntity.findOne({ where: { userId: quotation.updatedBy } })
       : null;
 
-    // Fetch older superseded versions of this quotation
     const versionHistory = await this.quotationRepo.find({
       where: { parentQuotationId: id },
       order: { addedDate: 'DESC' },
@@ -349,7 +405,6 @@ export class QuotationService {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
-      // 1. Company scope 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
         if (!scopedCompanyIds.includes(Number(body.companyId))) {
@@ -360,11 +415,9 @@ export class QuotationService {
         }
       }
 
-      // 2. Date validation
       const dateError = this.validateDates(body.issueDate, body.expiryDate);
       if (dateError) return { success: 0, message: dateError };
 
-      // 3. Tax-group validation 
       const taxResult = await this.validateTaxGroups(
         body.quotationItems,
         Number(body.companyId),
@@ -372,7 +425,6 @@ export class QuotationService {
       if (!taxResult.valid) return { success: 0, message: taxResult.message };
       const { rateMap } = taxResult;
 
-      // 4. Generate quotation code
       const quotationCode = await this.codeGeneratorService.generateCode(
         this.quotationRepo,
         body.customerId.toString(),
@@ -381,17 +433,15 @@ export class QuotationService {
         'QUO',
       );
 
-      // 5. currency code
       const currency = await this.currencyRepo.findOne({
         where: { curId: Number(body.currencyId) },
       });
       const currencyCode = currency?.code ?? '';
 
-      // 6. Compute amounts
       const computedItems = body.quotationItems.map((item) =>
         this.computeItemAmounts(
           item,
-          item.taxCalculation === TaxCalculation.EXCLUSIVE && item.taxGroup
+          (item.taxCalculation === TaxCalculation.EXCLUSIVE || item.taxCalculation === TaxCalculation.INCLUSIVE) && item.taxGroup
             ? (rateMap.get(item.taxGroup) ?? 0)
             : 0,
         ),
@@ -400,133 +450,172 @@ export class QuotationService {
         computedItems,
         body.quotationDiscounts,
         body.quotationExtraCharges,
+        body.vatWithheld,
       );
 
-      // 7. performer
       const { performerId, performerEmail } = this.resolvePerformer(req, body.addedBy);
 
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
-      // 8. Insert main quotation row
       const quotationInsert = await queryRunner.manager.insert(QuotationEntity, {
         quotationCode,
-        currencyId: Number(body.currencyId),
+        currencyId: this.toValidNumber(body.currencyId),
         currencyCode,
-        customerId: Number(body.customerId),
+        customerId: this.toValidNumber(body.customerId),
         issueDate: new Date(body.issueDate),
         expiryDate: new Date(body.expiryDate),
-        companyId: Number(body.companyId),
+        companyId: this.toValidNumber(body.companyId),
         remarks: body.remarks ?? undefined,
-        termsConditionsId: body.termsConditionsId ?? null,
+        termsConditionsId: this.toOptionalNumber(body.termsConditionsId) ?? null,
         termsConditionsText: body.termsConditionsText ?? undefined,
-        bankBookId: body.bankBookId ?? null,
+        bankBookId: this.toOptionalNumber(body.bankBookId) ?? null,
         accountNumber: body.accountNumber ?? undefined,
-        salesPersonId: body.salesPersonId ?? null,
-        currencyConversionRate: Number(body.currencyConversionRate),
+        salesPersonId: this.toOptionalNumber(body.salesPersonId) ?? null,
+        currencyConversionRate: this.toValidNumber(body.currencyConversionRate, 1),
         vatWithheld: body.vatWithheld,
-        totalAmount: totals.totalAmount,
-        taxableAmount: totals.taxableAmount,
-        taxAmount: totals.taxAmount,
-        discount: totals.discount || null,
-        extraCharge: totals.extraCharge || null,
-        finalAmount: totals.finalAmount,
+        totalAmount: this.toValidNumber(totals.totalAmount, 0),
+        taxableAmount: this.toValidNumber(totals.taxableAmount, 0),
+        taxAmount: this.toValidNumber(totals.taxAmount, 0),
+        discount: this.toValidNumber(totals.discount, 0) || null,
+        extraCharge: this.toValidNumber(totals.extraCharge, 0) || null,
+        vatWithheldAmount: this.toValidNumber(totals.vatWithheldAmount, 0),
+        finalAmount: this.toValidNumber(totals.finalAmount, 0),
         versionCode: body.versionCode || 'V1',
         parentQuotationId: null, // New quotation is main by default
-        addedBy: performerId ? Number(performerId) : undefined,
+        addedBy: this.toOptionalNumber(performerId),
         addedDate: new Date(),
       });
       const insertId: number = quotationInsert.raw?.insertId;
 
-      // If this is a Change Quotation (new version of an existing quotation),
-      // re-point the previous quotation's parentQuotationId to point to this new main quotation ID
       if (body.parentQuotationId) {
+        const parentId = this.toValidNumber(body.parentQuotationId);
+        const parentQuotation = await queryRunner.manager.findOne(QuotationEntity, {
+          where: { quotationId: parentId },
+        });
+
+        if (!parentQuotation) {
+          if (queryRunner.isTransactionActive) {
+            await queryRunner.rollbackTransaction();
+          }
+          return { success: 0, message: 'Parent quotation not found.' };
+        }
+
+        if (parentQuotation.parentQuotationId !== null) {
+          if (queryRunner.isTransactionActive) {
+            await queryRunner.rollbackTransaction();
+          }
+          return { success: 0, message: 'Only the latest version of a quotation can perform this action.' };
+        }
+
+        if (parentQuotation.status !== 'SUBMITTED') {
+          if (queryRunner.isTransactionActive) {
+            await queryRunner.rollbackTransaction();
+          }
+          return { success: 0, message: 'Only submitted quotations can be changed.' };
+        }
+
         await queryRunner.manager.update(
           QuotationEntity,
-          { quotationId: Number(body.parentQuotationId) },
+          { quotationId: parentId },
           { parentQuotationId: insertId },
         );
       }
 
-      // 9. Insert quotation items + their line-level discounts/extra charges
+      if (body.cloneFromId) {
+        const cloneFromId = this.toValidNumber(body.cloneFromId);
+        const sourceQuotation = await queryRunner.manager.findOne(QuotationEntity, {
+          where: { quotationId: cloneFromId },
+        });
+
+        if (sourceQuotation && sourceQuotation.parentQuotationId !== null) {
+          if (queryRunner.isTransactionActive) {
+            await queryRunner.rollbackTransaction();
+          }
+          return { success: 0, message: 'Only the latest version of a quotation can perform this action.' };
+        }
+      }
+
       for (let i = 0; i < body.quotationItems.length; i++) {
         const item = body.quotationItems[i];
+
         const computed = computedItems[i];
+
+        const validItemId = this.toOptionalNumber(item.itemId);
+        if (!validItemId || validItemId <= 0) {
+          if (queryRunner.isTransactionActive) {
+            await queryRunner.rollbackTransaction();
+          }
+          return { success: 0, message: `Row ${i + 1}: Valid item selection is required.` };
+        }
 
         const itemInsert = await queryRunner.manager.insert(QuotationItemEntity, {
           quotationId: insertId,
-          itemId: Number(item.itemId),
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
+          itemId: validItemId,
+          quantity: this.toValidNumber(item.quantity, 0),
+          unitPrice: this.toValidNumber(item.unitPrice, 0),
           taxCalculation: item.taxCalculation,
           taxGroup: item.taxGroup ?? null,
-          totalAmount: computed.totalAmount,
-          taxableAmount: computed.taxableAmount,
-          taxAmount: computed.taxAmount,
-          finalAmount: computed.finalAmount,
-          addedBy: performerId ? Number(performerId) : undefined,
+          totalAmount: this.toValidNumber(computed.totalAmount, 0),
+          taxableAmount: this.toValidNumber(computed.taxableAmount, 0),
+          taxAmount: this.toValidNumber(computed.taxAmount, 0),
+          finalAmount: this.toValidNumber(computed.finalAmount, 0),
+          addedBy: this.toOptionalNumber(performerId),
           addedDate: new Date(),
         });
         const itemInsertId: number = itemInsert.raw?.insertId;
 
-        // discounts
         for (const d of item.discounts ?? []) {
           await queryRunner.manager.insert(QuotationDiscountEntity, {
             quotationItemId: itemInsertId,
             quotationId: null,
-            manufacturerId: d.manufacturerId ?? null,
-            discountPrice: Number(d.discountPrice),
+            manufacturerId: this.toOptionalNumber(d.manufacturerId) ?? null,
+            discountPrice: this.toValidNumber(d.discountPrice, 0),
             discountDescription: d.discountDescription,
-            addedBy: performerId ? Number(performerId) : undefined,
+            addedBy: this.toOptionalNumber(performerId),
             addedDate: new Date(),
           });
         }
 
-        // extra charges
         for (const ec of item.extraCharges ?? []) {
           await queryRunner.manager.insert(QuotationExtraChargeEntity, {
             quotationItemId: itemInsertId,
             quotationId: null,
-            manufacturerId: ec.manufacturerId ?? null,
-            extraChargesPrice: Number(ec.extraChargesPrice),
+            manufacturerId: this.toOptionalNumber(ec.manufacturerId) ?? null,
+            extraChargesPrice: this.toValidNumber(ec.extraChargesPrice, 0),
             extraChargesDescription: ec.extraChargesDescription,
-            addedBy: performerId ? Number(performerId) : undefined,
+            addedBy: this.toOptionalNumber(performerId),
             addedDate: new Date(),
           });
         }
       }
 
-      // 10. Insert quotation-level discounts
       for (const d of body.quotationDiscounts ?? []) {
         await queryRunner.manager.insert(QuotationDiscountEntity, {
           quotationId: insertId,
           quotationItemId: null,
-          manufacturerId: d.manufacturerId ?? null,
-          discountPrice: Number(d.discountPrice),
+          manufacturerId: this.toOptionalNumber(d.manufacturerId) ?? null,
+          discountPrice: this.toValidNumber(d.discountPrice, 0),
           discountDescription: d.discountDescription,
-          addedBy: performerId ? Number(performerId) : undefined,
+          addedBy: this.toOptionalNumber(performerId),
           addedDate: new Date(),
         });
       }
 
-      // 11. Insert quotation-level extra charges
       for (const ec of body.quotationExtraCharges ?? []) {
         await queryRunner.manager.insert(QuotationExtraChargeEntity, {
           quotationId: insertId,
           quotationItemId: null,
-          manufacturerId: ec.manufacturerId ?? null,
-          extraChargesPrice: Number(ec.extraChargesPrice),
+          manufacturerId: this.toOptionalNumber(ec.manufacturerId) ?? null,
+          extraChargesPrice: this.toValidNumber(ec.extraChargesPrice, 0),
           extraChargesDescription: ec.extraChargesDescription,
-          addedBy: performerId ? Number(performerId) : undefined,
+          addedBy: this.toOptionalNumber(performerId),
           addedDate: new Date(),
         });
       }
 
       await queryRunner.commitTransaction();
 
-      // 12. File uploads 
-
-      // termsConditionsFile
       const termsFile = files?.termsConditionsFile?.[0];
       if (termsFile) {
         const termsFilename = termsFile.filename || termsFile.originalname;
@@ -547,7 +636,6 @@ export class QuotationService {
         });
       }
 
-      // 13. Activity log
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.QUOTATION_CREATE,
         userId: performerId,
@@ -574,10 +662,14 @@ export class QuotationService {
         data: { insertData: insertId },
       };
     } catch (err: any) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       return { success: 0, message: err.message };
     } finally {
-      await queryRunner.release();
+      if (!queryRunner.isReleased) {
+        await queryRunner.release();
+      }
     }
   }
 
@@ -597,13 +689,12 @@ export class QuotationService {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const quotationId = Number(body.quotationId);
 
-      // 1. Load existing quotation
+      // Load existing quotation
       const existing = await this.quotationRepo.findOne({
         where: { quotationId },
       });
       if (!existing) return { success: 0, message: 'Quotation not found' };
 
-      // 2. Scope check
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
         if (!scopedCompanyIds.includes(Number(existing.companyId))) {
@@ -614,7 +705,32 @@ export class QuotationService {
         }
       }
 
-      // 3. Date validation 
+      if (existing.parentQuotationId !== null) {
+        return { success: 0, message: 'Only the latest version of a quotation can perform this action.' };
+      }
+
+      if (existing.status !== 'DRAFT') {
+        const isContentUpdate =
+          body.quotationItems !== undefined ||
+          body.customerId !== undefined ||
+          body.currencyId !== undefined ||
+          body.issueDate !== undefined ||
+          body.expiryDate !== undefined ||
+          body.bankBookId !== undefined ||
+          body.salesPersonId !== undefined ||
+          body.remarks !== undefined ||
+          body.termsConditionsId !== undefined ||
+          body.vatWithheld !== undefined;
+
+        if (isContentUpdate) {
+          return {
+            success: 0,
+            message: 'Only draft quotations can be edited.',
+          };
+        }
+      }
+
+      // Date validation 
       if (body.issueDate || body.expiryDate) {
         const effectiveIssue = body.issueDate ?? String(existing.issueDate);
         const effectiveExpiry = body.expiryDate ?? String(existing.expiryDate);
@@ -622,12 +738,12 @@ export class QuotationService {
         if (dateError) return { success: 0, message: dateError };
       }
 
-      // 4. Effective companyId for tax validation
+      //tax validation
       const effectiveCompanyId = body.companyId
         ? Number(body.companyId)
         : Number(existing.companyId);
 
-      // 5. Tax-group validation + amount recomputation (only when items are being replaced)
+      // Tax-group validation + amount recomputation (only when items are being replaced)
       let computedItems: ComputedItemAmounts[] | null = null;
       let totals: ComputedQuotationTotals | null = null;
       let rateMap: Map<string, number> = new Map();
@@ -643,7 +759,7 @@ export class QuotationService {
         computedItems = body.quotationItems.map((item) =>
           this.computeItemAmounts(
             item,
-            item.taxCalculation === TaxCalculation.EXCLUSIVE && item.taxGroup
+            (item.taxCalculation === TaxCalculation.EXCLUSIVE || item.taxCalculation === TaxCalculation.INCLUSIVE) && item.taxGroup
               ? (rateMap.get(item.taxGroup) ?? 0)
               : 0,
           ),
@@ -652,57 +768,59 @@ export class QuotationService {
           computedItems,
           body.quotationDiscounts,
           body.quotationExtraCharges,
+          body.vatWithheld ?? existing.vatWithheld,
         );
       }
 
-      // 6. Resolve performer
+      // performer
       const { performerId, performerEmail } = this.resolvePerformer(req, body.updatedBy);
 
-      // 7. Build patch object — only fields that were explicitly sent
       const patch: any = {};
-      if (body.customerId !== undefined) patch.customerId = Number(body.customerId);
+      if (body.customerId !== undefined) patch.customerId = this.toValidNumber(body.customerId, existing.customerId);
       if (body.currencyId !== undefined) {
-        patch.currencyId = Number(body.currencyId);
-        const cur = await this.currencyRepo.findOne({ where: { curId: Number(body.currencyId) } });
+        const curId = this.toValidNumber(body.currencyId, existing.currencyId);
+        patch.currencyId = curId;
+        const cur = await this.currencyRepo.findOne({ where: { curId } });
         patch.currencyCode = cur?.code ?? existing.currencyCode;
       }
       if (body.issueDate !== undefined) patch.issueDate = new Date(body.issueDate);
       if (body.expiryDate !== undefined) patch.expiryDate = new Date(body.expiryDate);
-      if (body.companyId !== undefined) patch.companyId = Number(body.companyId);
+      if (body.companyId !== undefined) patch.companyId = this.toValidNumber(body.companyId, existing.companyId);
       if (body.remarks !== undefined) patch.remarks = body.remarks;
-      if (body.termsConditionsId !== undefined) patch.termsConditionsId = body.termsConditionsId ?? null;
+      if (body.termsConditionsId !== undefined) patch.termsConditionsId = this.toOptionalNumber(body.termsConditionsId) ?? null;
       if (body.termsConditionsText !== undefined) patch.termsConditionsText = body.termsConditionsText ?? null;
-      if (body.bankBookId !== undefined) patch.bankBookId = body.bankBookId ?? null;
+      if (body.bankBookId !== undefined) patch.bankBookId = this.toOptionalNumber(body.bankBookId) ?? null;
       if (body.accountNumber !== undefined) patch.accountNumber = body.accountNumber ?? null;
-      if (body.salesPersonId !== undefined) patch.salesPersonId = body.salesPersonId ?? null;
-      if (body.currencyConversionRate !== undefined) patch.currencyConversionRate = Number(body.currencyConversionRate);
+      if (body.salesPersonId !== undefined) patch.salesPersonId = this.toOptionalNumber(body.salesPersonId) ?? null;
+      if (body.currencyConversionRate !== undefined) patch.currencyConversionRate = this.toValidNumber(body.currencyConversionRate, existing.currencyConversionRate || 1);
       if (body.vatWithheld !== undefined) patch.vatWithheld = body.vatWithheld;
-      if (body.status !== undefined) patch.status = body.status; // no transition guard per plan
+      if (body.status !== undefined) patch.status = body.status; 
 
-      // Include recomputed financial columns if items were replaced
+      // recomputed financial columns if items were replaced
       if (totals) {
-        patch.totalAmount = totals.totalAmount;
-        patch.taxableAmount = totals.taxableAmount;
-        patch.taxAmount = totals.taxAmount;
-        patch.discount = totals.discount || null;
-        patch.extraCharge = totals.extraCharge || null;
-        patch.finalAmount = totals.finalAmount;
+        patch.totalAmount = this.toValidNumber(totals.totalAmount, 0);
+        patch.taxableAmount = this.toValidNumber(totals.taxableAmount, 0);
+        patch.taxAmount = this.toValidNumber(totals.taxAmount, 0);
+        patch.discount = this.toValidNumber(totals.discount, 0) || null;
+        patch.extraCharge = this.toValidNumber(totals.extraCharge, 0) || null;
+        patch.vatWithheldAmount = this.toValidNumber(totals.vatWithheldAmount, 0);
+        patch.finalAmount = this.toValidNumber(totals.finalAmount, 0);
       }
 
-      if (performerId) patch.updatedBy = Number(performerId);
+      const pId = this.toOptionalNumber(performerId);
+      if (pId) patch.updatedBy = pId;
       patch.updatedDate = new Date();
 
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
-      // 8. Update main quotation row
+      //Update main quotation row
       if (Object.keys(patch).length > 0) {
         await queryRunner.manager.update(QuotationEntity, { quotationId }, patch);
       }
 
-      // 9. Replace line items (full delete-then-reinsert)
+      // replace line items (full delete-then-reinsert)
       if (body.quotationItems && body.quotationItems.length > 0 && computedItems) {
-        // Find existing item IDs to delete their child rows first
         const existingItems = await queryRunner.manager.find(QuotationItemEntity, {
           where: { quotationId },
           select: ['quotationItemId'],
@@ -724,9 +842,17 @@ export class QuotationService {
           const item = body.quotationItems[i];
           const computed = computedItems[i];
 
+          const validItemId = this.toOptionalNumber(item.itemId);
+          if (!validItemId || validItemId <= 0) {
+            if (queryRunner.isTransactionActive) {
+              await queryRunner.rollbackTransaction();
+            }
+            return { success: 0, message: `Row ${i + 1}: Valid item selection is required.` };
+          }
+
           const itemInsert = await queryRunner.manager.insert(QuotationItemEntity, {
             quotationId,
-            itemId: Number(item.itemId),
+            itemId: validItemId,
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
             taxCalculation: item.taxCalculation,
@@ -766,11 +892,11 @@ export class QuotationService {
         }
       }
 
-      // 10. Replace quotation-level discounts (if sent)
+      // Replace quotation discounts
       if (body.quotationDiscounts !== undefined) {
         await queryRunner.manager.delete(QuotationDiscountEntity, {
           quotationId,
-          quotationItemId: null,  // only quotation-level rows
+          quotationItemId: null,  
         });
         for (const d of body.quotationDiscounts) {
           await queryRunner.manager.insert(QuotationDiscountEntity, {
@@ -785,11 +911,11 @@ export class QuotationService {
         }
       }
 
-      // 11. Replace quotation-level extra charges (if sent)
+      // eplace quotation extra charges (if sent)
       if (body.quotationExtraCharges !== undefined) {
         await queryRunner.manager.delete(QuotationExtraChargeEntity, {
           quotationId,
-          quotationItemId: null,  // only quotation-level rows
+          quotationItemId: null, 
         });
         for (const ec of body.quotationExtraCharges) {
           await queryRunner.manager.insert(QuotationExtraChargeEntity, {
@@ -806,27 +932,9 @@ export class QuotationService {
 
       await queryRunner.commitTransaction();
 
-      // 12. Delete selected attachments (outside transaction)
-      if (body.deletedAttachmentIds && body.deletedAttachmentIds.length > 0) {
-        const toDelete = await this.attachmentRepo.find({
-          where: { quotationAttachmentId: In(body.deletedAttachmentIds), quotationId },
-        });
-        for (const att of toDelete) {
-          const relativePath = att.attachmentUrl.startsWith('/')
-            ? att.attachmentUrl.substring(1)
-            : att.attachmentUrl;
-          const fullPath = path.resolve('.', relativePath);
-          if (fs.existsSync(fullPath)) {
-            try { await fs.promises.unlink(fullPath); } catch { /* ignore ENOENT */ }
-          }
-        }
-        await this.attachmentRepo.delete({
-          quotationAttachmentId: In(body.deletedAttachmentIds),
-          quotationId,
-        });
-      }
 
-      // 13. Append new attachments (outside transaction)
+
+      // Append new attachments 
       for (const file of files?.attachments ?? []) {
         const filename = file.filename || file.originalname;
         await this.fileTransfer.fileTransfer(filename, quotationId, 'quotation', { subfolder: 'attachments' });
@@ -838,8 +946,6 @@ export class QuotationService {
         });
       }
 
-      // 14. Replace termsConditionsFile if a new one was uploaded (outside transaction)
-      // Old physical file is NOT deleted — matches item image append pattern
       const termsFile = files?.termsConditionsFile?.[0];
       if (termsFile) {
         const termsFilename = termsFile.filename || termsFile.originalname;
@@ -850,7 +956,6 @@ export class QuotationService {
         );
       }
 
-      // 15. Activity log
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.QUOTATION_UPDATE,
         userId: performerId,
@@ -872,10 +977,108 @@ export class QuotationService {
 
       return { success: 1, message: 'Quotation updated successfully' };
     } catch (err: any) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       return { success: 0, message: err.message };
     } finally {
-      await queryRunner.release();
+      if (!queryRunner.isReleased) {
+        await queryRunner.release();
+      }
+    }
+  }
+
+  async deleteQuotationAttachment(attachmentId: number, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const att = await this.attachmentRepo.findOne({
+        where: { quotationAttachmentId: attachmentId },
+      });
+      if (!att) {
+        throw new NotFoundException('Quotation attachment not found');
+      }
+
+      const quotation = await this.quotationRepo.findOne({
+        where: { quotationId: att.quotationId },
+      });
+      if (!quotation) {
+        throw new NotFoundException('Associated quotation not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(Number(quotation.companyId))) {
+          throw new ForbiddenException(
+            'Access denied: quotation attachment belongs to another company',
+          );
+        }
+      }
+
+      const relativePath = att.attachmentUrl.startsWith('/')
+        ? att.attachmentUrl.substring(1)
+        : att.attachmentUrl;
+      const fullPath = path.resolve('.', relativePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          await fs.promises.unlink(fullPath);
+        } catch {
+        }
+      }
+
+      await this.attachmentRepo.delete({ quotationAttachmentId: attachmentId });
+
+      return {
+        success: 1,
+        message: 'Quotation attachment deleted successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+  async deleteQuotationTermsFile(quotationId: number, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const quotation = await this.quotationRepo.findOne({
+        where: { quotationId },
+      });
+      if (!quotation) {
+        throw new NotFoundException('Quotation not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(Number(quotation.companyId))) {
+          throw new ForbiddenException(
+            'Access denied: quotation belongs to another company',
+          );
+        }
+      }
+
+      if (quotation.termsConditionsFile) {
+        const relativePath = quotation.termsConditionsFile.startsWith('/')
+          ? quotation.termsConditionsFile.substring(1)
+          : quotation.termsConditionsFile;
+        const fullPath = path.resolve('.', relativePath);
+        if (fs.existsSync(fullPath)) {
+          try {
+            await fs.promises.unlink(fullPath);
+          } catch {
+          }
+        }
+
+        await this.quotationRepo.update(
+          { quotationId },
+          { termsConditionsFile: null },
+        );
+      }
+
+      return {
+        success: 1,
+        message: 'Terms & Conditions file deleted successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
     }
   }
 }

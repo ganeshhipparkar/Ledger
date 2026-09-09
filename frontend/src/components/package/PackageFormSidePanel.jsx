@@ -25,9 +25,7 @@ export default function PackageFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = packageFormConfig.contexts[context] || packageFormConfig.contexts["package-add"];
 
-    const isSuperAdmin = displayUser?.assignments?.some(
-        (a) => a.is_parent === 1
-    ) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {

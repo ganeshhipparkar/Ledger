@@ -27,9 +27,9 @@ export default function ItemList() {
     const [totalRecords, setTotalRecords] = useState(0);
     const [currentFilters, setCurrentFilters] = useState({});
 
-    // View mode: "table" | "list" | "grid"
-    const [viewMode, setViewMode] = useState("table");
-
+    const { viewModes, setViewModeForPage } = useContext(loginContext);
+    const viewMode = viewModes?.items || "grid";
+    const setViewMode = (mode) => setViewModeForPage("items", mode);
     useEffect(() => {
         fetchData(1, {});
     }, []);
@@ -115,7 +115,7 @@ export default function ItemList() {
             />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
+
                 <div className="mb-4 flex items-center justify-between">
                     <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
                         <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
@@ -205,7 +205,6 @@ export default function ItemList() {
                 </div>
             </div>
 
-            {/* Pagination footer */}
             <div className="w-full flex items-center justify-between bg-white border-t border-gray-200 px-6 py-3 z-30">
                 <div className="text-sm font-medium text-gray-800">
                     {totalRecords > 0

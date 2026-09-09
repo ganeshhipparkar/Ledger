@@ -3,9 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { useContext } from "react";
 import { loginContext } from "@/components/hooks/LoginContext";
-import { ArrowUpDown, Eye, Pencil } from "lucide-react";
+import { ArrowUpDown, Eye, ChevronDown, CheckCircle, XCircle } from "lucide-react";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
 import { formatDate } from "@/lib/utils";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function PaymentTransactionNameCell({ row, onPreview }) {
     const { can } = useContext(loginContext);
@@ -14,11 +20,10 @@ function PaymentTransactionNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("paymentTransactionView")
-                        ? "text-blue-600 cursor-pointer hover:underline"
-                        : "text-gray-800"
-                }`}
+                className={`font-semibold text-base ${can("paymentTransactionView")
+                    ? "text-blue-600 cursor-pointer hover:underline"
+                    : "text-gray-800"
+                    }`}
                 onClick={(e) => {
                     if (!can("paymentTransactionView")) return;
                     e.stopPropagation();
@@ -46,7 +51,7 @@ function sortableHeader(label) {
     return SortableHeaderComponent;
 }
 
-export const getPaymentTransactionColumns = (onPreview, onEdit) => [
+export const getPaymentTransactionColumns = (onPreview, onAction) => [
     {
         accessorKey: "narration",
         header: sortableHeader("Narration"),
@@ -92,7 +97,7 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
             const symbol = row.original.currencySymbol || row.original.currency?.symbol;
             if (!code) return <span className="text-gray-400 text-sm">-</span>;
             return (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                <span className="text-gray-700 text-sm">
                     <span>{code}</span>
                     {symbol && <span className="text-gray-500">({symbol})</span>}
                 </span>
@@ -104,7 +109,7 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
         accessorKey: "paymentMode",
         header: sortableHeader("Payment Mode"),
         cell: ({ row }) => (
-            <span className="inline-block rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold border border-blue-200">
+            <span className="text-gray-700 text-sm">
                 {row.getValue("paymentMode") || "-"}
             </span>
         ),
@@ -126,8 +131,8 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
         cell: ({ row }) => {
             const val = row.getValue("transactionAmount");
             return (
-                <span className="text-gray-900 text-sm font-semibold font-mono">
-                    {val !== undefined && val !== null ? Number(val).toFixed(2) : "-"}
+                <span className="text-gray-900 text-sm">
+                    {val !== undefined && val !== null ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
                 </span>
             );
         },
@@ -139,8 +144,24 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
         cell: ({ row }) => {
             const val = row.getValue("baseAmount");
             return (
-                <span className="text-gray-900 text-sm font-semibold font-mono">
-                    {val !== undefined && val !== null ? Number(val).toFixed(2) : "-"}
+                <span className="text-gray-900 text-sm ">
+                    {val !== undefined && val !== null ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                </span>
+            );
+        },
+        filterFn: "includesString",
+    },
+    {
+        accessorKey: "status",
+        header: sortableHeader("Status"),
+        cell: ({ row }) => {
+            const status = row.getValue("status") || "Pending";
+            let badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+            if (status === "Approved") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+            if (status === "Cancelled") badgeClass = "bg-red-50 text-red-700 border-red-200";
+            return (
+                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold border ${badgeClass}`}>
+                    {status}
                 </span>
             );
         },
@@ -152,6 +173,8 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
         cell: ({ row }) => {
             const { can } = useContext(loginContext);
             const item = row.original;
+            const isPending = (item.status || "Pending") === "Pending";
+
             return (
                 <div className="flex items-center gap-2">
                     {can("paymentTransactionView") && (
@@ -166,17 +189,41 @@ export const getPaymentTransactionColumns = (onPreview, onEdit) => [
                             <Eye className="h-4 w-4" />
                         </button>
                     )}
-                    {can("paymentTransactionUpdate") && (
-                        <button
-                            title="Edit"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onEdit) onEdit(item.paymentTransactionId);
-                            }}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
-                        >
-                            <Pencil className="h-4 w-4" />
-                        </button>
+
+                    {can("paymentTransactionUpdate") && isPending && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                >
+                                    Actions
+                                    <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36 bg-white border border-gray-200 shadow-lg rounded-xl p-1">
+                                <DropdownMenuItem
+                                    className="cursor-pointer px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-2"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onAction) onAction(item.paymentTransactionId, "approve");
+                                    }}
+                                >
+                                    <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                                    Approve
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="cursor-pointer px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onAction) onAction(item.paymentTransactionId, "cancel");
+                                    }}
+                                >
+                                    <XCircle className="h-3.5 w-3.5 text-red-600" />
+                                    Cancel
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                 </div>
             );

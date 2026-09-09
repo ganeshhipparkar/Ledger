@@ -177,3 +177,14 @@ export class PaymentTransactionUpdateDto {
   @Transform(({ value }) => Number(value))
   updatedBy?: number;
 }
+
+export class PaymentTransactionStatusDto {
+  @IsInt()
+  @IsNotEmpty()
+  @Transform(({ value }) => Number(value))
+  paymentTransactionId!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  remarks!: string;
+}

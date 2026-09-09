@@ -109,6 +109,18 @@ const MODULES = [
         key: "paymentTransaction",
         permissions: ["paymentTransactionList", "paymentTransactionView", "paymentTransactionAdd", "paymentTransactionUpdate"],
     },
+    {
+        section: "Finance",
+        label: "Quotation",
+        key: "quotation",
+        permissions: ["quotationList", "quotationView", "quotationAdd", "quotationUpdate"],
+    },
+    {
+        section: "Finance",
+        label: "Order",
+        key: "order",
+        permissions: ["orderList", "orderView", "orderAdd", "orderUpdate"],
+    },
 ];
 
 const COL_HEADERS = ["List", "View", "Add", "Update"];
@@ -426,19 +438,22 @@ export default function GroupCapabilities({ id }) {
                                                             />
                                                         </td>
                                                         <td className={`py-3.5 pl-2 font-medium ${!superAdmin && mod.key === "group" ? "text-gray-400" : "text-gray-700"}`}>{mod.label}</td>
-                                                        {mod.permissions.map((perm, idx) => (
-                                                            <td key={perm || idx} className="py-3.5 text-center px-6">
-                                                                {perm ? (
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={!!checked[perm]}
-                                                                        disabled={!superAdmin && mod.key === "group"}
-                                                                        onChange={() => togglePerm(perm)}
-                                                                        className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                    />
-                                                                ) : null}
-                                                            </td>
-                                                        ))}
+                                                        {COL_HEADERS.map((_, idx) => {
+                                                            const perm = mod.permissions[idx];
+                                                            return (
+                                                                <td key={perm || idx} className="py-3.5 text-center px-6">
+                                                                    {perm ? (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={!!checked[perm]}
+                                                                            disabled={!superAdmin && mod.key === "group"}
+                                                                            onChange={() => togglePerm(perm)}
+                                                                            className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        />
+                                                                    ) : null}
+                                                                </td>
+                                                            );
+                                                        })}
                                                     </tr>
                                                 </Fragment>
                                             );

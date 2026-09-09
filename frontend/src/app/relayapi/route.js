@@ -19,7 +19,11 @@ function getServiceBase(request) {
     if (module === "bank-book") return "http://localhost:4000/bank-book";
     if (module === "terms-conditions") return "http://localhost:4000/terms-conditions";
     if (module === 'tax-group') return "http://localhost:4000/tax-group";
+    if (module === 'quotation') return "http://localhost:4000/quotation";
+    if (module === "order") return "http://localhost:4000/order";
+
     if (module === "payment-transaction") return "http://localhost:4000/payment-transaction";
+    if (module === "quotation") return "http://localhost:4000/quotation";
     return "http://localhost:4000";
 }
 
@@ -75,7 +79,6 @@ export async function POST(request) {
         const token = getAuthToken(request);
         const base = getServiceBase(request);
 
-        // Intercept stop-impersonating request and clear the impersonation cookie
         if (endpoint === "user-stop-impersonating") {
             let bodyObj = {};
             try {
@@ -111,11 +114,21 @@ export async function POST(request) {
         const fetchHeaders = {};
         if (token) fetchHeaders["Authorization"] = token;
         if (contentType.includes("application/json")) {
-            const json = await request.json();
-            body = JSON.stringify(json);
-            fetchHeaders["Content-Type"] = "application/json";
-        } else {
-            body = await request.formData();
+            try {
+                const text = await request.text();
+                if (text && text.trim().length > 0) {
+                    body = text;
+                    fetchHeaders["Content-Type"] = "application/json";
+                }
+            } catch (e) {
+                body = undefined;
+            }
+        } else if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+            try {
+                body = await request.formData();
+            } catch (e) {
+                body = undefined;
+            }
         }
 
         const { res, payload } = await doFetch(`${base}/${endpoint}`, {
@@ -127,8 +140,7 @@ export async function POST(request) {
         const nextRes = NextResponse.json(payload, { status: res.status });
 
         if (endpoint === "user-login") {
-            // Step 1 only verifies credentials — no token issued, no cookie to set.
-            // Cookie is set by user-select-profile (step 2) below.
+
         } else if (endpoint === "user-select-profile") {
             const decrypted = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (decrypted.success === 1) {
@@ -213,11 +225,21 @@ export async function PUT(request) {
         const fetchHeaders = {};
         if (token) fetchHeaders["Authorization"] = token;
         if (contentType.includes("application/json")) {
-            const json = await request.json();
-            body = JSON.stringify(json);
-            fetchHeaders["Content-Type"] = "application/json";
-        } else {
-            body = await request.formData();
+            try {
+                const text = await request.text();
+                if (text && text.trim().length > 0) {
+                    body = text;
+                    fetchHeaders["Content-Type"] = "application/json";
+                }
+            } catch (e) {
+                body = undefined;
+            }
+        } else if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+            try {
+                body = await request.formData();
+            } catch (e) {
+                body = undefined;
+            }
         }
 
         const { res, payload } = await doFetch(`${base}/${endpoint}`, {

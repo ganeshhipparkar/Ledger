@@ -78,7 +78,9 @@ export default function CompanyList() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [currentFilters, setCurrentFilters] = useState({});
-    const [viewMode, setViewMode] = useState("grid");
+    const { viewModes, setViewModeForPage } = useContext(loginContext);
+    const viewMode = viewModes?.companies || "grid";
+    const setViewMode = (mode) => setViewModeForPage("companies", mode);
     const [expandedRows, setExpandedRows] = useState({});
     const [selectedCompanyId, setSelectedCompanyId] = useState(null);
 

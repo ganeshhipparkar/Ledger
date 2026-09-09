@@ -22,7 +22,6 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
         <>
             <div className="px-6 py-6 border border-gray-200 bg-gray-50/2 rounded-xl">
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-start">
-                    {/* Column 1: Small circular thumbnail + Item Name + Item Code */}
                     <div className="min-w-0">
                         <div className="text-sm text-gray-500 mb-1">Item Name</div>
                         <div className="flex items-center gap-3">
@@ -59,13 +58,11 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                         </div>
                     </div>
 
-                    {/* Column 2: Category */}
                     <div>
                         <div className="text-sm text-gray-500 mb-1">Category</div>
                         <div className="text-base text-gray-800 break-all">{item.categoryName || "-"}</div>
                     </div>
 
-                    {/* Column 3: Status badge */}
                     <div>
                         <div className="text-sm text-gray-500 mb-1">Status</div>
                         <span
@@ -81,7 +78,6 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                         </span>
                     </div>
 
-                    {/* Column 4: Company + Actions Dropdown + Chevron toggle */}
                     <div className="flex items-start justify-between gap-2">
                         <div>
                             <div className="text-sm text-gray-500 mb-1">Company</div>
@@ -126,17 +122,7 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                                             Edit
                                         </DropdownMenuItem>
                                     )}
-                                    {can("itemView") && router && (
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                router.push(`/item/${item.itemId}`);
-                                            }}
-                                        >
-                                            Full Page View
-                                        </DropdownMenuItem>
-                                    )}
+
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
@@ -154,7 +140,6 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                     </div>
                 </div>
 
-                {/* Expanded Overflow Section */}
                 {isOpen && (
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
                         <div>

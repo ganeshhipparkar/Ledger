@@ -11,7 +11,7 @@ import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import { paymentTransactionFormConfig } from "./configs/paymentTransactionForm.config";
 import MultiFilePicker from "../common/MultiFilePicker";
-import { Layers, DollarSign } from "lucide-react";
+import { Layers, DollarSign, AlignLeft } from "lucide-react";
 
 const getMySwal = () => withReactContent(Swal);
 
@@ -25,7 +25,7 @@ export default function AddPaymentTransaction() {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = paymentTransactionFormConfig.contexts["payment-transaction-add"];
-    const isSuperAdmin = displayUser?.assignments?.some((a) => a.is_parent === 1) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const minDate = getMinDateOneMonthAgo();
 
@@ -34,7 +34,7 @@ export default function AddPaymentTransaction() {
         currencyId: "",
         bankBookId: "",
         companyId: "",
-        paymentMode: "Cash",
+        paymentMode: "",
         paymentDate: new Date().toISOString().split("T")[0],
         exchangeRate: "",
         exchangeDate: new Date().toISOString().split("T")[0],
@@ -48,13 +48,11 @@ export default function AddPaymentTransaction() {
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
-    // Dropdown state
     const [companies, setCompanies] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [currencies, setCurrencies] = useState([]);
     const [bankBooks, setBankBooks] = useState([]);
 
-    // File attachments state
     const [selectedFiles, setSelectedFiles] = useState([]);
 
     useEffect(() => {
@@ -64,12 +62,43 @@ export default function AddPaymentTransaction() {
         }
         setFormData(initial);
         if (isSuperAdmin) fetchCompanies();
-        fetchCustomers();
-        fetchCurrencies();
-        fetchBankBooks();
-    }, []);
+    }, [isSuperAdmin, activeAssignment]);
 
-    // Auto-populate exchangeRate from selected currency (read-only)
+    useEffect(() => {
+        fetchCustomers();
+        fetchBankBooks();
+        if (formData.companyId) {
+            fetchCompanyCurrencies(formData.companyId);
+        } else {
+            setCurrencies([]);
+        }
+    }, [formData.companyId]);
+
+    const fetchCompanyCurrencies = async (companyId) => {
+        if (!companyId) {
+            setCurrencies([]);
+            return;
+        }
+        try {
+            const res = await fetch("/relayapi", {
+                method: "GET",
+                headers: {
+                    ...authHeaders(),
+                    endpoint: `company-currencies/${companyId}`,
+                    module: "customer",
+                },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            const currencyList = Array.isArray(data?.data)
+                ? data.data
+                : (Array.isArray(data) ? data : []);
+            setCurrencies(currencyList);
+        } catch {
+            setCurrencies([]);
+        }
+    };
+
     useEffect(() => {
         if (!formData.currencyId) {
             setFormData((prev) => ({ ...prev, exchangeRate: "" }));
@@ -102,11 +131,10 @@ export default function AddPaymentTransaction() {
                         }));
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     }, [formData.currencyId, currencies]);
 
-    // Live calculation for baseAmount = transactionAmount * exchangeRate (4 decimal places)
     useEffect(() => {
         const rate = parseFloat(formData.exchangeRate);
         const amount = parseFloat(formData.transactionAmount);
@@ -120,7 +148,7 @@ export default function AddPaymentTransaction() {
         }
     }, [formData.exchangeRate, formData.transactionAmount]);
 
-    const fetchList = async (endpoint, module, setter) => {
+    const fetchList = async (endpoint, module, setter, extraFilters = []) => {
         try {
             const res = await fetch("/relayapi", {
                 method: "POST",
@@ -133,25 +161,34 @@ export default function AddPaymentTransaction() {
                 body: JSON.stringify({
                     page: 1,
                     limit: 500,
-                    filters: [{ key: "status", value: "Active", operator: "=" }],
+                    filters: [{ key: "status", value: "Active", operator: "=" }, ...extraFilters],
                     condition: "All",
                 }),
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             setter(data?.data ?? []);
-        } catch {}
+        } catch { }
     };
 
     const fetchCompanies = () => fetchList("company-list", "company", setCompanies);
-    const fetchCustomers = () => fetchList("customer-list", "customer", setCustomers);
-    const fetchCurrencies = () => fetchList("currency-list", "currency", setCurrencies);
-    const fetchBankBooks = () => fetchList("bank-book-list", "bank-book", setBankBooks);
+    const fetchCustomers = () => fetchList("customer-list", "customer", setCustomers,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
+    const fetchBankBooks = () => fetchList("bank-book-list", "bank-book", setBankBooks,
+        formData.companyId ? [{ key: "companyId", value: formData.companyId, operator: "equal" }] : []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         if (name === "companyId") {
-            setFormData((prev) => ({ ...prev, companyId: value, bankBookId: "" }));
+            setFormData((prev) => ({
+                ...prev,
+                companyId: value,
+                customerId: "",
+                currencyId: "",
+                bankBookId: "",
+                exchangeRate: "",
+                baseAmount: "",
+            }));
         } else {
             setFormData((prev) => ({ ...prev, [name]: value }));
         }
@@ -236,7 +273,6 @@ export default function AddPaymentTransaction() {
             const res = await fetch("/relayapi", {
                 method: "POST",
                 headers: {
-                    ...authHeaders(),
                     endpoint: "payment-transaction-add",
                     module: "payment-transaction",
                 },
@@ -244,7 +280,6 @@ export default function AddPaymentTransaction() {
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-
             if (data?.success === 1) {
                 toast.success("Payment transaction created successfully", {
                     position: "top-right",
@@ -263,19 +298,13 @@ export default function AddPaymentTransaction() {
     };
 
     const inputClass = (name) =>
-        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${
-            errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
+        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
         } bg-white text-gray-800`;
     const selectClass = (name) =>
-        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${
-            errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
+        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
         } bg-white text-gray-800`;
     const readonlyClass =
         "w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-600 outline-none cursor-not-allowed font-mono";
-
-    const filteredBankBooks = formData.companyId
-        ? bankBooks.filter((b) => String(b.companyId) === String(formData.companyId))
-        : bankBooks;
 
     return (
         <div className="min-h-screen w-full bg-[#f5f6f8] text-black">
@@ -292,23 +321,22 @@ export default function AddPaymentTransaction() {
                     Home
                 </span>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="text-gray-500 font-medium">Finance</span>
-                <span className="text-gray-400">{">>"}</span>
                 <span
                     className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
                     onClick={() => router.push("/payment-transaction-list")}
                 >
                     Payment Transaction
                 </span>
-            </nav>
+                <span className="text-gray-400">{">>"}</span>
+                <span className="text-gray-400">{"Add"}</span>
 
+            </nav>
             <div className="px-6 py-4">
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-800">Add New</h1>
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    {/* Top Section: Primary Fields */}
                     <div className="w-full rounded-2xl bg-white p-6 shadow-sm mb-6">
                         {isSuperAdmin && (
                             <div className="mb-4">
@@ -335,7 +363,7 @@ export default function AddPaymentTransaction() {
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                            {/* Customer */}
+
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Customer <span className="text-red-500">*</span>
@@ -358,7 +386,7 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            {/* Customer Currency */}
+
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Customer Currency <span className="text-red-500">*</span>
@@ -381,7 +409,7 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            {/* Bank Account */}
+
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Bank Account <span className="text-red-500">*</span>
@@ -393,7 +421,7 @@ export default function AddPaymentTransaction() {
                                     className={selectClass("bankBookId")}
                                 >
                                     <option value="">Select Bank Account</option>
-                                    {filteredBankBooks.map((b) => (
+                                    {bankBooks.map((b) => (
                                         <option key={b.bankBookId} value={String(b.bankBookId)}>
                                             {b.bankBookName} ({b.accountNumber || "No Acc #"})
                                         </option>
@@ -404,7 +432,7 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            {/* Payment Mode */}
+
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Payment Mode <span className="text-red-500">*</span>
@@ -415,6 +443,7 @@ export default function AddPaymentTransaction() {
                                     onChange={handleChange}
                                     className={selectClass("paymentMode")}
                                 >
+                                    <option value="">Select Payment Mode</option>
                                     <option value="Cash">Cash</option>
                                     <option value="Credit Card">Credit Card</option>
                                     <option value="Debit Card">Debit Card</option>
@@ -428,7 +457,6 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            {/* Payment Date */}
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Payment Date <span className="text-red-500">*</span>
@@ -448,7 +476,6 @@ export default function AddPaymentTransaction() {
                         </div>
                     </div>
 
-                    {/* Section: Other Details */}
                     <div className="w-full rounded-2xl bg-white p-6 shadow-sm mb-6">
                         <div className="flex items-center gap-2 mb-4 border-b pb-3 text-gray-700">
                             <Layers className="h-5 w-5 text-gray-500" />
@@ -457,7 +484,7 @@ export default function AddPaymentTransaction() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Exchange Rate <span className="text-red-500">*</span>
+                                    Exchange Rate
                                 </label>
                                 <input
                                     type="text"
@@ -490,14 +517,11 @@ export default function AddPaymentTransaction() {
                         </div>
                     </div>
 
-                    {/* Section: Transaction Amount */}
                     <div className="w-full rounded-2xl bg-white p-6 shadow-sm mb-6">
                         <div className="flex items-center gap-2 mb-4 border-b pb-3 text-gray-700">
-                            <DollarSign className="h-5 w-5 text-gray-500" />
                             <h2 className="text-base font-semibold">Transaction Amount</h2>
                         </div>
 
-                        {/* Table-style row layout matching screenshot */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/70 p-4 rounded-xl border border-gray-200">
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -521,7 +545,7 @@ export default function AddPaymentTransaction() {
                                     Transaction Amount <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     step="0.0001"
                                     name="transactionAmount"
                                     value={formData.transactionAmount}
@@ -536,7 +560,7 @@ export default function AddPaymentTransaction() {
 
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Base Amount <span className="text-red-500">*</span>
+                                    Base Amount
                                 </label>
                                 <input
                                     type="text"
@@ -549,33 +573,41 @@ export default function AddPaymentTransaction() {
                         </div>
                     </div>
 
-                    {/* Section: Description & Attachments */}
-                    <div className="w-full rounded-2xl bg-white p-6 shadow-sm mb-6 space-y-6">
-                        <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                                Description <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                name="description"
-                                rows={3}
-                                value={formData.description}
-                                onChange={handleChange}
-                                placeholder="Additional details..."
-                                className={inputClass("description")}
-                            />
-                            {errors.description && (
-                                <p className="mt-1 text-sm text-red-500">{errors.description}</p>
-                            )}
+                    <div className="w-full rounded-2xl bg-white p-6 shadow-sm mb-6">
+                        <div className="flex items-center gap-2 mb-4 border-b pb-3 text-gray-700">
+                            <AlignLeft className="h-5 w-5 text-gray-500" />
+                            <h2 className="text-base font-semibold">Additional Information</h2>
                         </div>
 
-                        <MultiFilePicker
-                            selectedFiles={selectedFiles}
-                            onFilesChange={setSelectedFiles}
-                            label="Attachments"
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Description <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    name="description"
+                                    rows={4}
+                                    value={formData.description}
+                                    onChange={handleChange}
+                                    placeholder="Enter description..."
+                                    className={inputClass("description")}
+                                />
+                                {errors.description && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.description}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <MultiFilePicker
+                                    selectedFiles={selectedFiles}
+                                    onFilesChange={setSelectedFiles}
+                                    label="Attachments"
+                                    required={true}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Footer Buttons */}
                     <div className="mt-8 flex justify-center gap-4 pb-12">
                         <button
                             type="button"

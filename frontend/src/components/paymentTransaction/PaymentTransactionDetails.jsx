@@ -8,8 +8,22 @@ import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import Loader from "../ui/Loader";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
-import PaymentTransactionFormSidePanel from "./PaymentTransactionFormSidePanel";
-import { Paperclip } from "lucide-react";
+import PaymentTransactionStatusSidePanel from "./PaymentTransactionStatusSidePanel";
+import ActivityTimeline from "@/components/activity/ActivityTimeline";
+import { Paperclip, ChevronDown, CheckCircle, XCircle, FileText } from "lucide-react";
+
+const getFileType = (fileName) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+    return 'other';
+};
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function formatDate(dateString) {
     if (!dateString) return "-";
@@ -26,16 +40,16 @@ export default function PaymentTransactionDetails({ id }) {
     const { can } = useContext(loginContext);
     const [transaction, setTransaction] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showEditPanel, setShowEditPanel] = useState(false);
+    const [activeTab, setActiveTab] = useState("summary");
+
+    const [statusModal, setStatusModal] = useState({
+        open: false,
+        action: "approve",
+    });
 
     useEffect(() => {
         fetchTransaction();
     }, [id]);
-
-    const handleEditClose = () => {
-        setShowEditPanel(false);
-        fetchTransaction();
-    };
 
     const fetchTransaction = async () => {
         setLoading(true);
@@ -87,244 +101,301 @@ export default function PaymentTransactionDetails({ id }) {
         );
     }
 
+    const currentStatus = transaction.status || "Pending";
+    const isPending = currentStatus === "Pending";
+
+    let statusBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
+    if (currentStatus === "Approved") statusBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
+    if (currentStatus === "Cancelled") statusBadgeClass = "bg-red-100 text-red-800 border-red-200";
+
+    const displayCode = transaction.paymentCode || `PT-${transaction.paymentTransactionId}`;
+
     return (
-        <div className="min-h-screen bg-[#f5f6f8]">
+        <div className="min-h-screen bg-[#f5f6f8] text-gray-800">
             <Header page="payment-transaction-details" />
 
-            <div className="px-6 py-6 max-w-7xl mx-auto space-y-6">
-                {/* Navigation and actions bar */}
-                <div className="flex items-center justify-between">
-                    <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                        <span
-                            className="cursor-pointer hover:text-blue-600 hover:underline"
-                            onClick={(e) => gotoPages(e, "/")}
-                        >
-                            Home
-                        </span>
-                        <span className="text-gray-400">{">>"}</span>
-                        <span
-                            className="cursor-pointer hover:text-blue-600 hover:underline"
-                            onClick={(e) => gotoPages(e, "/payment-transaction-list")}
-                        >
-                            Payment Transactions
-                        </span>
-                        <span className="text-gray-400">{">>"}</span>
-                        <span className="text-gray-800 font-semibold">
-                            {transaction.narration || `PT #${transaction.paymentTransactionId}`}
-                        </span>
-                    </nav>
+            <div className="p-6">
+                <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500" aria-label="Breadcrumb">
+                    <span
+                        className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
+                        onClick={(e) => gotoPages(e, "/")}
+                    >
+                        Home
+                    </span>
+                    <span className="text-gray-400">{">>"}</span>
+                    <span
+                        className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
+                        onClick={(e) => gotoPages(e, "/payment-transaction-list")}
+                    >
+                        Payment Transactions
+                    </span>
+                    <span className="text-gray-400">{">>"}</span>
+                    <span className="text-gray-800 font-semibold">{displayCode}</span>
+                </nav>
 
+                <div className="mb-6 flex items-center justify-between">
+                    <h1 className="text-3xl font-semibold text-gray-800">Details</h1>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => router.push("/payment-transaction-list")}
-                            className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 transition cursor-pointer"
+                            className="inline-flex h-11 items-center justify-center rounded-xl bg-gray-200 px-6 text-sm font-semibold text-gray-700 transition-all hover:bg-gray-300 cursor-pointer"
                         >
                             ← Back to List
                         </button>
-                        {can && can("paymentTransactionUpdate") && (
-                            <button
-                                onClick={() => setShowEditPanel(true)}
-                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm cursor-pointer"
-                            >
-                                Edit Transaction
-                            </button>
+
+                        {can && can("paymentTransactionUpdate") && isPending && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div className="inline-flex h-11 items-center gap-1.5 px-6 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs">
+                                        Actions
+                                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl p-1">
+                                    <DropdownMenuItem
+                                        className="cursor-pointer px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-2"
+                                        onClick={() => setStatusModal({ open: true, action: "approve" })}
+                                    >
+                                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                        Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="cursor-pointer px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                                        onClick={() => setStatusModal({ open: true, action: "cancel" })}
+                                    >
+                                        <XCircle className="h-4 w-4 text-red-600" />
+                                        Cancel
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )}
                     </div>
                 </div>
 
-                {/* Header info card */}
-                <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900">
-                                {transaction.narration || `PT #${transaction.paymentTransactionId}`}
-                            </h1>
-                            <span className="inline-block rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
-                                {transaction.paymentMode}
-                            </span>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Customer: <span className="font-semibold text-gray-700">{transaction.customerName || transaction.customer?.customerName || "-"}</span>
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-gray-400 font-medium">Transaction Amount</p>
-                        <p className="text-2xl font-bold text-gray-900 font-mono">
-                            {transaction.currencyCode || ""} {Number(transaction.transactionAmount || 0).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                            Base: <span className="font-mono font-semibold">{Number(transaction.baseAmount || 0).toFixed(2)}</span>
-                        </p>
-                    </div>
-                </div>
-
-                {/* Main Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* General Information */}
-                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
-                            General Information
-                        </h3>
-                        <dl className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Customer</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">
-                                    {transaction.customerName || transaction.customer?.customerName || "-"}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Bank Account</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">
-                                    {transaction.bankBookName || transaction.bankBook?.bankBookName || "-"}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Company</dt>
-                                <dd className="mt-0.5">
-                                    <LinkedCompanyCell
-                                        companyId={transaction.companyId}
-                                        companyName={transaction.companyName || transaction.company?.companyName}
-                                    />
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Currency</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">
-                                    {transaction.currencyCode || transaction.currency?.code || "-"}
-                                    {transaction.currencySymbol ? ` (${transaction.currencySymbol})` : ""}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Payment Mode</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">{transaction.paymentMode || "-"}</dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Payment Date</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">{formatDate(transaction.paymentDate)}</dd>
-                            </div>
-                        </dl>
-                    </div>
-
-                    {/* Amounts & Conversion */}
-                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
-                            Amounts & Conversion
-                        </h3>
-                        <dl className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Transaction Amount</dt>
-                                <dd className="text-gray-900 font-bold font-mono text-base mt-0.5">
-                                    {Number(transaction.transactionAmount || 0).toFixed(4)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Exchange Rate</dt>
-                                <dd className="text-gray-800 font-semibold font-mono mt-0.5">
-                                    {Number(transaction.exchangeRate || 1).toFixed(6)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Exchange Date</dt>
-                                <dd className="text-gray-800 font-semibold mt-0.5">{formatDate(transaction.exchangeDate)}</dd>
-                            </div>
-                            <div>
-                                <dt className="text-gray-400 font-medium text-xs">Base Amount</dt>
-                                <dd className="text-gray-900 font-bold font-mono text-base mt-0.5">
-                                    {Number(transaction.baseAmount || 0).toFixed(4)}
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-
-                {/* Details & Attachments Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Narration & Description */}
-                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
-                            Details & Description
-                        </h3>
-                        <div className="space-y-3 text-sm">
-                            <div>
-                                <p className="text-gray-400 font-medium text-xs">Narration</p>
-                                <p className="text-gray-800 font-semibold mt-0.5">{transaction.narration || "-"}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-400 font-medium text-xs">Description</p>
-                                <p className="text-gray-700 whitespace-pre-wrap mt-0.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                                    {transaction.description || "No description provided."}
+                <div className="grid grid-cols-12 gap-6">
+                    <div className="col-span-12 lg:col-span-2">
+                        <div className="rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+                            <div className="border-b pb-5">
+                                <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold border mb-2 ${statusBadgeClass}`}>
+                                    {currentStatus}
+                                </span>
+                                <h2 className="text-xl font-semibold capitalize text-gray-800 truncate">
+                                    {displayCode}
+                                </h2>
+                                <p className="text-xs text-gray-400 mt-1 font-mono truncate">
+                                    {transaction.narration || "No Narration"}
                                 </p>
                             </div>
-                        </div>
-                    </div>
+                            <div className="mt-6 space-y-3">
+                                <button
+                                    onClick={() => setActiveTab("summary")}
+                                    className={`w-full rounded-xl px-4 py-3 text-left font-medium transition cursor-pointer ${activeTab === "summary"
+                                        ? "bg-gray-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                        }`}
+                                >
+                                    Summary
+                                </button>
 
-                    {/* Attachments */}
-                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
-                            Attachments
-                        </h3>
-                        {Array.isArray(transaction.attachments) && transaction.attachments.length > 0 ? (
-                            <div className="space-y-2">
-                                {transaction.attachments.map((att) => {
-                                    const fileName = att.attachmentUrl ? att.attachmentUrl.split("/").pop() : "Attachment";
-                                    return (
-                                        <a
-                                            key={att.paymentTransactionAttachmentId}
-                                            href={att.attachmentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/60 border border-gray-200 hover:border-blue-300 transition text-sm text-gray-700 group"
-                                        >
-                                            <div className="flex items-center gap-2 truncate max-w-[80%]">
-                                                <Paperclip className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
-                                                <span className="truncate font-medium group-hover:text-blue-600">{fileName}</span>
-                                            </div>
-                                            <span className="text-xs text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition">
-                                                View →
-                                            </span>
-                                        </a>
-                                    );
-                                })}
                             </div>
-                        ) : (
-                            <p className="text-sm text-gray-400 italic">No attachments uploaded.</p>
-                        )}
+                        </div>
                     </div>
-                </div>
 
-                {/* Audit card */}
-                <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
-                    <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100 mb-3">
-                        Audit Information
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                            <p className="text-gray-400 font-medium text-xs">Added By</p>
-                            <p className="text-gray-700 font-semibold mt-0.5">{transaction.addedByName || "-"}</p>
-                        </div>
-                        <div>
-                            <p className="text-gray-400 font-medium text-xs">Added Date</p>
-                            <p className="text-gray-700 font-semibold mt-0.5">{formatDate(transaction.addedDate)}</p>
-                        </div>
-                        <div>
-                            <p className="text-gray-400 font-medium text-xs">Updated By</p>
-                            <p className="text-gray-700 font-semibold mt-0.5">{transaction.updatedByName || "-"}</p>
-                        </div>
-                        <div>
-                            <p className="text-gray-400 font-medium text-xs">Updated Date</p>
-                            <p className="text-gray-700 font-semibold mt-0.5">{formatDate(transaction.updatedDate)}</p>
-                        </div>
+                    <div className="col-span-12 lg:col-span-10">
+                        {activeTab === "summary" && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
+                                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
+                                            General Information
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Payment Code</p>
+                                                <p className="font-mono font-medium text-blue-600">{displayCode}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Customer</p>
+                                                <p className="font-medium text-gray-800">
+                                                    {transaction.customerName || transaction.customer?.customerName || "-"}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Bank Account</p>
+                                                <p className="font-medium text-gray-800">
+                                                    {transaction.bankBookName || transaction.bankBook?.bankBookName || "-"}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Company</p>
+                                                <div className="font-medium text-gray-800">
+                                                    <LinkedCompanyCell
+                                                        companyId={transaction.companyId}
+                                                        companyName={transaction.companyName || transaction.company?.companyName}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Currency</p>
+                                                <p className="font-medium text-gray-800">
+                                                    {transaction.currencyCode || transaction.currency?.code || "-"}
+                                                    {transaction.currencySymbol ? ` (${transaction.currencySymbol})` : ""}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Payment Mode</p>
+                                                <p className="font-medium text-gray-800">{transaction.paymentMode || "-"}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Payment Date</p>
+                                                <p className="font-medium text-gray-800">{formatDate(transaction.paymentDate)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
+                                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
+                                            Amounts & Conversion
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Transaction Amount</p>
+                                                <p className="text-gray-800">
+                                                    {transaction.currencyCode || ""} {Number(transaction.transactionAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Exchange Rate</p>
+                                                <p className="text-gray-800">
+                                                    {Number(transaction.exchangeRate || 1).toFixed(6)}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Exchange Date</p>
+                                                <p className="font-medium text-gray-800">{formatDate(transaction.exchangeDate)}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <p className="text-gray-500">Base Amount</p>
+                                                <p className="text-gray-800">
+                                                    {Number(transaction.baseAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
+                                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
+                                            Details & Remarks
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div>
+                                                <p className="text-gray-400 font-medium text-xs">Narration</p>
+                                                <p className="text-gray-800 font-semibold mt-0.5">{transaction.narration || "-"}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400 font-medium text-xs">Description</p>
+                                                <p className="text-gray-700 whitespace-pre-wrap mt-0.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                                    {transaction.description || "No description provided."}
+                                                </p>
+                                            </div>
+                                            {transaction.statusRemarks && (
+                                                <div>
+                                                    <p className="text-gray-400 font-medium text-xs">Status Remarks</p>
+                                                    <p className="text-gray-700 whitespace-pre-wrap mt-0.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                                        {transaction.statusRemarks}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
+                                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
+                                            Attachments
+                                        </h3>
+                                        {Array.isArray(transaction.attachments) && transaction.attachments.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {transaction.attachments.map((att) => {
+                                                    const fileName = att.attachmentUrl ? att.attachmentUrl.split("/").pop() : "Attachment";
+                                                    return (
+                                                        <a
+                                                            key={att.paymentTransactionAttachmentId}
+                                                            href={att.attachmentUrl ? `http://localhost:4000${att.attachmentUrl}` : "#"}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/60 border border-gray-200 hover:border-blue-300 transition text-sm text-gray-700 group"
+                                                        >
+                                                                <div className="flex items-center gap-2 truncate max-w-[80%]">
+                                                                    {getFileType(fileName) === 'image' ? (
+                                                                        <img 
+                                                                            src={`http://localhost:4000${att.attachmentUrl}`} 
+                                                                            className="h-8 w-8 rounded object-cover" 
+                                                                            alt={fileName}
+                                                                        />
+                                                                    ) : getFileType(fileName) === 'pdf' ? (
+                                                                        <FileText className="h-4 w-4 text-red-500 group-hover:text-red-600" />
+                                                                    ) : (
+                                                                        <Paperclip className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
+                                                                    )}
+                                                                    <span className="truncate font-medium group-hover:text-blue-600">{fileName}</span>
+                                                                </div>
+                                                            <span className="text-xs text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition">
+                                                                View →
+                                                            </span>
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-400 italic">No attachments uploaded.</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
+                                    <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100 mb-3">
+                                        Audit Information
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                            <p className="text-gray-400 font-medium text-xs">Added By</p>
+                                            <p className="text-gray-700 font-semibold mt-0.5">{transaction.addedByName || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 font-medium text-xs">Added Date</p>
+                                            <p className="text-gray-700 font-semibold mt-0.5">{formatDate(transaction.addedDate)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 font-medium text-xs">Updated By</p>
+                                            <p className="text-gray-700 font-semibold mt-0.5">{transaction.updatedByName || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 font-medium text-xs">Updated Date</p>
+                                            <p className="text-gray-700 font-semibold mt-0.5">{formatDate(transaction.updatedDate)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "activities" && (
+                            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
+                                <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-3">Activities</h2>
+                                <ActivityTimeline />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Edit form side panel */}
-            <PaymentTransactionFormSidePanel
-                isOpen={showEditPanel}
-                onClose={() => setShowEditPanel(false)}
-                context="payment-transaction-update"
-                id={id}
-                onSuccess={handleEditClose}
+            <PaymentTransactionStatusSidePanel
+                isOpen={statusModal.open}
+                onClose={() => setStatusModal({ open: false, action: "approve" })}
+                transactionId={id}
+                action={statusModal.action}
+                onSuccess={fetchTransaction}
             />
         </div>
     );

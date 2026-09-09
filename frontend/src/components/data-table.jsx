@@ -91,7 +91,6 @@ export function DataTable({
     return (
         <div className="flex-1 flex flex-col min-h-0 space-y-3 pb-12">
 
-            {/* Table Header / Title & Actions block */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
                 {title ? (
                     <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
@@ -112,7 +111,6 @@ export function DataTable({
                 </div>
             </div>
 
-            {/* Table */}
             <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
                 <Table containerClassName={containerClassName}>
                     <TableHeader className="sticky top-0 z-10 bg-gray-50">

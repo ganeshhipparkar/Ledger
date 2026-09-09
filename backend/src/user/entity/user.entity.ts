@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { UserCompanyGroupEntity } from '../../packages/entity/user.company.group.entity';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
+import { OrderEntity } from 'src/order/entity/order.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -84,4 +85,10 @@ export class UserEntity {
 
   @OneToMany(() => QuotationEntity, (quotation) => quotation.salesPerson)
   quotationsAsSalesPerson?: QuotationEntity[];
+
+  @OneToMany(() => OrderEntity, (order) => order.salesPerson)
+  ordersAsSalesPerson?: OrderEntity[];
+
+  @OneToMany(() => OrderEntity, (order) => order.contactPerson)
+  ordersAsContactPerson?: OrderEntity[];
 }

@@ -14,6 +14,7 @@ import { QuotationExtraChargeEntity } from './quotation.extra.charge.entity';
 export enum TaxCalculation {
   NA = 'NA',
   EXCLUSIVE = 'EXCLUSIVE',
+  INCLUSIVE = 'INCLUSIVE',
 }
 
 @Entity('quotation_items')

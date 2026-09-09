@@ -1,8 +1,10 @@
 import { BrandEntity } from "src/brand_master/entity/brand.entity";
 import { CompanyEntity } from "src/company/entity/company.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { QuotationDiscountEntity } from "src/quotation/entity/quotation.discount.entity";
-import { QuotationExtraChargeEntity } from "src/quotation/entity/quotation.extra.charge.entity";
+import { QuotationDiscountEntity } from 'src/quotation/entity/quotation.discount.entity';
+import { QuotationExtraChargeEntity } from 'src/quotation/entity/quotation.extra.charge.entity';
+import { OrderDiscountEntity } from 'src/order/entity/order.discount.entity';
+import { OrderExtraChargeEntity } from 'src/order/entity/order.extra.charge.entity';
 
 export enum Status{
     ACTIVE="Active",
@@ -56,5 +58,11 @@ quotationDiscounts?: QuotationDiscountEntity[];
 
 @OneToMany(() => QuotationExtraChargeEntity, (ec) => ec.manufacturer)
 quotationExtraCharges?: QuotationExtraChargeEntity[];
+
+@OneToMany(() => OrderDiscountEntity, (d) => d.manufacturer)
+orderDiscounts?: OrderDiscountEntity[];
+
+@OneToMany(() => OrderExtraChargeEntity, (ec) => ec.manufacturer)
+orderExtraCharges?: OrderExtraChargeEntity[];
 
 }

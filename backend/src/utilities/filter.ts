@@ -2,11 +2,11 @@ export class Filter {
   /**
    * Build a WHERE clause string from an array of filter objects.
    *
-   * @param param     - Array of { key, operator, value } filter objects, or a single object.
-   * @param alias     - Default table alias (e.g. 'user').
-   * @param aliasMap  - Optional map of field names to their joined-table aliases
-   *                    (e.g. { groupName: 'group', companyName: 'company' }).
-   * @param condition - 'All' (AND) | 'Any' (OR). Defaults to 'All'.
+   * @param param   
+   * @param alias   
+   * @param aliasMap 
+   *                 
+   * @param condition 
    */
   async makeFilterString(
     param,
@@ -83,6 +83,8 @@ export class Filter {
       // Resolve alias for the key if provided in aliasMap
       const resolvedAlias = aliasMap[key] || alias;
       switch (operator) {
+        case 'eq':
+        case '=':
         case 'equal':
           symbol = '=';
           whereStr +=
@@ -106,6 +108,7 @@ export class Filter {
           whereStr += ' ' + `${resolvedAlias}.${key} ${symbol} "${value}%"`;
           break;
 
+        case 'like':
         case 'contains':
           symbol = 'LIKE';
           whereStr += ' ' + `${resolvedAlias}.${key} ${symbol} "%${value}%"`;

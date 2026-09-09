@@ -249,20 +249,6 @@ export class ItemUpdateDto {
   status?: Status;
 
   @IsOptional()
-  @IsArray()
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value).map(Number);
-      } catch {
-        return value.split(',').map(Number);
-      }
-    }
-    return Array.isArray(value) ? value.map(Number) : value;
-  })
-  deletedImageIds?: number[];
-
-  @IsOptional()
   @IsInt()
   @Transform(({ value }) => Number(value))
   updatedBy?: number;

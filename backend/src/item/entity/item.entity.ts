@@ -7,7 +7,8 @@ import { PackageEntity } from "src/package_master/entity/package.entity";
 import { CurrencyEntity } from "src/currency/entity/currency.entity";
 import { ItemImageEntity } from "./item.image.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { QuotationItemEntity } from "src/quotation/entity/quotation.item.entity";
+import { QuotationItemEntity } from 'src/quotation/entity/quotation.item.entity';
+import { OrderItemEntity } from 'src/order/entity/order.item.entity';
 
 export enum Archive {
     TRUE = 'true',
@@ -182,4 +183,7 @@ export class ItemEntity {
 
     @OneToMany(() => QuotationItemEntity, (qi) => qi.item)
     quotationItems?: QuotationItemEntity[];
+
+    @OneToMany(() => OrderItemEntity, (oi) => oi.item)
+    orderItems?: OrderItemEntity[];
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -72,6 +73,17 @@ export class ItemController {
   ) {
     const param = { ...body, updatedBy: req.user.userId };
     const result = await this.itemService.updateItem(param, req, itemImages);
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Delete('item-image-delete/:imageId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('itemUpdate')
+  async deleteItemImage(@Req() req: any, @Param('imageId') imageId: string) {
+    const result = await this.itemService.deleteItemImage(
+      Number(imageId),
+      req,
+    );
     return { encrypted: encryptResponse(result) };
   }
 }

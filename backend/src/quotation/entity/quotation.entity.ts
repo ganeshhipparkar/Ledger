@@ -19,7 +19,7 @@ import { QuotationAttachmentsEntity } from './quotation.attachments';
 
 export enum QuotationStatus {
   DRAFT = 'DRAFT',
-  PENDING = 'PENDING',
+  SUBMITTED = 'SUBMITTED',
   CONFIRMED = 'CONFIRMED',
   CANCELLED = 'CANCELLED',
   EXPIRED = 'EXPIRED',
@@ -166,6 +166,9 @@ export class QuotationEntity {
     default: VatWithheld.NO,
   })
   vatWithheld!: string;
+
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
+  vatWithheldAmount!: number;
 
   @Column({ nullable: true })
   addedBy?: number;

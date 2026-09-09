@@ -58,7 +58,9 @@ export default function UsersPage() {
     const [currentPage, setCurrentPage] = useState(savedPage);
     const [totalPages, setTotalPages] = useState(savedTotalPages);
     const [totalRecords, setTotalRecords] = useState(0);
-    const [viewMode, setViewMode] = useState("grid");
+    const { viewModes, setViewModeForPage } = useContext(loginContext);
+    const viewMode = viewModes?.users || "grid";
+    const setViewMode = (mode) => setViewModeForPage("users", mode);
     const [count, setCount] = useState(1);
     const [selectedCompanyId, setSelectedCompanyId] = useState(null);
     const [selectedUserId, setSelectedUserId] = useState(null);

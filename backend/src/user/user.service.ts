@@ -803,8 +803,6 @@ export class UserService {
 
       const formattedData = data.map((user) => {
         const allAssignments = user.userCompanyGroups ?? [];
-        // For scoped viewers, prefer the assignment matching their company scope
-        // so the list row shows the relevant profile, not the global primary.
         const primary = req?.scopedCompanyIds?.length
           ? (allAssignments.find((a) =>
               req.scopedCompanyIds.includes(a.companyId)) ??

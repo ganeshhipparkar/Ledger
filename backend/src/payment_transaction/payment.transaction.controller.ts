@@ -22,6 +22,7 @@ import {
   PaymentTransactionDto,
   PaymentTransactionListDto,
   PaymentTransactionUpdateDto,
+  PaymentTransactionStatusDto,
 } from './dto/payment.transaction.dto';
 import { encryptResponse } from 'src/utilities/crypto';
 
@@ -51,7 +52,7 @@ export class PaymentTransactionController {
   async getPaymentTransactionDetails(
     @Req() req: any,
     @Param('id') id: string,
-  ) {
+  ) { 
     const result =
       await this.paymentTransactionService.getPaymentTransactionDetails(
         Number(id),
@@ -102,6 +103,36 @@ export class PaymentTransactionController {
         { ...body, updatedBy: req.user.userId },
         req,
         files,
+      );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Put('payment-transaction-approve')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('paymentTransactionUpdate')
+  async approvePaymentTransaction(
+    @Req() req: any,
+    @Body() body: PaymentTransactionStatusDto,
+  ) {
+    const result =
+      await this.paymentTransactionService.approvePaymentTransaction(
+        body,
+        req,
+      );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Put('payment-transaction-cancel')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('paymentTransactionUpdate')
+  async cancelPaymentTransaction(
+    @Req() req: any,
+    @Body() body: PaymentTransactionStatusDto,
+  ) {
+    const result =
+      await this.paymentTransactionService.cancelPaymentTransaction(
+        body,
+        req,
       );
     return { encrypted: encryptResponse(result) };
   }

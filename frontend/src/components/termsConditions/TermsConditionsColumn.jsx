@@ -11,11 +11,10 @@ function TitleCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("termsConditionsView")
+                className={`font-semibold text-base ${can("termsConditionsView")
                         ? "text-blue-600 cursor-pointer hover:underline"
                         : "text-gray-800"
-                }`}
+                    }`}
                 onClick={(e) => {
                     if (!can("termsConditionsView")) return;
                     e.stopPropagation();
@@ -79,7 +78,7 @@ export const getTermsConditionsColumns = (onPreview, onEdit) => [
             const item = row.original;
             return (
                 <div className="flex items-center gap-2">
-                    {can("termsConditionsView") && (
+                    {/* {can("termsConditionsView") && (
                         <button
                             title="View Details"
                             onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(item.termsConditionsId); }}
@@ -87,7 +86,7 @@ export const getTermsConditionsColumns = (onPreview, onEdit) => [
                         >
                             <Eye className="h-4 w-4" />
                         </button>
-                    )}
+                    )} */}
                     {can("termsConditionsUpdate") && (
                         <button
                             title="Edit"

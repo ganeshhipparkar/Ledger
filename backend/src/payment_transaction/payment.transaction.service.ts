@@ -3,13 +3,17 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import { ActivityCode } from '../activity/enums/activity-code.enum';
-import { PaymentTransactionEntity } from './entity/payment.transaction.entity';
+import {
+  PaymentTransactionEntity,
+  PaymentTransactionStatus,
+} from './entity/payment.transaction.entity';
 import { PaymentTransactionAttachmentsEntity } from './entity/payment.transaction.attachments';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
@@ -20,6 +24,7 @@ import {
   PaymentTransactionListDto,
   PaymentTransactionDto,
   PaymentTransactionUpdateDto,
+  PaymentTransactionStatusDto,
 } from './dto/payment.transaction.dto';
 
 @Injectable()
@@ -207,7 +212,10 @@ export class PaymentTransactionService {
 
       let insertId: number;
       try {
+        const paymentCode = await this.generatePaymentCode(queryRunner);
+
         const queryParams: any = {
+          paymentCode,
           customerId: Number(params.customerId),
           currencyId: Number(params.currencyId),
           bankBookId: Number(params.bankBookId),
@@ -237,7 +245,6 @@ export class PaymentTransactionService {
         await queryRunner.release();
       }
 
-      // Attachments handling outside transaction
       for (const file of files?.attachments ?? []) {
         const filename = file.filename || file.originalname;
         await this.fileTransfer.fileTransferPaymentTransaction(
@@ -442,5 +449,152 @@ export class PaymentTransactionService {
     } catch (err: any) {
       return { success: 0, message: err.message };
     }
+  }
+
+  async approvePaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const existing = await this.paymentTransactionRepo.findOne({
+        where: { paymentTransactionId: dto.paymentTransactionId },
+      });
+      if (!existing) {
+        throw new NotFoundException('Payment transaction not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(existing.companyId)) {
+          throw new ForbiddenException('Access denied to this payment transaction');
+        }
+      }
+
+      if (existing.status !== PaymentTransactionStatus.PENDING) {
+        throw new BadRequestException(
+          `Payment transaction is no longer Pending (current status: ${existing.status})`,
+        );
+      }
+
+      if (!dto.remarks || dto.remarks.trim() === '') {
+        throw new BadRequestException('Remarks are required for approval');
+      }
+
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? req?.user?.userId);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? req?.user?.email ?? '');
+
+      existing.status = PaymentTransactionStatus.APPROVED;
+      existing.statusRemarks = dto.remarks.trim();
+      existing.updatedBy = performerId ? Number(performerId) : undefined;
+      existing.updatedDate = new Date();
+
+      await this.paymentTransactionRepo.save(existing);
+
+      this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.PAYMENT_TRANSACTION_APPROVE,
+        userId: performerId,
+        companyId: existing.companyId,
+        actorType: 'USER',
+        targetType: 'PAYMENT_TRANSACTION',
+        targetId: String(dto.paymentTransactionId),
+        executionStatus: 'SUCCESS',
+        severity: 'INFO',
+        parameters: {
+          userEmail: performerEmail,
+          userGroup: authCtx.activeGroupName || 'N/A',
+          companyId: existing.companyId,
+          paymentTransactionId: dto.paymentTransactionId,
+          remarks: dto.remarks,
+          impersonated: !!req?.user?.isImpersonation,
+        },
+        metadata: {},
+      });
+
+      return {
+        success: 1,
+        message: 'Payment transaction approved successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+  async cancelPaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const existing = await this.paymentTransactionRepo.findOne({
+        where: { paymentTransactionId: dto.paymentTransactionId },
+      });
+      if (!existing) {
+        throw new NotFoundException('Payment transaction not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(existing.companyId)) {
+          throw new ForbiddenException('Access denied to this payment transaction');
+        }
+      }
+
+      if (existing.status !== PaymentTransactionStatus.PENDING) {
+        throw new BadRequestException(
+          `Payment transaction is no longer Pending (current status: ${existing.status})`,
+        );
+      }
+
+      if (!dto.remarks || dto.remarks.trim() === '') {
+        throw new BadRequestException('Remarks are required for cancellation');
+      }
+
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.impersonatedBy ?? req?.user?.userId);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.impersonatorEmail ?? req?.user?.email ?? '');
+
+      existing.status = PaymentTransactionStatus.CANCELLED;
+      existing.statusRemarks = dto.remarks.trim();
+      existing.updatedBy = performerId ? Number(performerId) : undefined;
+      existing.updatedDate = new Date();
+
+      await this.paymentTransactionRepo.save(existing);
+
+      this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.PAYMENT_TRANSACTION_CANCEL,
+        userId: performerId,
+        companyId: existing.companyId,
+        actorType: 'USER',
+        targetType: 'PAYMENT_TRANSACTION',
+        targetId: String(dto.paymentTransactionId),
+        executionStatus: 'SUCCESS',
+        severity: 'INFO',
+        parameters: {
+          userEmail: performerEmail,
+          userGroup: authCtx.activeGroupName || 'N/A',
+          companyId: existing.companyId,
+          paymentTransactionId: dto.paymentTransactionId,
+          remarks: dto.remarks,
+          impersonated: !!req?.user?.isImpersonation,
+        },
+        metadata: {},
+      });
+
+      return {
+        success: 1,
+        message: 'Payment transaction cancelled successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+  private async generatePaymentCode(queryRunner: any): Promise<string> {
+    const count = await queryRunner.manager
+      .getRepository(PaymentTransactionEntity)
+      .count();
+    return `PAY-${String(count + 1).padStart(3, '0')}`;
   }
 }

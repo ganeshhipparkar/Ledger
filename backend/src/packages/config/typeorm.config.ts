@@ -32,6 +32,11 @@ import { QuotationAttachmentsEntity } from 'src/quotation/entity/quotation.attac
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment.transaction.entity';
 import { PaymentTransactionAttachmentsEntity } from 'src/payment_transaction/entity/payment.transaction.attachments';
+import { OrderEntity } from 'src/order/entity/order.entity';
+import { OrderItemEntity } from 'src/order/entity/order.item.entity';
+import { OrderDiscountEntity } from 'src/order/entity/order.discount.entity';
+import { OrderExtraChargeEntity } from 'src/order/entity/order.extra.charge.entity';
+import { OrderAttachmentsEntity } from 'src/order/entity/order.attachments';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -71,8 +76,13 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     taxGroupEntity,
     PaymentTransactionEntity,
     PaymentTransactionAttachmentsEntity,
+    OrderEntity,
+    OrderItemEntity,
+    OrderDiscountEntity,
+    OrderExtraChargeEntity,
+    OrderAttachmentsEntity,
   ],
-  synchronize: false, 
+  synchronize: true, 
   migrationsRun: true,
   logging: false,
   migrations: [__dirname + '/../../migration/*{.ts,.js}'],

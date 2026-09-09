@@ -20,7 +20,7 @@ export default function ItemGridCard({ item, onPreview, onEdit, router }) {
     return (
         <>
             <div className="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
-                {/* Actions Menu Top-Right */}
+
                 <div className="absolute top-4 right-4 z-10">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -55,22 +55,11 @@ export default function ItemGridCard({ item, onPreview, onEdit, router }) {
                                     Edit
                                 </DropdownMenuItem>
                             )}
-                            {can("itemView") && router && (
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        router.push(`/item/${item.itemId}`);
-                                    }}
-                                >
-                                    Full Page View
-                                </DropdownMenuItem>
-                            )}
+
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
 
-                {/* Header row: Circular image + Name + Code + Status */}
                 <div className="flex items-start gap-4 mb-4">
                     <div className="flex h-20 w-20 min-w-[80px] items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl font-bold uppercase text-blue-600 shadow-md">
                         {item.primaryImage ? (
@@ -117,7 +106,6 @@ export default function ItemGridCard({ item, onPreview, onEdit, router }) {
                     </div>
                 </div>
 
-                {/* Divided Info Section */}
                 <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1">
                     <span className="text-[#71717b] text-xs uppercase tracking-wide">
                         Category
@@ -127,7 +115,6 @@ export default function ItemGridCard({ item, onPreview, onEdit, router }) {
                     </p>
                 </div>
 
-                {/* Space-y-2 Label:Value Section */}
                 <div className="space-y-2 mt-4">
                     <div className="text-sm text-gray-600 break-all">
                         <span className="font-medium">Manufacturer:</span>{" "}

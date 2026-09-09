@@ -501,7 +501,7 @@ export const CustomerFormSchema = z.object({
         .min(1, "Please enter city."),
     AddressLineOne: z.string()
         .min(1, "Please enter Address Line One."),
-    postalCode: z.number()
+    postalCode: z.number("Please enter postal Code.")
         .min(1, "Please enter postal Code."),
     ownerFirstName: z.string()
         .min(1, "Please enter Owner First Name."),
@@ -588,17 +588,17 @@ export const CustomerUpdateSchema = z.object({
 });
 
 export const ItemFormSchema = z.object({
-    itemName: z.string().min(1, "Please enter Item Name."),
-    companyId: z.coerce.number().min(1, "Please select a Company."),
-    categoryId: z.coerce.number().min(1, "Please select a Category."),
-    manufacturerId: z.coerce.number().min(1, "Please select a Manufacturer."),
-    brandId: z.coerce.number().min(1, "Please select a Brand."),
-    itemUom: z.coerce.number().min(1, "Please select an Item UOM."),
+    itemName: z.string("Please enter Item Name.").min(1, "Please enter Item Name."),
+    companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+    categoryId: z.coerce.number("Please select a Category.").min(1, "Please select a Category."),
+    manufacturerId: z.coerce.number("Please select a Manufacturer.").min(1, "Please select a Manufacturer."),
+    brandId: z.coerce.number("Please select a Brand.").min(1, "Please select a Brand."),
+    itemUom: z.coerce.number("Please select an Item UOM.").min(1, "Please select an Item UOM."),
     packageUom: z.coerce.number().optional().nullable(),
-    primitiveQuantity: z.coerce.number().min(0, "Please enter Primitive Quantity."),
-    purchasePrice: z.coerce.number().min(0, "Please enter Purchase Price."),
-    costPerUnit: z.coerce.number().min(0, "Please enter Cost Per Unit."),
-    sourceCurrencyId: z.coerce.number().min(1, "Please select a Currency."),
+    primitiveQuantity: z.coerce.number("Please enter Primitive Quantity.").min(0, "Please enter Primitive Quantity."),
+    purchasePrice: z.coerce.number("Please enter Purchase Price.").min(0, "Please enter Purchase Price."),
+    costPerUnit: z.coerce.number("Please enter Cost Per Unit.").min(0, "Please enter Cost Per Unit."),
+    sourceCurrencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency."),
     conversionRate: z.coerce.number().optional(),
     isDecimalAllowed: z.enum(["true", "false"]).optional(),
     checkShelfLife: z.enum(["true", "false"]).optional(),
@@ -649,7 +649,7 @@ export const TermsConditionsUpdateSchema = z.object({
 
 export const TaxGroupFormSchema = z.object({
     taxName: z.string().min(1, "Please enter Tax Name."),
-    taxValue: z.coerce.number({ required_error: "Please enter Tax Value.", invalid_type_error: "Tax Value must be a number." }).min(0, "Tax Value cannot be negative."),
+    taxValue: z.coerce.number("Please enter Tax Value.").min(0, "Tax Value cannot be negative."),
     companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
 });
 
@@ -665,14 +665,13 @@ export const PaymentTransactionFormSchema = z.object({
     currencyId: z.coerce.number("Please select a Currency.").min(1, "Please select a Currency."),
     bankBookId: z.coerce.number("Please select a Bank Account.").min(1, "Please select a Bank Account."),
     companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
-    paymentMode: z.enum(["Cash", "Credit Card", "Debit Card", "Digital Wallet", "Bank Transfer", "UPI", "Buy Now Pay Later"], {
-        errorMap: () => ({ message: "Please select a valid Payment Mode." }),
-    }),
+    paymentMode: z.enum(["Cash", "Credit Card", "Debit Card", "Digital Wallet", "Bank Transfer", "UPI", "Buy Now Pay Later"], ("Please select a valid Payment Mode."),
+    ),
     paymentDate: z.string().min(1, "Please select Payment Date."),
-    exchangeRate: z.coerce.number({ required_error: "Please enter Exchange Rate.", invalid_type_error: "Exchange Rate must be a number." }).min(0.000001, "Exchange Rate must be positive."),
+    // exchangeRate: z.coerce.number("Please enter Exchange Rate.").min(0.000001, "Exchange Rate must be positive."),
     exchangeDate: z.string().min(1, "Please select Exchange Date."),
     narration: z.string().min(1, "Please enter Narration."),
-    transactionAmount: z.coerce.number({ required_error: "Please enter Transaction Amount.", invalid_type_error: "Transaction Amount must be a number." }).min(0.0001, "Transaction Amount must be positive."),
+    transactionAmount: z.coerce.number("Please enter valid Transaction Amount.").min(0.0001, "Transaction Amount must be positive."),
     description: z.string().min(1, "Please enter Description."),
 });
 
@@ -691,3 +690,141 @@ export const PaymentTransactionUpdateSchema = z.object({
     description: z.string().optional(),
     deletedAttachmentIds: z.array(z.number()).optional(),
 });
+
+const QuotationItemRowSchema = z.object({
+    itemId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "" && Number(val) > 0, {
+            message: "Item selection is required.",
+        }),
+    quantity: z.union([z.string(), z.number()])
+        .refine((val) => parseFloat(val) > 0, { message: "Quantity must be greater than 0." }),
+    unitPrice: z.union([z.string(), z.number()])
+        .refine((val) => parseFloat(val) >= 0, { message: "Unit Price cannot be negative." }),
+});
+
+export const QuotationFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Customer is required.",
+        }),
+    currencyId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Currency is required.",
+        }),
+    issueDate: z.string()
+        .min(1, "Issue Date is required.")
+        .refine((val) => dayjs(val).isValid(), { message: "Invalid Issue Date." }),
+    expiryDate: z.string()
+        .min(1, "Expiry Date is required.")
+        .refine((val) => dayjs(val).isValid(), { message: "Invalid Expiry Date." }),
+    bankBookId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Bank Account is required.",
+        }),
+    salesPersonId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Sales Person is required.",
+        }),
+    items: z.array(QuotationItemRowSchema).min(1, "At least one item is required."),
+    vatWithheld: z.enum(["YES", "NO"]).default("NO"),
+}).refine((data) => {
+    if (data.issueDate && data.expiryDate && dayjs(data.issueDate).isValid() && dayjs(data.expiryDate).isValid()) {
+        const diff = dayjs(data.expiryDate).diff(dayjs(data.issueDate), "day");
+        return diff >= 15;
+    }
+    return true;
+}, {
+    message: "Expiry date must be at least 15 days after issue date.",
+    path: ["expiryDate"],
+});
+
+export const QuotationUpdateFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Customer is required.",
+        }),
+    currencyId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Currency is required.",
+        }),
+    issueDate: z.string()
+        .min(1, "Issue Date is required.")
+        .refine((val) => dayjs(val).isValid(), { message: "Invalid Issue Date." }),
+    expiryDate: z.string()
+        .min(1, "Expiry Date is required.")
+        .refine((val) => dayjs(val).isValid(), { message: "Invalid Expiry Date." }),
+    bankBookId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Bank Account is required.",
+        }),
+    salesPersonId: z.union([z.string(), z.number()])
+        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "", {
+            message: "Sales Person is required.",
+        }),
+    items: z.array(QuotationItemRowSchema).min(1, "At least one item is required."),
+    vatWithheld: z.enum(["YES", "NO"]).default("NO"),
+}).refine((data) => {
+    if (data.issueDate && data.expiryDate && dayjs(data.issueDate).isValid() && dayjs(data.expiryDate).isValid()) {
+        const diff = dayjs(data.expiryDate).diff(dayjs(data.issueDate), "day");
+        return diff >= 15;
+    }
+    return true;
+}, {
+    message: "Expiry date must be at least 15 days after issue date.",
+    path: ["expiryDate"],
+});
+
+const nonEmpty = (val) => val !== undefined && val !== null && String(val).trim() !== "";
+
+const OrderItemRowSchema = z.object({
+    itemId: z.union([z.string(), z.number()]).refine(nonEmpty, "Item is required."),
+    itemGL: z.string().optional(),
+    quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
+    unitPrice: z.number({ coerce: true }).nonnegative("Unit Price must be ≥ 0"),
+    taxCalculation: z.enum(["N/A", "EXCLUSIVE", "INCLUSIVE"]),
+});
+
+export const OrderFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
+    currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Currency is required."),
+    contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Contact Person is required."),
+    orderDate: z.string().min(1, "Order Date is required.")
+        .refine(val => dayjs(val) >= dayjs().startOf("day"), "Order Date cannot be in the past."),
+    deliveryDate: z.string().optional(),
+    businessTerms: z.string().min(1, "Business Terms required."),
+    paymentType: z.string().min(1, "Payment Type required."),
+    deliveryTerms: z.string().optional(),
+    discountApplicable: z.string().min(1, "Discount Applicable required."),
+    shippingState: z.string().min(1, "Shipping Address required."),
+    billingState: z.string().min(1, "Billing Address required."),
+    deliveryState: z.string().min(1, "Place of Delivery required."),
+    deliveryType: z.string().min(1, "Delivery Type required."),
+    invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
+    invoiceAutoApproval: z.string().min(1, "Invoice Auto Approval required."),
+    bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
+    placeOfSupply: z.string().optional(),
+    vatWithheld: z.enum(["YES", "NO"]).default("NO"),
+    salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person is required."),
+    items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
+});
+
+export const OrderUpdateFormSchema = z.object({
+    contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Contact Person required."),
+    orderDate: z.string().optional(),
+    deliveryDate: z.string().optional(),
+    businessTerms: z.string().min(1, "Business Terms required."),
+    paymentType: z.string().min(1, "Payment Type required."),
+    deliveryTerms: z.string().optional(),
+    discountApplicable: z.string().min(1, "Discount Applicable required."),
+    shippingState: z.string().min(1, "Shipping Address required."),
+    billingState: z.string().min(1, "Billing Address required."),
+    deliveryState: z.string().min(1, "Place of Delivery required."),
+    deliveryType: z.string().min(1, "Delivery Type required."),
+    invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
+    invoiceAutoApproval: z.string().min(1, "Invoice Auto Approval required."),
+    bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
+    placeOfSupply: z.string().optional(),
+    vatWithheld: z.enum(["YES", "NO"]).default("NO"),
+    salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person required."),
+    items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
+}); 

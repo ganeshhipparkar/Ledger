@@ -88,9 +88,12 @@ export default function SiteMap() {
             ],
         },
         {
-            title: "Finance",
+            title: "Sales",
             items: [
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: permissions.includes("paymentTransactionList") || superAdmin },
+                { label: "Quotation", redirectTo: "/quotation-list", show: permissions.includes("quotationList") || superAdmin },
+                { label: "Order", redirectTo: "/order-list", show: permissions.includes("orderList") || superAdmin },
+
             ],
         },
     ];

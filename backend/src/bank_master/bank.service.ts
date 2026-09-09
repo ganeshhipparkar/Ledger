@@ -81,7 +81,16 @@ export class BankMasterService {
         this.bankRepository,
       )) as [number, number];
 
-      queryBuilder.leftJoinAndSelect('bank.company', 'company');
+      queryBuilder
+        .select([
+          'bank.bankId',
+          'bank.bankName',
+          'bank.bankCode',
+          'bank.companyId',
+          'bank.status',
+          'company.companyName',
+        ])
+        .leftJoin('bank.company', 'company');
       queryBuilder.skip(skip).take(limit);
       queryBuilder.orderBy('bank.bankName', 'ASC');
 

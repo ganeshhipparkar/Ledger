@@ -139,9 +139,9 @@ export default function SidePanel({
                                     {section.rows?.map((row, rowIdx) => (
                                         <div key={rowIdx} className="grid grid-cols-2 gap-2">
                                             <p className="text-sm text-gray-500">{row.label}</p>
-                                            <p className="text-sm font-medium text-gray-800 break-all">
+                                            <div className="text-sm font-medium text-gray-800 break-all">
                                                 {row.value ?? "N/A"}
-                                            </p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

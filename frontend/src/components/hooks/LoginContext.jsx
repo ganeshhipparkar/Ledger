@@ -11,7 +11,19 @@ export default function LoginContext({ children }) {
     const [permissions, setPermissions] = useState([]);
     const [impersonating, setImpersonating] = useState(null);
     const [authReady, setAuthReady] = useState(false);
+    const [viewModes, setViewModes] = useState({
+        items: "grid",
+        companies: "grid",
+        users: "grid",
+        customers: "grid",
+        "payment-transactions": "grid",
+        "quotation-list": "table",
+        "order-list": "table"
+    });
 
+    const setViewModeForPage = (page, mode) => {
+        setViewModes(prev => ({ ...prev, [page]: mode }));
+    };
     useEffect(() => {
         async function restoreSession() {
             try {
@@ -388,6 +400,7 @@ export default function LoginContext({ children }) {
             permissions, can, canAny,
             impersonating, loginAs, stopImpersonating,
             login, logout, authReady,
+            viewModes, setViewModeForPage
         }}>
             {children}
         </loginContext.Provider>

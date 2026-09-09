@@ -20,6 +20,7 @@ import { BankMasterEntity } from 'src/bank_master/entity/bank.master.entity';
 import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 import { TermsAndConditionsEntity } from 'src/terms_conditions/entity/terms.conditions.entity';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
+import { OrderEntity } from 'src/order/entity/order.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment.transaction.entity';
 
@@ -142,6 +143,9 @@ export class CompanyEntity {
 
   @OneToMany(() => QuotationEntity, (quotation) => quotation.company)
   quotations?: QuotationEntity[];
+
+  @OneToMany(() => OrderEntity, (order) => order.company)
+  orders?: OrderEntity[];
 
   @OneToMany(()=>taxGroupEntity,(taxGroup)=>taxGroup.company)
   taxGroups?:taxGroupEntity[];

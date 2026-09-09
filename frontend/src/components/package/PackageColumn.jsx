@@ -135,18 +135,6 @@ export const getPackageColumns = (onPreview, onEdit, router) => [
                                 Edit
                             </DropdownMenuItem>
                         )}
-                        {can("packageView") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (router) router.push(`/package/${pkg.packageId}`);
-                                }}
-                            >
-                                <ExternalLink className="h-4 w-4 text-gray-600" />
-                                Full Page View
-                            </DropdownMenuItem>
-                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             );

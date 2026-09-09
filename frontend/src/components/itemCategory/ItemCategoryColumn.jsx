@@ -27,11 +27,10 @@ function CategoryNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("itemCategoryView")
+                className={`font-semibold text-base ${can("itemCategoryView")
                         ? "text-blue-600 cursor-pointer hover:underline"
                         : "text-gray-800"
-                }`}
+                    }`}
                 onClick={(e) => {
                     if (!can("itemCategoryView")) return;
                     e.stopPropagation();
@@ -56,11 +55,10 @@ function ParentCategoryCell({ row, onPreview }) {
 
     return (
         <span
-            className={`text-sm font-medium ${
-                can("itemCategoryView")
+            className={`text-sm font-medium ${can("itemCategoryView")
                     ? "text-blue-600 cursor-pointer hover:underline"
                     : "text-gray-700"
-            }`}
+                }`}
             onClick={(e) => {
                 if (!can("itemCategoryView")) return;
                 e.stopPropagation();
@@ -143,15 +141,6 @@ export const getItemCategoryColumns = (onPreview, onEdit) => [
             const category = row.original;
             return (
                 <div className="flex items-center gap-2">
-                    {can("itemCategoryView") && (
-                        <button
-                            title="View Details"
-                            onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(category.itemCategoryId); }}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition"
-                        >
-                            <Eye className="h-4 w-4" />
-                        </button>
-                    )}
                     {can("itemCategoryUpdate") && (
                         <button
                             title="Edit"

@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Transform, Type, plainToInstance } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -47,15 +47,49 @@ export class QuotationListDto {
   filters?: filterDto[];
 }
 
+const safeNumber = (value: any, fallback: number = 0): number => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = Number(value);
+  return isNaN(n) ? fallback : n;
+};
+
+const safeOptionalNumber = (value: any): number | undefined => {
+  if (value === undefined || value === null || value === '' || value === 'null' || value === 'undefined') return undefined;
+  const n = Number(value);
+  return isNaN(n) ? undefined : n;
+};
+
+const safeRequiredId = (value: any): number | undefined => {
+  if (value === undefined || value === null || value === '' || value === 'null' || value === 'undefined') return undefined;
+  const n = Number(value);
+  return isNaN(n) || n <= 0 ? undefined : n;
+};
+
+const transformJsonArray = <T>(cls: new () => T) => {
+  return Transform(({ value }) => {
+    if (!value) return undefined;
+    let parsed = value;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        return undefined;
+      }
+    }
+    if (!Array.isArray(parsed)) return undefined;
+    return plainToInstance(cls, parsed);
+  });
+};
+
 export class QuotationDiscountInputDto {
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   manufacturerId?: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 0))
   discountPrice!: number;
 
   @IsString()
@@ -66,12 +100,12 @@ export class QuotationDiscountInputDto {
 export class QuotationExtraChargeInputDto {
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   manufacturerId?: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 0))
   extraChargesPrice!: number;
 
   @IsString()
@@ -82,17 +116,17 @@ export class QuotationExtraChargeInputDto {
 export class QuotationItemInputDto {
   @IsInt()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeRequiredId(value))
   itemId!: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 0))
   quantity!: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 0))
   unitPrice!: number;
 
   @IsEnum(TaxCalculation)
@@ -106,27 +140,25 @@ export class QuotationItemInputDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationDiscountInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationDiscountInputDto)
   discounts?: QuotationDiscountInputDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationExtraChargeInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationExtraChargeInputDto)
   extraCharges?: QuotationExtraChargeInputDto[];
 }
 
 export class QuotationDto {
   @IsInt()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeRequiredId(value))
   customerId!: number;
 
   @IsInt()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeRequiredId(value))
   currencyId!: number;
 
   @IsString()
@@ -139,7 +171,7 @@ export class QuotationDto {
 
   @IsInt()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeRequiredId(value))
   companyId!: number;
 
   @IsOptional()
@@ -148,7 +180,7 @@ export class QuotationDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   termsConditionsId?: number;
 
   @IsOptional()
@@ -157,7 +189,7 @@ export class QuotationDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   bankBookId?: number;
 
   @IsOptional()
@@ -166,12 +198,12 @@ export class QuotationDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   salesPersonId?: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 1))
   currencyConversionRate!: number;
 
   @IsEnum(VatWithheld)
@@ -181,22 +213,19 @@ export class QuotationDto {
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => QuotationItemInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationItemInputDto)
   quotationItems!: QuotationItemInputDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationDiscountInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationDiscountInputDto)
   quotationDiscounts?: QuotationDiscountInputDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationExtraChargeInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationExtraChargeInputDto)
   quotationExtraCharges?: QuotationExtraChargeInputDto[];
 
 
@@ -204,6 +233,11 @@ export class QuotationDto {
   @IsInt() 
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
   parentQuotationId?: number;
+
+  @IsOptional()
+  @IsInt() 
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  cloneFromId?: number;
 
   @IsOptional()
   @IsString() 
@@ -218,17 +252,17 @@ export class QuotationDto {
 export class QuotationUpdateDto {
   @IsInt()
   @IsNotEmpty()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeRequiredId(value))
   quotationId!: number;
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeOptionalNumber(value))
   customerId?: number;
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeOptionalNumber(value))
   currencyId?: number;
 
   @IsOptional()
@@ -241,7 +275,7 @@ export class QuotationUpdateDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeOptionalNumber(value))
   companyId?: number;
 
   @IsOptional()
@@ -250,7 +284,7 @@ export class QuotationUpdateDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   termsConditionsId?: number;
 
   @IsOptional()
@@ -259,7 +293,7 @@ export class QuotationUpdateDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   bankBookId?: number;
 
   @IsOptional()
@@ -268,12 +302,12 @@ export class QuotationUpdateDto {
 
   @IsOptional()
   @IsInt()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : undefined))
+  @Transform(({ value }) => safeOptionalNumber(value))
   salesPersonId?: number;
 
   @IsOptional()
   @IsNumber()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) => safeNumber(value, 1))
   currencyConversionRate?: number;
 
   @IsOptional()
@@ -288,22 +322,19 @@ export class QuotationUpdateDto {
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => QuotationItemInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationItemInputDto)
   quotationItems?: QuotationItemInputDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationDiscountInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationDiscountInputDto)
   quotationDiscounts?: QuotationDiscountInputDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => QuotationExtraChargeInputDto)
-  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
+  @transformJsonArray(QuotationExtraChargeInputDto)
   quotationExtraCharges?: QuotationExtraChargeInputDto[];
 
   @IsOptional()

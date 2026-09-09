@@ -27,11 +27,10 @@ function ManufacturerNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("manufacturerView")
+                className={`font-semibold text-base ${can("manufacturerView")
                         ? "text-blue-600 cursor-pointer hover:underline"
                         : "text-gray-800"
-                }`}
+                    }`}
                 onClick={(e) => {
                     if (!can("manufacturerView")) return;
                     e.stopPropagation();
@@ -101,15 +100,7 @@ export const getManufacturerColumns = (onPreview, onEdit) => [
             const manufacturer = row.original;
             return (
                 <div className="flex items-center gap-2">
-                    {can("manufacturerView") && (
-                        <button
-                            title="View Details"
-                            onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(manufacturer.manufacturerId); }}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition cursor-pointer"
-                        >
-                            <Eye className="h-4 w-4" />
-                        </button>
-                    )}
+
                     {can("manufacturerUpdate") && (
                         <button
                             title="Edit"

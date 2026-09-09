@@ -48,7 +48,6 @@ export class UserController {
   @Post('user-add')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('userAdd')
-  @Roles('superAdmin', 'companyAdmin', 'warehouseAdmin')
   @UseInterceptors(FileInterceptor('userFile', multerConfig))
   async insertUser(
     @Req() req,

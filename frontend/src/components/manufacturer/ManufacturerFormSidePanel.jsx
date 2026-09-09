@@ -24,9 +24,7 @@ export default function ManufacturerFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = manufacturerFormConfig.contexts[context];
 
-    const isSuperAdmin = displayUser?.assignments?.some(
-        (a) => a.is_parent === 1
-    ) ?? false;
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {

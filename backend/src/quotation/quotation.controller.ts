@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -69,7 +70,9 @@ export class QuotationContorller {
       termsConditionsFile?: Express.Multer.File[];
     },
   ) {
+    console.log(body,"body")
     const result = await this.quotationService.insertQuotation(body, req, files);
+
     return { encrypted: encryptResponse(result) };
   }
 
@@ -98,6 +101,34 @@ export class QuotationContorller {
       { ...body, updatedBy: req.user.userId },
       req,
       files,
+    );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Delete('quotation-attachment-delete/:attachmentId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('quotationUpdate')
+  async deleteQuotationAttachment(
+    @Req() req: any,
+    @Param('attachmentId') attachmentId: string,
+  ) {
+    const result = await this.quotationService.deleteQuotationAttachment(
+      Number(attachmentId),
+      req,
+    );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Delete('quotation-terms-file-delete/:quotationId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('quotationUpdate')
+  async deleteQuotationTermsFile(
+    @Req() req: any,
+    @Param('quotationId') quotationId: string,
+  ) {
+    const result = await this.quotationService.deleteQuotationTermsFile(
+      Number(quotationId),
+      req,
     );
     return { encrypted: encryptResponse(result) };
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -68,7 +69,6 @@ export default function EditItemPage({ item, onBack }) {
     );
 
     const [existingImages, setExistingImages] = useState(item?.images || []);
-    const [deletedImageIds, setDeletedImageIds] = useState([]);
 
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [filePreviews, setFilePreviews] = useState([]);
@@ -176,9 +176,41 @@ export default function EditItemPage({ item, onBack }) {
         setFilePreviews((prev) => prev.filter((_, i) => i !== idx));
     };
 
-    const removeExistingImage = (imgId) => {
-        setDeletedImageIds((prev) => [...prev, imgId]);
-        setExistingImages((prev) => prev.filter((img) => img.id !== imgId));
+    const [deleteModal, setDeleteModal] = useState({ open: false, imgId: null });
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const handleOpenDeleteModal = (imgId) => {
+        setDeleteModal({ open: true, imgId });
+    };
+
+    const handleConfirmDeleteImage = async () => {
+        if (!deleteModal.imgId) return;
+        setDeleteLoading(true);
+        try {
+            const res = await fetch("/relayapi", {
+                method: "DELETE",
+                headers: {
+                    ...authHeaders(),
+                    endpoint: `item-image-delete/${deleteModal.imgId}`,
+                    module: "item",
+                },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+
+            if (data?.success === 1) {
+                toast.success("Image deleted successfully", { position: "top-right" });
+                setExistingImages((prev) => prev.filter((img) => img.id !== deleteModal.imgId));
+                setDeleteModal({ open: false, imgId: null });
+            } else {
+                const msg = data?.message || "Failed to delete image.";
+                toast.error(msg, { position: "top-right" });
+            }
+        } catch {
+            toast.error("An error occurred while deleting the image.", { position: "top-right" });
+        } finally {
+            setDeleteLoading(false);
+        }
     };
 
     const handleCancel = async () => {
@@ -233,9 +265,6 @@ export default function EditItemPage({ item, onBack }) {
                 }
             });
 
-            if (deletedImageIds.length > 0) {
-                fd.append("deletedImageIds", JSON.stringify(deletedImageIds));
-            }
             selectedFiles.forEach((file) => fd.append("itemImages", file));
             const res = await fetch("/relayapi", {
                 method: "PUT",
@@ -283,7 +312,7 @@ export default function EditItemPage({ item, onBack }) {
                 <span className="text-gray-400">{">>"}</span>
                 <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={() => router.push("/item-list")}>Items</span>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={onBack}>Item Details</span>
+                <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={onBack}>Item</span>
                 <span className="text-gray-400">{">>"}</span>
                 <span className="text-gray-800">Edit Item</span>
             </nav>
@@ -533,7 +562,7 @@ export default function EditItemPage({ item, onBack }) {
                                                 )}
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeExistingImage(img.id)}
+                                                    onClick={() => handleOpenDeleteModal(img.id)}
                                                     aria-label="Remove existing image"
                                                     className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold shadow hover:bg-red-600 z-10 cursor-pointer"
                                                 >
@@ -593,6 +622,54 @@ export default function EditItemPage({ item, onBack }) {
                     </div>
                 </form>
             </div>
+
+            {deleteModal.open && typeof document !== "undefined" && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-black/40 backdrop-blur-2xs transition-opacity duration-200"
+                        onClick={() => setDeleteModal({ open: false, imgId: null })}
+                    />
+
+                    <div className="relative w-full max-w-[340px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-100 z-10 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between bg-[#1d5ec9] px-4 py-2.5 text-white">
+                            <span className="text-md font-semibold tracking-wide">Delete</span>
+                            <button
+                                type="button"
+                                onClick={() => setDeleteModal({ open: false, imgId: null })}
+                                className="text-white hover:opacity-80 text-base font-normal transition cursor-pointer leading-none"
+                                aria-label="Close dialog"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="px-6 py-6 text-center">
+                            <p className="text-sm font-normal text-[#374151] leading-relaxed">
+                                Are you sure want to delete this?
+                            </p>
+
+                            <div className="mt-5 flex items-center justify-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmDeleteImage}
+                                    disabled={deleteLoading}
+                                    className="px-6 py-1.5 bg-[#1d5ec9] hover:bg-[#184ea8] active:scale-95 text-white font-medium text-sm rounded-full shadow-xs transition cursor-pointer disabled:opacity-50"
+                                >
+                                    {deleteLoading ? "Deleting..." : "Delete"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDeleteModal({ open: false, imgId: null })}
+                                    className="px-6 py-1.5 bg-[#1d5ec9] hover:bg-[#184ea8] active:scale-95 text-white font-medium text-sm rounded-full shadow-xs transition cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
