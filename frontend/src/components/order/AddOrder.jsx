@@ -1,4 +1,5 @@
 "use client";
+import Select from "react-select";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +14,8 @@ import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import { OrderFormSchema } from "../Zod";
-import OrderItemsTable, { newEmptyItem, computeItem, generateRowId, getItemLabel } from "./OrderItemsTable";
+import OrderItemsTable, { newEmptyItem, generateRowId } from "./OrderItemsTable";
+import { computeItem, getItemLabel } from "@/lib/itemTaxCalc";
 import OrderSummaryPanel from "./OrderSummaryPanel";
 import TermsConditionsWidget from "../quotation/TermsConditionsWidget";
 
@@ -54,6 +56,9 @@ export default function AddOrder() {
     });
 
     const [errors, setErrors] = useState({});
+    const [itemErrors, setItemErrors] = useState({});
+    const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [totals, setTotals] = useState({});
 
     const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
@@ -162,6 +167,7 @@ export default function AddOrder() {
                             _id: generateRowId(),
                             itemId: realItemId,
                             itemLabel: labelStr,
+                            description: it.description || "",
                             itemGL: it.itemGL ?? "",
                             isDecimalAllowed:
                                 it.isDecimalAllowed !== undefined
@@ -241,7 +247,7 @@ export default function AddOrder() {
     }, [quotationId, sourceId]);
 
     const loadContactPersonOptions = (inputValue, callback) => {
-        if (!formData.customerId) return callback([]);
+        if (!companyId) return callback([]);
         fetch("/relayapi", {
             method: "POST",
             headers: {
@@ -437,20 +443,46 @@ export default function AddOrder() {
     };
 
     const handleSubmit = async (status) => {
+        setSubmitAttempted(true);
         const payloadToValidate = { ...formData, items };
         const parseRes = OrderFormSchema.safeParse(payloadToValidate);
         if (!parseRes.success) {
             const fieldErrors = {};
+            const itemErrors = {};
             parseRes.error.issues.forEach((err) => {
-                const field = err.path[0];
-                if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+                if (err.path[0] === "items" && typeof err.path[1] === "number") {
+                    const idx = err.path[1];
+                    const field = err.path[2];
+                    itemErrors[idx] = { ...(itemErrors[idx] || {}), [field]: err.message };
+                } else {
+                    const field = err.path[0];
+                    if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+                }
             });
             setErrors(fieldErrors);
+            setItemErrors(itemErrors);
             // toast.error("Please resolve the validation errors before proceeding.", { position: "top-right" });
             return;
         }
 
         setErrors({});
+        setItemErrors({});
+
+        if ((totals.finalAmount ?? 0) <= 0) {
+            toast.error("Discount cannot be more than the total amount.", { position: "top-right" });
+            return;
+        }
+        if (status === "DRAFT") {
+            const confirm = await MySwal.fire({
+                title: "Save as Draft?",
+                text: "Are you sure to save this as Draft ?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Save as Draft",
+                confirmButtonColor: "#2563eb",
+            });
+            if (!confirm.isConfirmed) return;
+        }
 
         if (status === "PLACED") {
             const confirm = await MySwal.fire({
@@ -467,7 +499,7 @@ export default function AddOrder() {
         setLoading(true);
         try {
             const fd = new FormData();
-            fd.append("customerId", formData.customerId);
+            fd.append("sourceQuotationId", formData.sourceQuotationId);
             fd.append("currencyId", formData.currencyId);
             fd.append("currencyCode", formData.currencyCode);
             fd.append("contactPersonId", formData.contactPersonId);
@@ -502,6 +534,7 @@ export default function AddOrder() {
                 const validItemId = (rawId !== "" && rawId !== null && rawId !== undefined && !isNaN(Number(rawId)) && Number(rawId) > 0) ? Number(rawId) : undefined;
                 return {
                     itemId: validItemId,
+                    description: it.description || undefined,
                     itemGL: it.itemGL || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
@@ -594,7 +627,7 @@ export default function AddOrder() {
             </div>
 
             <div className="flex-1 px-6 py-4 pb-24 space-y-5">
-                {/* <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+                <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
                         <h3 className="text-base font-semibold text-gray-800">Quotation</h3>
                     </div>
@@ -630,7 +663,7 @@ export default function AddOrder() {
                             />
                         </div>
                     </div>
-                </div> */}
+                </div>
 
                 <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -646,7 +679,7 @@ export default function AddOrder() {
                                 <AsyncSelect
                                     instanceId="customer-select"
                                     cacheOptions
-                                    // defaultOptions
+                                    defaultOptions
                                     loadOptions={loadCustomerOptions}
                                     value={formData.customerId ? { value: formData.customerId, label: formData.customerLabel } : null}
                                     onChange={handleCustomerChange}
@@ -676,19 +709,37 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Currency <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.currencyId}
-                                onChange={(e) => handleCurrencySelect(e.target.value)}
-                                disabled={!formData.customerId || currencies.length === 0 || lockedCustomer}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.currencyId ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">{formData.customerId ? "-- Select currency --" : "Select customer first"}</option>
-                                {currencies.map((c, curIdx) => (
-                                    <option key={c.curId ?? c.currencyId ?? `cur-${curIdx}`} value={c.curId ?? c.currencyId}>
-                                        {c.code} {c.symbol ? `(${c.symbol})` : ""}
-                                    </option>
-                                ))}
-                            </select>
+                            <Select
+                                instanceId="currency-select"
+                                value={formData.currencyId ? {
+                                    value: formData.currencyId, label: currencies.map(c => ({
+                                        value: String(c.curId ?? c.currencyId),
+                                        label: c.code + (c.symbol ? ` (${c.symbol})` : "")
+                                    })).find(o => String(o.value) === String(formData.currencyId))?.label || formData.currencyId
+                                } : null}
+                                onChange={(selected) => handleCurrencySelect(selected ? selected.value : "")}
+                                options={currencies.map(c => ({
+                                    value: String(c.curId ?? c.currencyId),
+                                    label: c.code + (c.symbol ? ` (${c.symbol})` : "")
+                                }))}
+                                isClearable
+                                isDisabled={!formData.customerId || currencies.length === 0 || lockedCustomer}
+                                placeholder={formData.customerId ? "-- Select currency --" : "Select customer first"}
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.currencyId ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.currencyId ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.currencyId && <p className="text-red-500 text-xs mt-1 font-medium">{errors.currencyId}</p>}
                         </div>
 
@@ -699,7 +750,7 @@ export default function AddOrder() {
                             <AsyncSelect
                                 instanceId="contact-person-select"
                                 cacheOptions
-                                // defaultOptions
+                                defaultOptions
                                 loadOptions={loadContactPersonOptions}
                                 value={formData.contactPersonId ? { value: formData.contactPersonId, label: formData.contactPersonLabel } : null}
                                 onChange={(selected) => {
@@ -734,6 +785,7 @@ export default function AddOrder() {
                                 type="date"
                                 value={formData.orderDate}
                                 onChange={(e) => setFormField("orderDate", e.target.value)}
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.orderDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
                             />
                             {errors.orderDate && <p className="text-red-500 text-xs mt-1 font-medium">{errors.orderDate}</p>}
@@ -748,6 +800,7 @@ export default function AddOrder() {
                                 value={formData.deliveryDate}
                                 min={formData.orderDate}
                                 onChange={(e) => setFormField("deliveryDate", e.target.value)}
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.deliveryDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
                             />
                             {errors.deliveryDate && <p className="text-red-500 text-xs mt-1 font-medium">{errors.deliveryDate}</p>}
@@ -757,18 +810,43 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Business Terms <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.businessTerms}
-                                onChange={(e) => setFormField("businessTerms", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.businessTerms ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="TWELVE_DAYS">12 Days</option>
-                                <option value="FIVE_DAYS">5 Days</option>
-                                <option value="SEVEN_DAYS">7 Days</option>
-                                <option value="CASH_IN_ADVANCE">Cash In Advance</option>
-                                <option value="CASH_NEXT_DELIVERY">Cash Next Delivery</option>
-                            </select>
+                            <Select
+                                instanceId="business-terms-select"
+                                value={formData.businessTerms ? {
+                                    value: formData.businessTerms, label: [
+                                        { value: "TWELVE_DAYS", label: "12 Days" },
+                                        { value: "FIVE_DAYS", label: "5 Days" },
+                                        { value: "SEVEN_DAYS", label: "7 Days" },
+                                        { value: "CASH_IN_ADVANCE", label: "Cash In Advance" },
+                                        { value: "CASH_NEXT_DELIVERY", label: "Cash Next Delivery" }
+                                    ].find(o => String(o.value) === String(formData.businessTerms))?.label || formData.businessTerms
+                                } : null}
+                                onChange={(selected) => setFormField("businessTerms", selected ? selected.value : "")}
+                                options={[
+                                    { value: "TWELVE_DAYS", label: "12 Days" },
+                                    { value: "FIVE_DAYS", label: "5 Days" },
+                                    { value: "SEVEN_DAYS", label: "7 Days" },
+                                    { value: "CASH_IN_ADVANCE", label: "Cash In Advance" },
+                                    { value: "CASH_NEXT_DELIVERY", label: "Cash Next Delivery" }
+                                ]}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.businessTerms ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.businessTerms ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.businessTerms && <p className="text-red-500 text-xs mt-1 font-medium">{errors.businessTerms}</p>}
                         </div>
 
@@ -776,15 +854,37 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Payment Type <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.paymentType}
-                                onChange={(e) => setFormField("paymentType", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.paymentType ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="CREDIT">Credit</option>
-                                <option value="CASH">Cash</option>
-                            </select>
+                            <Select
+                                instanceId="payment-type-select"
+                                value={formData.paymentType ? {
+                                    value: formData.paymentType, label: [
+                                        { value: "CREDIT", label: "Credit" },
+                                        { value: "CASH", label: "Cash" }
+                                    ].find(o => String(o.value) === String(formData.paymentType))?.label || formData.paymentType
+                                } : null}
+                                onChange={(selected) => setFormField("paymentType", selected ? selected.value : "")}
+                                options={[
+                                    { value: "CREDIT", label: "Credit" },
+                                    { value: "CASH", label: "Cash" }
+                                ]}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.paymentType ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.paymentType ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.paymentType && <p className="text-red-500 text-xs mt-1 font-medium">{errors.paymentType}</p>}
                         </div>
 
@@ -805,15 +905,37 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Discount Applicable <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.discountApplicable}
-                                onChange={(e) => setFormField("discountApplicable", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.discountApplicable ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="ON_EACH_DELIVERY">On Each Delivery</option>
-                                <option value="ON_LAST_DELIVERY">On Last Delivery</option>
-                            </select>
+                            <Select
+                                instanceId="discount-applicable-select"
+                                value={formData.discountApplicable ? {
+                                    value: formData.discountApplicable, label: [
+                                        { value: "ON_EACH_DELIVERY", label: "On Each Delivery" },
+                                        { value: "ON_LAST_DELIVERY", label: "On Last Delivery" }
+                                    ].find(o => String(o.value) === String(formData.discountApplicable))?.label || formData.discountApplicable
+                                } : null}
+                                onChange={(selected) => setFormField("discountApplicable", selected ? selected.value : "")}
+                                options={[
+                                    { value: "ON_EACH_DELIVERY", label: "On Each Delivery" },
+                                    { value: "ON_LAST_DELIVERY", label: "On Last Delivery" }
+                                ]}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.discountApplicable ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.discountApplicable ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.discountApplicable && <p className="text-red-500 text-xs mt-1 font-medium">{errors.discountApplicable}</p>}
                         </div>
 
@@ -821,16 +943,29 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Shipping Address <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.shippingState}
-                                onChange={(e) => setFormField("shippingState", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.shippingState ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                {countries.map((c) => (
-                                    <option key={c.value} value={c.value}>{c.label}</option>
-                                ))}
-                            </select>
+                            <Select
+                                instanceId="shipping-state-select"
+                                value={formData.shippingState ? { value: formData.shippingState, label: countries.find(o => String(o.value) === String(formData.shippingState))?.label || formData.shippingState } : null}
+                                onChange={(selected) => setFormField("shippingState", selected ? selected.value : "")}
+                                options={countries}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.shippingState ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.shippingState ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.shippingState && <p className="text-red-500 text-xs mt-1 font-medium">{errors.shippingState}</p>}
                         </div>
 
@@ -838,16 +973,29 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Billing Address <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.billingState}
-                                onChange={(e) => setFormField("billingState", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.billingState ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                {countries.map((c) => (
-                                    <option key={c.value} value={c.value}>{c.label}</option>
-                                ))}
-                            </select>
+                            <Select
+                                instanceId="billing-state-select"
+                                value={formData.billingState ? { value: formData.billingState, label: countries.find(o => String(o.value) === String(formData.billingState))?.label || formData.billingState } : null}
+                                onChange={(selected) => setFormField("billingState", selected ? selected.value : "")}
+                                options={countries}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.billingState ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.billingState ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.billingState && <p className="text-red-500 text-xs mt-1 font-medium">{errors.billingState}</p>}
                         </div>
 
@@ -855,16 +1003,29 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Place Of Delivery <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.deliveryState}
-                                onChange={(e) => setFormField("deliveryState", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.deliveryState ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                {countries.map((c) => (
-                                    <option key={c.value} value={c.value}>{c.label}</option>
-                                ))}
-                            </select>
+                            <Select
+                                instanceId="delivery-state-select"
+                                value={formData.deliveryState ? { value: formData.deliveryState, label: countries.find(o => String(o.value) === String(formData.deliveryState))?.label || formData.deliveryState } : null}
+                                onChange={(selected) => setFormField("deliveryState", selected ? selected.value : "")}
+                                options={countries}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.deliveryState ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.deliveryState ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.deliveryState && <p className="text-red-500 text-xs mt-1 font-medium">{errors.deliveryState}</p>}
                         </div>
 
@@ -872,16 +1033,39 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Delivery Type <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.deliveryType}
-                                onChange={(e) => setFormField("deliveryType", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.deliveryType ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="LOCAL">Local Delivery</option>
-                                <option value="INTERSTATE">Interstate</option>
-                                <option value="INTERNATIONAL">International</option>
-                            </select>
+                            <Select
+                                instanceId="delivery-type-select"
+                                value={formData.deliveryType ? {
+                                    value: formData.deliveryType, label: [
+                                        { value: "LOCAL", label: "Local Delivery" },
+                                        { value: "INTERSTATE", label: "Interstate" },
+                                        { value: "INTERNATIONAL", label: "International" }
+                                    ].find(o => String(o.value) === String(formData.deliveryType))?.label || formData.deliveryType
+                                } : null}
+                                onChange={(selected) => setFormField("deliveryType", selected ? selected.value : "")}
+                                options={[
+                                    { value: "LOCAL", label: "Local Delivery" },
+                                    { value: "INTERSTATE", label: "Interstate" },
+                                    { value: "INTERNATIONAL", label: "International" }
+                                ]}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.deliveryType ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.deliveryType ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.deliveryType && <p className="text-red-500 text-xs mt-1 font-medium">{errors.deliveryType}</p>}
                         </div>
 
@@ -889,15 +1073,37 @@ export default function AddOrder() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Invoice Generation On <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.invoiceGenerationOn}
-                                onChange={(e) => setFormField("invoiceGenerationOn", e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.invoiceGenerationOn ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="ORDER_LEVEL">Order Level</option>
-                                <option value="DELIVERY_LEVEL">Delivery Level</option>
-                            </select>
+                            <Select
+                                instanceId="invoice-generation-on-select"
+                                value={formData.invoiceGenerationOn ? {
+                                    value: formData.invoiceGenerationOn, label: [
+                                        { value: "ORDER_LEVEL", label: "Order Level" },
+                                        { value: "DELIVERY_LEVEL", label: "Delivery Level" }
+                                    ].find(o => String(o.value) === String(formData.invoiceGenerationOn))?.label || formData.invoiceGenerationOn
+                                } : null}
+                                onChange={(selected) => setFormField("invoiceGenerationOn", selected ? selected.value : "")}
+                                options={[
+                                    { value: "ORDER_LEVEL", label: "Order Level" },
+                                    { value: "DELIVERY_LEVEL", label: "Delivery Level" }
+                                ]}
+                                isClearable
+
+                                placeholder="-- Select --"
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.invoiceGenerationOn ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.invoiceGenerationOn ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.invoiceGenerationOn && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceGenerationOn}</p>}
                         </div>
                     </div>
@@ -911,6 +1117,8 @@ export default function AddOrder() {
                             if (errors.items) setErrors((prev) => ({ ...prev, items: null }));
                         }}
                         companyId={companyId}
+                        submitAttempted={submitAttempted}
+                        itemErrors={itemErrors}
                         currencyConversionRate={formData.currencyConversionRate}
                         currencySymbol={formData.currencySymbol}
                     />
@@ -931,34 +1139,52 @@ export default function AddOrder() {
                                             : [];
                                         return (
                                             <>
-                                                <select
-                                                    value={formData.bankBookId}
-                                                    onChange={(e) => {
-                                                        const bb = bankBooks.find((b) => String(b.bankBookId ?? b.value) === e.target.value);
+                                                <Select
+                                                    instanceId="bank-book-select"
+                                                    value={formData.bankBookId ? {
+                                                        value: formData.bankBookId, label: filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId)) ? (() => {
+                                                            const bb = filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId));
+                                                            const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
+                                                            const currencyStr = bb.currencyCode || bb.currency?.code || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.curCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.currencyCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.code || "";
+                                                            return currencyStr ? `${baseName} (${currencyStr})` : baseName;
+                                                        })() : formData.bankBookLabel
+                                                    } : null}
+                                                    onChange={(selected) => {
+                                                        const val = selected ? selected.value : "";
+                                                        const bb = bankBooks.find((b) => String(b.bankBookId ?? b.value) === val);
                                                         setFormData((prev) => ({
                                                             ...prev,
-                                                            bankBookId: e.target.value,
+                                                            bankBookId: val,
                                                             bankBookLabel: bb?.accountNumber ?? bb?.bankBookName ?? "",
                                                         }));
                                                         if (errors.bankBookId) setErrors((prev) => ({ ...prev, bankBookId: null }));
                                                     }}
-                                                    disabled={!formData.currencyId || filteredBankBooks.length === 0}
-                                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.bankBookId ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                                                >
-                                                    <option value="">
-                                                        {formData.currencyId ? "-- Select bank account --" : "Select currency first"}
-                                                    </option>
-                                                    {filteredBankBooks.map((bb, bbIdx) => {
+                                                    options={filteredBankBooks.map(bb => {
                                                         const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
                                                         const currencyStr = bb.currencyCode || bb.currency?.code || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.curCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.currencyCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.code || "";
-                                                        const labelText = currencyStr ? `${baseName} (${currencyStr})` : baseName;
-                                                        return (
-                                                            <option key={bb.bankBookId ?? bb.value ?? `bb-${bbIdx}`} value={bb.bankBookId ?? bb.value}>
-                                                                {labelText}
-                                                            </option>
-                                                        );
+                                                        return {
+                                                            value: String(bb.bankBookId ?? bb.value),
+                                                            label: currencyStr ? `${baseName} (${currencyStr})` : baseName
+                                                        };
                                                     })}
-                                                </select>
+                                                    isDisabled={!formData.currencyId || filteredBankBooks.length === 0}
+                                                    isClearable
+                                                    placeholder={formData.currencyId ? "-- Select bank account --" : "Select currency first"}
+                                                    classNamePrefix="react-select"
+                                                    styles={{
+                                                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                                        control: (base) => ({
+                                                            ...base,
+                                                            borderRadius: "0.75rem",
+                                                            borderColor: errors.bankBookId ? "#ef4444" : "#d1d5db",
+                                                            padding: "1px",
+                                                            fontSize: "0.875rem",
+                                                            boxShadow: "none",
+                                                            "&:hover": { borderColor: errors.bankBookId ? "#ef4444" : "#3b82f6" },
+                                                        }),
+                                                    }}
+                                                    menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                                />
 
                                             </>
                                         );
@@ -970,16 +1196,39 @@ export default function AddOrder() {
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                         Place Of Supply
                                     </label>
-                                    <select
-                                        value={formData.placeOfSupply}
-                                        onChange={(e) => setFormField("placeOfSupply", e.target.value)}
-                                        className={`w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 cursor-pointer ${errors.placeOfSupply ? "border-red-500" : "border-gray-300"}`}
-                                    >
-                                        <option value="">-- Select --</option>
-                                        <option value="John Martin - Lagos">John Martin - Lagos</option>
-                                        <option value="Steve - Lagos">Steve - Lagos</option>
-                                        <option value="MRS Oil Gas - Baner">MRS Oil Gas - Baner</option>
-                                    </select>
+                                    <Select
+                                        instanceId="place-of-supply-select"
+                                        value={formData.placeOfSupply ? {
+                                            value: formData.placeOfSupply, label: [
+                                                { value: "John Martin - Lagos", label: "John Martin - Lagos" },
+                                                { value: "Steve - Lagos", label: "Steve - Lagos" },
+                                                { value: "MRS Oil Gas - Baner", label: "MRS Oil Gas - Baner" }
+                                            ].find(o => String(o.value) === String(formData.placeOfSupply))?.label || formData.placeOfSupply
+                                        } : null}
+                                        onChange={(selected) => setFormField("placeOfSupply", selected ? selected.value : "")}
+                                        options={[
+                                            { value: "John Martin - Lagos", label: "John Martin - Lagos" },
+                                            { value: "Steve - Lagos", label: "Steve - Lagos" },
+                                            { value: "MRS Oil Gas - Baner", label: "MRS Oil Gas - Baner" }
+                                        ]}
+                                        isClearable
+
+                                        placeholder="-- Select --"
+                                        classNamePrefix="react-select"
+                                        styles={{
+                                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                            control: (base) => ({
+                                                ...base,
+                                                borderRadius: "0.75rem",
+                                                borderColor: errors.placeOfSupply ? "#ef4444" : "#d1d5db",
+                                                padding: "1px",
+                                                fontSize: "0.875rem",
+                                                boxShadow: "none",
+                                                "&:hover": { borderColor: errors.placeOfSupply ? "#ef4444" : "#3b82f6" },
+                                            }),
+                                        }}
+                                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                    />
                                     {errors.placeOfSupply && <p className="text-red-500 text-xs mt-1 font-medium">{errors.placeOfSupply}</p>}
                                 </div>
 
@@ -987,28 +1236,74 @@ export default function AddOrder() {
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                         VAT Withheld <span className="text-red-500">*</span>
                                     </label>
-                                    <select
-                                        value={formData.vatWithheld}
-                                        onChange={(e) => setFormField("vatWithheld", e.target.value)}
-                                        className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                                    >
-                                        <option value="NO">No</option>
-                                        <option value="YES">Yes</option>
-                                    </select>
+                                    <Select
+                                        instanceId="vat-withheld-select"
+                                        value={formData.vatWithheld ? {
+                                            value: formData.vatWithheld, label: [
+                                                { value: "NO", label: "No" },
+                                                { value: "YES", label: "Yes" }
+                                            ].find(o => String(o.value) === String(formData.vatWithheld))?.label || formData.vatWithheld
+                                        } : null}
+                                        onChange={(selected) => setFormField("vatWithheld", selected ? selected.value : "")}
+                                        options={[
+                                            { value: "NO", label: "No" },
+                                            { value: "YES", label: "Yes" }
+                                        ]}
+                                        isClearable
+
+                                        placeholder="No"
+                                        classNamePrefix="react-select"
+                                        styles={{
+                                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                            control: (base) => ({
+                                                ...base,
+                                                borderRadius: "0.75rem",
+                                                borderColor: errors.vatWithheld ? "#ef4444" : "#d1d5db",
+                                                padding: "1px",
+                                                fontSize: "0.875rem",
+                                                boxShadow: "none",
+                                                "&:hover": { borderColor: errors.vatWithheld ? "#ef4444" : "#3b82f6" },
+                                            }),
+                                        }}
+                                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                    />
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                         Invoice Auto Approval <span className="text-red-500">*</span>
                                     </label>
-                                    <select
-                                        value={formData.invoiceAutoApproval}
-                                        onChange={(e) => setFormField("invoiceAutoApproval", e.target.value)}
-                                        className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer ${errors.invoiceAutoApproval ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"}`}
-                                    >
-                                        <option value="NO">No</option>
-                                        <option value="YES">Yes</option>
-                                    </select>
+                                    <Select
+                                        instanceId="invoice-auto-approval-select"
+                                        value={formData.invoiceAutoApproval ? {
+                                            value: formData.invoiceAutoApproval, label: [
+                                                { value: "NO", label: "No" },
+                                                { value: "YES", label: "Yes" }
+                                            ].find(o => String(o.value) === String(formData.invoiceAutoApproval))?.label || formData.invoiceAutoApproval
+                                        } : null}
+                                        onChange={(selected) => setFormField("invoiceAutoApproval", selected ? selected.value : "")}
+                                        options={[
+                                            { value: "NO", label: "No" },
+                                            { value: "YES", label: "Yes" }
+                                        ]}
+                                        isClearable
+
+                                        placeholder="No"
+                                        classNamePrefix="react-select"
+                                        styles={{
+                                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                            control: (base) => ({
+                                                ...base,
+                                                borderRadius: "0.75rem",
+                                                borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#d1d5db",
+                                                padding: "1px",
+                                                fontSize: "0.875rem",
+                                                boxShadow: "none",
+                                                "&:hover": { borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#3b82f6" },
+                                            }),
+                                        }}
+                                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                    />
                                     {errors.invoiceAutoApproval && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceAutoApproval}</p>}
                                 </div>
 
@@ -1089,6 +1384,7 @@ export default function AddOrder() {
                             onFilesChange={setSelectedFiles}
                             existingAttachments={existingAttachments}
                             onDeleteExisting={(id) => setDeletedAttachmentIds((prev) => [...prev, id])}
+                            onTotalsChange={setTotals}
                         />
                     </div>
                 </div>

@@ -5,6 +5,8 @@ import { useContext } from "react";
 import { loginContext } from "@/components/hooks/LoginContext";
 import { ArrowUpDown, Eye, ChevronDown, CheckCircle, XCircle } from "lucide-react";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
+import LinkedCustomerCell from "../common/LinkedCustomerCell";
+import LinkedBankBookCell from "../common/LinkedBankBookCell";
 import { formatDate } from "@/lib/utils";
 import {
     DropdownMenu,
@@ -16,7 +18,7 @@ import {
 function PaymentTransactionNameCell({ row, onPreview }) {
     const { can } = useContext(loginContext);
     const item = row.original;
-    const nameText = item.narration || `PT #${item.paymentTransactionId}`;
+    const nameText = item.paymentCode || `PT #${item.paymentTransactionId}`;
     return (
         <div className="flex items-center gap-2">
             <span
@@ -53,18 +55,28 @@ function sortableHeader(label) {
 
 export const getPaymentTransactionColumns = (onPreview, onAction) => [
     {
-        accessorKey: "narration",
-        header: sortableHeader("Narration"),
+        accessorKey: "paymentCode",
+        header: sortableHeader("paymentCode"),
         cell: ({ row }) => <PaymentTransactionNameCell row={row} onPreview={onPreview} />,
         filterFn: "includesString",
+    },
+    {
+        accessorKey: "narration",
+        header: sortableHeader("Narration"),
+        cell: ({ row }) => (
+            <span className="text-gray-800 text-sm font-medium">
+                {row.original.narration || row.original.customer?.customerName || "-"}
+            </span>
+        ), filterFn: "includesString",
     },
     {
         accessorKey: "customerName",
         header: sortableHeader("Customer Name"),
         cell: ({ row }) => (
-            <span className="text-gray-800 text-sm font-medium">
-                {row.original.customerName || row.original.customer?.customerName || "-"}
-            </span>
+            <LinkedCustomerCell 
+                customerId={row.original.customerId} 
+                customerName={row.original.customerName || row.original.customer?.customerName} 
+            />
         ),
         filterFn: "includesString",
     },
@@ -72,23 +84,14 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
         accessorKey: "bankBookName",
         header: sortableHeader("Bank Account"),
         cell: ({ row }) => (
-            <span className="text-gray-700 text-sm">
-                {row.original.bankBookName || row.original.bankBook?.bankBookName || "-"}
-            </span>
-        ),
-        filterFn: "includesString",
-    },
-    {
-        accessorKey: "companyName",
-        header: sortableHeader("Company"),
-        cell: ({ row }) => (
-            <LinkedCompanyCell
-                companyId={row.original.companyId}
-                companyName={row.original.companyName || row.original.company?.companyName}
+            <LinkedBankBookCell 
+                bankBookId={row.original.bankBookId} 
+                bankBookName={row.original.bankBookName || row.original.bankBook?.bankBookName} 
             />
         ),
         filterFn: "includesString",
     },
+
     {
         accessorKey: "currencyCode",
         header: sortableHeader("Currency"),
@@ -177,7 +180,7 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
 
             return (
                 <div className="flex items-center gap-2">
-                    {can("paymentTransactionView") && (
+                    {/* {can("paymentTransactionView") && (
                         <button
                             title="View Details"
                             onClick={(e) => {
@@ -188,7 +191,7 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
                         >
                             <Eye className="h-4 w-4" />
                         </button>
-                    )}
+                    )} */}
 
                     {can("paymentTransactionUpdate") && isPending && (
                         <DropdownMenu>
@@ -225,6 +228,10 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
+                    {!can("paymentTransactionUpdate") || !isPending && (
+                        <span>-</span>
+                    )}
+
                 </div>
             );
         },

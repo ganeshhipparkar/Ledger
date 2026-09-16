@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { limitDecimals } from "@/lib/utils";
 
-/**
- * OrderExtraChargeSidePanel
- * Manages item-level extra charge lines (orderItemId set, orderId null).
- * No cap validation (extra charges are unrestricted at item level).
- */
+
 export default function OrderExtraChargeSidePanel({
     isOpen,
     onClose,

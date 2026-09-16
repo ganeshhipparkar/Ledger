@@ -147,6 +147,7 @@ export default function DetailsSidePanel({ config, id, onClose }) {
             const result = payload.encrypted
                 ? decryptResponse(payload.encrypted)
                 : payload;
+            console.log(result, "resulet")
             if (result?.[config.idKey]) {
                 setData(result);
             } else {

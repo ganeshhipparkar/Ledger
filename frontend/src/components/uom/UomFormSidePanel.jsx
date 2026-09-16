@@ -251,8 +251,7 @@ export default function UomFormSidePanel({
                     className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"
                         }`}
                 >
-                    {/* Header */}
-                    <div className="px-6 py-5 bg-[#1f2937] text-white flex items-center justify-between">
+                    <div className="px-6 py-5 bg-white border flex items-center justify-between">
                         <h2 className="text-xl font-semibold">{config.title}</h2>
                         <button
                             onClick={onClose}
@@ -262,7 +261,6 @@ export default function UomFormSidePanel({
                         </button>
                     </div>
 
-                    {/* Content Body */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {fetching ? (
                             <div className="flex items-center justify-center h-48">

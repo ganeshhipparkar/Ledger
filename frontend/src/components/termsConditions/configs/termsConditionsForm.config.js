@@ -4,14 +4,14 @@ export const termsConditionsFormConfig = {
     contexts: {
         "termsConditions-add": {
             mode: "add",
-            title: "Add Terms & Conditions",
+            title: "Terms & Conditions",
             api: {
                 method: "POST",
                 endpoint: "terms-conditions-add",
                 module: "terms-conditions",
             },
             schema: TermsConditionsFormSchema,
-            submitButtonText: "Add Terms",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Terms & Conditions created successfully",
             fields: [
@@ -19,7 +19,7 @@ export const termsConditionsFormConfig = {
                     name: "title",
                     label: "Title",
                     type: "text",
-                    placeholder: "e.g. Standard Terms",
+                    placeholder: "Enter Terms title",
                     required: true,
                     defaultValue: "",
                     readOnly: false,
@@ -48,7 +48,7 @@ export const termsConditionsFormConfig = {
         },
         "termsConditions-update": {
             mode: "update",
-            title: "Edit Terms & Conditions",
+            title: "Terms & Conditions",
             api: {
                 fetchEndpoint: "terms-conditions-details",
                 method: "PUT",
@@ -56,7 +56,7 @@ export const termsConditionsFormConfig = {
                 module: "terms-conditions",
             },
             schema: TermsConditionsUpdateSchema,
-            submitButtonText: "Update Terms",
+            submitButtonText: "Update",
             loadingButtonText: "Updating...",
             successMessage: "Terms & Conditions updated successfully",
             fields: [

@@ -1,5 +1,7 @@
+import { authHeaders } from "@/app/lib/auth";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import dayjs from "dayjs";
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -60,12 +62,60 @@ export function getImageUrl(path) {
   return `http://localhost:4000${cleanPath}`;
 }
 
-export function limitDecimals(val, maxDec = 4) {
+export function limitDecimals(val, maxDec) {
   if (val === null || val === undefined || val === "") return val;
+  const envMaxDec = parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10);
+  const resolvedMaxDec = maxDec ?? (Number.isFinite(envMaxDec) && envMaxDec >= 0 ? envMaxDec : 4);
   const str = String(val);
   const parts = str.split(".");
-  if (parts.length > 1 && parts[1].length > maxDec) {
-    return `${parts[0]}.${parts[1].slice(0, maxDec)}`;
+  if (parts.length > 1 && parts[1].length > resolvedMaxDec) {
+    return `${parts[0]}.${parts[1].slice(0, resolvedMaxDec)}`;
   }
   return str;
+}
+
+export function formatDisplayDate(dateString) {
+  if (!dateString) return "—";
+  const parsed = dayjs(dateString);
+  if (!parsed.isValid()) return "—";
+
+  const envFormat = process.env.NEXT_PUBLIC_DATE_FORMAT;
+  let dayjsFormat = "DD MMM YYYY";
+
+  if (envFormat) {
+    const fmt = envFormat.toLowerCase();
+    if (fmt === "yyyy-mm-dd") {
+      dayjsFormat = "YYYY-MM-DD";
+    } else if (fmt === "dd-mm-yyyy") {
+      dayjsFormat = "DD-MM-YYYY";
+    } else if (fmt === "mm-dd-yyyy") {
+      dayjsFormat = "MM-DD-YYYY";
+    } else {
+      dayjsFormat = envFormat.toUpperCase();
+    }
+  }
+
+  return parsed.format(dayjsFormat);
+}
+
+
+export async function downloadFile(path, filename) {
+    try {
+        const response = await fetch(`http://localhost:4000${path}`, {
+            headers: { ...authHeaders() },
+        });
+        if (!response.ok) throw new Error("Failed to fetch file");
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+        throw err;
+    }
 }

@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { multerConfig } from 'src/packages/config/multer.config';
+import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import {
   PermissionsGuard,
   RequirePermission,
@@ -65,7 +65,7 @@ export class PaymentTransactionController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('paymentTransactionAdd')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }], multerConfig),
+    FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }], attachmentMulterConfig),
   )
   async insertPaymentTransaction(
     @Req() req: any,
@@ -88,7 +88,7 @@ export class PaymentTransactionController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('paymentTransactionUpdate')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }], multerConfig),
+    FileFieldsInterceptor([{ name: 'attachments', maxCount: 10 }], attachmentMulterConfig),
   )
   async updatePaymentTransaction(
     @Req() req: any,

@@ -141,10 +141,14 @@ export class OrderExtraChargeInputDto {
 }
 
 export class OrderItemInputDto {
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  @Transform(({ value }) => safeRequiredId(value))
-  itemId!: number;
+  @Transform(({ value }) => safeOptionalNumber(value))
+  itemId?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsNumber()
   @IsNotEmpty()

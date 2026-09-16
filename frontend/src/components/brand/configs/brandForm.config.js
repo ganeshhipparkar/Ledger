@@ -4,14 +4,14 @@ export const brandFormConfig = {
     contexts: {
         "brand-add": {
             mode: "add",
-            title: "Add Brand",
+            title: "Brand",
             api: {
                 method: "POST",
                 endpoint: "brand-add",
                 module: "brand",
             },
             schema: BrandFormSchema,
-            submitButtonText: "Add Brand",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Brand created successfully",
             fields: [
@@ -19,8 +19,8 @@ export const brandFormConfig = {
                     name: "brandName",
                     label: "Brand Name",
                     type: "text",
-                    placeholder: "e.g. Nike, Apple, Samsung",
                     required: true,
+                    placeholder: "Enter Brand Name",
                     defaultValue: "",
                     readOnly: false,
                     hidden: false,
@@ -76,7 +76,6 @@ export const brandFormConfig = {
                     name: "brandName",
                     label: "Brand Name",
                     type: "text",
-                    placeholder: "e.g. Nike, Apple, Samsung",
                     required: true,
                     defaultValue: "",
                     readOnly: false,

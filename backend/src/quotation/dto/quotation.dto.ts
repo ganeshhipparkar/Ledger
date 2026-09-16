@@ -114,10 +114,14 @@ export class QuotationExtraChargeInputDto {
 }
 
 export class QuotationItemInputDto {
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  @Transform(({ value }) => safeRequiredId(value))
-  itemId!: number;
+  @Transform(({ value }) => safeOptionalNumber(value))
+  itemId?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsNumber()
   @IsNotEmpty()
@@ -168,6 +172,10 @@ export class QuotationDto {
   @IsString()
   @IsNotEmpty()
   expiryDate!: string;
+  
+  @IsOptional()
+  @IsEnum(QuotationStatus)
+  status?: QuotationStatus;
 
   @IsInt()
   @IsNotEmpty()

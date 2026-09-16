@@ -4,14 +4,14 @@ export const itemCategoryFormConfig = {
     contexts: {
         "item-category-add": {
             mode: "add",
-            title: "Add Item Category",
+            title: "Item Category",
             api: {
                 method: "POST",
                 endpoint: "item-category-add",
                 module: "item-category",
             },
             schema: ItemCategoryFormSchema,
-            submitButtonText: "Add Item Category",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Item category created successfully",
             fields: [
@@ -19,7 +19,6 @@ export const itemCategoryFormConfig = {
                     name: "itemCategoryName",
                     label: "Item Category Name",
                     type: "text",
-                    placeholder: "e.g. Hardware",
                     required: true,
                     defaultValue: "",
                     readOnly: false,
@@ -89,7 +88,7 @@ export const itemCategoryFormConfig = {
                     name: "itemCategoryName",
                     label: "Item Category Name",
                     type: "text",
-                    placeholder: "e.g. Hardware",
+                    placeholder: "Enter Item Category name",
                     required: true,
                     defaultValue: "",
                     readOnly: false,

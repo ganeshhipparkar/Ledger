@@ -4,14 +4,14 @@ export const bankFormConfig = {
     contexts: {
         "bank-add": {
             mode: "add",
-            title: "Add Bank",
+            title: "Bank",
             api: {
                 method: "POST",
                 endpoint: "bank-add",
                 module: "bank",
             },
             schema: BankFormSchema,
-            submitButtonText: "Add Bank",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Bank created successfully",
             fields: [
@@ -19,7 +19,6 @@ export const bankFormConfig = {
                     name: "bankName",
                     label: "Bank Name",
                     type: "text",
-                    placeholder: "e.g. Chase, HSBC, HDFC",
                     required: true,
                     defaultValue: "",
                     readOnly: false,
@@ -38,7 +37,6 @@ export const bankFormConfig = {
                     name: "remarks",
                     label: "Remarks",
                     type: "textarea",
-                    placeholder: "Additional notes...",
                     required: false,
                     defaultValue: "",
                     readOnly: false,
@@ -61,7 +59,7 @@ export const bankFormConfig = {
         },
         "bank-update": {
             mode: "update",
-            title: "Edit Bank",
+            title: "Bank",
             api: {
                 fetchEndpoint: "bank-details",
                 method: "PUT",
@@ -69,7 +67,7 @@ export const bankFormConfig = {
                 module: "bank",
             },
             schema: BankUpdateSchema,
-            submitButtonText: "Update Bank",
+            submitButtonText: "Update",
             loadingButtonText: "Updating...",
             successMessage: "Bank updated successfully",
             fields: [
@@ -77,7 +75,6 @@ export const bankFormConfig = {
                     name: "bankName",
                     label: "Bank Name",
                     type: "text",
-                    placeholder: "e.g. Chase, HSBC, HDFC",
                     required: true,
                     defaultValue: "",
                     readOnly: false,
@@ -96,7 +93,6 @@ export const bankFormConfig = {
                     name: "remarks",
                     label: "Remarks",
                     type: "textarea",
-                    placeholder: "Additional notes...",
                     required: false,
                     defaultValue: "",
                     readOnly: false,

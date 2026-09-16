@@ -4,18 +4,6 @@ import { useEffect, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { limitDecimals } from "@/lib/utils";
 
-/**
- * QuotationDiscountSidePanel
- * Manages item-level discount lines (quotationItemId set, quotationId null).
- * Enforces: sum of all discount amounts <= itemGrossAmount.
- *
- * Props:
- *   isOpen         boolean
- *   onClose        () => void
- *   discounts      { id?, discountDescription, discountPrice }[]  – existing lines
- *   itemGrossAmount  number   – qty * unitPrice ceiling
- *   onSave         (discounts) => void  – called when panel closes with Save
- */
 export default function QuotationDiscountSidePanel({
     isOpen,
     onClose,
@@ -68,9 +56,9 @@ export default function QuotationDiscountSidePanel({
 
     const handleSave = () => {
         const sum = lines.reduce((s, l) => s + (parseFloat(l.discountPrice) || 0), 0);
-        if (sum > itemGrossAmount) {
+        if (sum >= itemGrossAmount) {
             setError(
-                `Total discount (${fmtNum(sum)}) cannot exceed item gross amount (${fmtNum(itemGrossAmount)}).`
+                `Total discount (${fmtNum(sum)}) cannot be equal or exceed item gross amount (${fmtNum(itemGrossAmount)}).`
             );
             return;
         }
@@ -90,15 +78,13 @@ export default function QuotationDiscountSidePanel({
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
                 onClick={onClose}
             />
 
-            {/* Panel */}
             <div className="fixed right-0 top-0 z-50 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col">
-                {/* Header */}
+
                 <div className="flex items-center justify-between border-b px-6 py-4 sticky top-0 bg-white z-10">
                     <h2 className="text-lg font-semibold text-gray-800">Item Discounts</h2>
                     <button
@@ -109,7 +95,7 @@ export default function QuotationDiscountSidePanel({
                     </button>
                 </div>
 
-                {/* Body */}
+
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
                     {lines.map((line, idx) => (
                         <div key={idx} className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
@@ -153,8 +139,6 @@ export default function QuotationDiscountSidePanel({
                     >
                         <Plus className="h-4 w-4" /> Add Discount
                     </button>
-
-                    {/* Running total */}
                     <div className="rounded-lg bg-blue-50 px-4 py-2 text-sm flex justify-between">
                         <span className="text-gray-600">Total Discount</span>
                         <span className={`font-semibold ${total > itemGrossAmount ? "text-red-600" : "text-blue-700"}`}>
@@ -170,7 +154,6 @@ export default function QuotationDiscountSidePanel({
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="border-t px-6 py-4 flex gap-3 bg-white">
                     <button
                         type="button"

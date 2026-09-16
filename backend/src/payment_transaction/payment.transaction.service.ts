@@ -595,6 +595,6 @@ export class PaymentTransactionService {
     const count = await queryRunner.manager
       .getRepository(PaymentTransactionEntity)
       .count();
-    return `PAY-${String(count + 1).padStart(3, '0')}`;
+    return `PAY${String(count + 1).padStart(3, '0')}`;
   }
 }

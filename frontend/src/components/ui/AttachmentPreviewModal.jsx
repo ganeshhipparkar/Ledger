@@ -63,7 +63,6 @@ export default function AttachmentPreviewModal({
                     } ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header bar */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/80">
                     <div className="flex items-center gap-2">
                         {isPdf ? (

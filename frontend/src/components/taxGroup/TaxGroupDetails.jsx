@@ -82,7 +82,6 @@ export default function TaxGroupDetails({ id }) {
             <Header page="tax-group-details" />
 
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 pb-20">
-                {/* Breadcrumbs */}
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -95,16 +94,15 @@ export default function TaxGroupDetails({ id }) {
                         className="cursor-pointer hover:text-blue-600 hover:underline"
                         onClick={(e) => gotoPages(e, "/tax-group-list")}
                     >
-                        Tax Group
+                        Tax-Groups
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Details</span>
+                    <span className="text-gray-800">Tax-Group</span>
                 </nav>
 
-                {/* Title + action buttons */}
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">
-                        Details
+                        Tax-Group
                     </h1>
                     <div className="flex items-center gap-4">
                         {can("taxGroupUpdate") && (
@@ -126,7 +124,6 @@ export default function TaxGroupDetails({ id }) {
                 </div>
 
                 <div className="grid grid-cols-12 gap-6">
-                    {/* Left sidebar */}
                     <div className="col-span-12 lg:col-span-3">
                         <div className="rounded-2xl bg-white p-5 shadow-sm">
                             <div className="border-b pb-5">
@@ -145,10 +142,8 @@ export default function TaxGroupDetails({ id }) {
                         </div>
                     </div>
 
-                    {/* Right column */}
                     <div className="col-span-12 lg:col-span-9">
                         <div className="grid gap-6 lg:grid-cols-1">
-                            {/* Details card */}
                             <div className="rounded-2xl bg-white p-6 shadow-sm">
                                 <div className="flex items-center gap-4 border-b pb-5">
                                     <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-blue-50 shadow-md">
@@ -160,7 +155,7 @@ export default function TaxGroupDetails({ id }) {
                                         <div className="text-[#888888] font-bold text-base">
                                             Tax Group Info
                                         </div>
-                                        <div className="mt-2 text-2xl font-extrabold text-blue-600">
+                                        <div className="mt-2 text-2xl font-extrabold text-gray-800">
                                             {item.taxName || item.taxCode || "N/A"}
                                         </div>
                                     </div>

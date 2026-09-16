@@ -1,11 +1,34 @@
 "use client";
+import Select, { components } from "react-select";
 
-import { useEffect, useState } from "react";
+const CustomOption = (props) => {
+    const [isHovered, setIsHovered] = useState(false);
+    return (
+        <components.Option
+            {...props}
+            isHovered={isHovered}
+            innerProps={{
+                ...props.innerProps,
+                onMouseEnter: (e) => {
+                    setIsHovered(true);
+                    if (props.innerProps.onMouseEnter) props.innerProps.onMouseEnter(e);
+                },
+                onMouseLeave: (e) => {
+                    setIsHovered(false);
+                    if (props.innerProps.onMouseLeave) props.innerProps.onMouseLeave(e);
+                }
+            }}
+        />
+    );
+};
+
+import { useEffect, useState, useRef } from "react";
 import { Trash2, Plus } from "lucide-react";
 import AsyncSelect from "react-select/async";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { limitDecimals } from "@/lib/utils";
+import { TAX_CALC_OPTIONS, getItemLabel, computeItem } from "@/lib/itemTaxCalc";
 import OrderDiscountSidePanel from "./OrderDiscountSidePanel";
 import OrderExtraChargeSidePanel from "./OrderExtraChargeSidePanel";
 
@@ -15,34 +38,11 @@ export function generateRowId() {
     return `row-${rowIdCounter}`;
 }
 
-const TAX_CALC_OPTIONS = ["N/A", "EXCLUSIVE", "INCLUSIVE"];
-
-export function getItemLabel(it) {
-    if (!it) return "";
-    const name =
-        it.itemName ||
-        it.item?.itemName ||
-        it.item_itemName ||
-        it.name ||
-        it.item?.name ||
-        "";
-    const code =
-        it.itemCode ||
-        it.item?.itemCode ||
-        it.item_itemCode ||
-        it.code ||
-        it.item?.code ||
-        "";
-    if (name && code) return `${name} (${code})`;
-    if (name) return name;
-    if (code) return code;
-    return it.itemLabel || "";
-}
-
 export function newEmptyItem() {
     return {
         _id: generateRowId(),
         itemId: "",
+        description: "",
         itemLabel: "",
         itemGL: "",
         isDecimalAllowed: true,
@@ -66,56 +66,37 @@ export function newEmptyItem() {
     };
 }
 
-export function computeItem(item) {
-    const qty = Math.max(0, parseFloat(item.quantity) || 0);
-    const up = Math.max(0, parseFloat(item.unitPrice) || 0);
-    const amount = qty * up;
-    const discountTotal = (item.discounts || []).reduce((s, d) => s + Math.max(0, parseFloat(d.discountPrice ?? d.amount) || 0), 0);
-    const extraChargeTotal = (item.extraCharges || []).reduce((s, ec) => s + Math.max(0, parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0), 0);
-    const rawTotalAmount = amount - discountTotal + extraChargeTotal;
-    const totalAmount = isNaN(rawTotalAmount) ? 0 : Math.max(0, rawTotalAmount);
-    const rate = parseFloat(item.taxRate) || 0;
-    let taxableAmount = 0;
-    let taxAmount = 0;
-    let finalAmount = totalAmount;
-
-    if (item.taxCalculation === "INCLUSIVE") {
-        taxableAmount = rate > 0 ? totalAmount / (1 + rate / 100) : totalAmount;
-        taxAmount = totalAmount - taxableAmount;
-        finalAmount = totalAmount;
-    } else if (item.taxCalculation === "EXCLUSIVE") {
-        taxableAmount = totalAmount;
-        taxAmount = (taxableAmount * rate) / 100;
-        finalAmount = totalAmount + (isNaN(taxAmount) ? 0 : taxAmount);
-    } else {
-        taxableAmount = 0;
-        taxAmount = 0;
-        finalAmount = totalAmount;
-    }
-    const resolvedLabel = item.itemLabel || getItemLabel(item);
-    return {
-        ...item,
-        itemLabel: resolvedLabel,
-        amount: isNaN(amount) ? 0 : amount,
-        discountTotal: isNaN(discountTotal) ? 0 : discountTotal,
-        extraChargeTotal: isNaN(extraChargeTotal) ? 0 : extraChargeTotal,
-        totalAmount,
-        taxableAmount: isNaN(taxableAmount) ? 0 : taxableAmount,
-        taxAmount: isNaN(taxAmount) ? 0 : taxAmount,
-        finalAmount: isNaN(finalAmount) ? 0 : finalAmount,
-    };
-}
-
 export default function OrderItemsTable({
     items,
     onChange,
     companyId,
     currencyConversionRate = 1,
     currencySymbol = "",
+    submitAttempted = false,
+    itemErrors = {},
 }) {
     const [taxGroups, setTaxGroups] = useState([]);
     const [discountPanel, setDiscountPanel] = useState({ open: false, idx: -1 });
     const [extraChargePanel, setExtraChargePanel] = useState({ open: false, idx: -1 });
+    const [typedText, setTypedText] = useState({});
+    const [arrowUsed, setArrowUsed] = useState({});
+
+    const handleServiceText = (idx, text) => {
+        if (!text) return;
+        const updated = items.map((it, i) => {
+            if (i !== idx) return it;
+            if (it.itemId && it.itemLabel === text) return it;
+            return computeItem({
+                ...it,
+                itemId: "",
+                description: text,
+                itemLabel: text,
+                isDecimalAllowed: true,
+            });
+        });
+        onChange(updated);
+        setTypedText((prev) => ({ ...prev, [idx]: "" }));
+    };
 
     useEffect(() => {
         if (!companyId) return;
@@ -183,6 +164,8 @@ export default function OrderItemsTable({
     };
 
     const handleItemSelect = (idx, selectedItem) => {
+        setTypedText((prev) => ({ ...prev, [idx]: "" }));
+        setArrowUsed((prev) => ({ ...prev, [idx]: false }));
         if (!selectedItem) {
             const updated = items.map((it, i) => (i === idx ? newEmptyItem() : it));
             onChange(updated);
@@ -337,7 +320,7 @@ export default function OrderItemsTable({
                             return (
                                 <tr key={item._id} className="hover:bg-gray-50/50 transition">
                                     <td className="px-3 py-4 text-gray-500 font-medium text-center">{idx + 1}</td>
-                                    <td className="px-3 py-4 min-w-[240px]">
+                                    <td className="px-3 py-4 min-w-[280px]">
                                         <AsyncSelect
                                             instanceId={`item-select-row-${idx}`}
                                             cacheOptions
@@ -349,19 +332,104 @@ export default function OrderItemsTable({
                                                         value: String(item.itemId),
                                                         label: item.itemLabel || getItemLabel(item) || `Item #${item.itemId}`,
                                                     }
-                                                    : null
+                                                    : item.description
+                                                        ? { value: "service", label: item.description }
+                                                        : null
                                             }
                                             onChange={(selected) => handleItemSelect(idx, selected)}
+                                            onInputChange={(val, { action }) => {
+                                                if (action === "input-change") {
+                                                    setTypedText((prev) => ({ ...prev, [idx]: val }));
+                                                    setArrowUsed((prev) => ({ ...prev, [idx]: false }));
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                                    setArrowUsed((prev) => ({ ...prev, [idx]: true }));
+                                                    return;
+                                                }
+                                                if (e.key === "Enter") {
+                                                    if (arrowUsed[idx]) return;
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    e.target.blur();
+                                                    const typed = typedText[idx]?.trim();
+                                                    const currentLabel = (item.itemLabel || item.description || "").trim();
+                                                    if (typed && typed !== currentLabel) handleServiceText(idx, typed);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                const typed = typedText[idx]?.trim();
+                                                const currentLabel = (item.itemLabel || item.description || "").trim();
+                                                if (typed && typed !== currentLabel) handleServiceText(idx, typed);
+                                            }}
                                             placeholder="Search item..."
+                                            noOptionsMessage={() => null}
                                             isClearable
+                                            isSearchable={!item.itemId && !item.description}
+                                            classNamePrefix="react-select"
+                                            components={{ Option: CustomOption }}
+                                            arrowUsed={arrowUsed[idx]}
+                                            styles={{
+                                                menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                                option: (base, state) => ({
+                                                    ...base,
+                                                    backgroundColor: state.isSelected
+                                                        ? base.backgroundColor
+                                                        : (state.isHovered || (state.isFocused && state.selectProps.arrowUsed))
+                                                            ? "#eff6ff"
+                                                            : "white",
+                                                    color: state.isSelected ? base.color : "#111827",
+                                                }),
+                                                control: (base) => ({
+                                                    ...base,
+                                                    minWidth: "220px",
+                                                    borderRadius: "0.5rem",
+                                                    borderColor: (submitAttempted && !item.itemId && !item.description) ? "#ef4444" : "#d1d5db",
+                                                    fontSize: "0.875rem",
+                                                    boxShadow: "none",
+                                                    "&:hover": { borderColor: (submitAttempted && !item.itemId && !item.description) ? "#ef4444" : "#3b82f6" },
+                                                }),
+                                            }}
+                                            menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                        />
+                                    </td>
+                                    <td className="px-3 py-4 min-w-[190px]">
+                                        <Select
+                                            instanceId={`item-gl-select-${idx}`}
+                                            value={item.itemGL ? {
+                                                value: item.itemGL, label: {
+                                                    "SALES_REVENUE": "Sales Revenue",
+                                                    "COGS": "Cost of Goods Sold",
+                                                    "INVENTORY": "Inventory",
+                                                    "SERVICE_REVENUE": "Service Revenue",
+                                                    "FREIGHT": "Freight & Logistics",
+                                                    "DISCOUNTS": "Discounts Given",
+                                                    "TAX_PAYABLE": "Tax Payable",
+                                                    "OTHER_INCOME": "Other Income"
+                                                }[item.itemGL] || item.itemGL
+                                            } : null}
+                                            onChange={(selected) => handleFieldChange(idx, "itemGL", selected ? selected.value : "")}
+                                            options={[
+                                                { value: "SALES_REVENUE", label: "Sales Revenue" },
+                                                { value: "COGS", label: "Cost of Goods Sold" },
+                                                { value: "INVENTORY", label: "Inventory" },
+                                                { value: "SERVICE_REVENUE", label: "Service Revenue" },
+                                                { value: "FREIGHT", label: "Freight & Logistics" },
+                                                { value: "DISCOUNTS", label: "Discounts Given" },
+                                                { value: "TAX_PAYABLE", label: "Tax Payable" },
+                                                { value: "OTHER_INCOME", label: "Other Income" }
+                                            ]}
+                                            isClearable
+                                            placeholder="-- Select GL --"
                                             classNamePrefix="react-select"
                                             styles={{
                                                 menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                                                 control: (base) => ({
                                                     ...base,
-                                                    minWidth: "220px",
                                                     borderRadius: "0.5rem",
                                                     borderColor: "#d1d5db",
+                                                    minHeight: "34px",
                                                     fontSize: "0.875rem",
                                                     boxShadow: "none",
                                                     "&:hover": { borderColor: "#3b82f6" },
@@ -370,23 +438,6 @@ export default function OrderItemsTable({
                                             menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                                         />
                                     </td>
-                                    <td className="px-3 py-4 min-w-[150px]">
-                                        <select
-                                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                                            value={item.itemGL || ""}
-                                            onChange={(e) => handleFieldChange(idx, "itemGL", e.target.value)}
-                                        >
-                                            <option value="">-- Select GL --</option>
-                                            <option value="SALES_REVENUE">Sales Revenue</option>
-                                            <option value="COGS">Cost of Goods Sold</option>
-                                            <option value="INVENTORY">Inventory</option>
-                                            <option value="SERVICE_REVENUE">Service Revenue</option>
-                                            <option value="FREIGHT">Freight & Logistics</option>
-                                            <option value="DISCOUNTS">Discounts Given</option>
-                                            <option value="TAX_PAYABLE">Tax Payable</option>
-                                            <option value="OTHER_INCOME">Other Income</option>
-                                        </select>
-                                    </td>
                                     <td className="px-3 py-4 min-w-[110px]">
                                         <input
                                             type="number"
@@ -394,7 +445,10 @@ export default function OrderItemsTable({
                                             step={item.isDecimalAllowed ? "0.0001" : "1"}
                                             value={item.quantity}
                                             onChange={(e) => handleFieldChange(idx, "quantity", e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                                            className={`no-spinner w-full rounded-lg border px-2 py-1.5 text-sm text-right outline-none focus:ring-1 ${(submitAttempted && (item.itemId || item.description) && String(item.quantity).trim() === "")
+                                                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                }`}
                                         />
                                     </td>
 
@@ -405,7 +459,10 @@ export default function OrderItemsTable({
                                             step="0.0001"
                                             value={item.unitPrice}
                                             onChange={(e) => handleFieldChange(idx, "unitPrice", e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-right outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                                            className={`no-spinner w-full rounded-lg border px-2 py-1.5 text-sm text-right outline-none focus:ring-1 ${(submitAttempted && (item.itemId || item.description) && (String(item.unitPrice).trim() === "" || itemErrors?.[idx]?.unitPrice))
+                                                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                }`}
                                         />
                                     </td>
 
@@ -445,7 +502,7 @@ export default function OrderItemsTable({
                                         {fmtNum(item.totalAmount)}
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[130px]">
+                                    <td className="px-3 py-4 min-w-[150px]">
                                         <select
                                             value={item.taxCalculation}
                                             onChange={(e) => handleTaxCalcChange(idx, e.target.value)}
@@ -457,23 +514,38 @@ export default function OrderItemsTable({
                                         </select>
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[150px]">
-                                        <select
-                                            value={selectedTaxValue}
-                                            disabled={item.taxCalculation === "N/A"}
-                                            onChange={(e) => handleTaxGroupSelect(idx, e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                        >
-                                            <option value="">-- Tax Group --</option>
-                                            {taxGroups.map((tg, tgIdx) => {
-                                                const val = tg.taxId ?? tg.taxGroupId ?? tg.taxCode;
-                                                return (
-                                                    <option key={val ?? `tg-${tgIdx}`} value={val}>
-                                                        {tg.taxCode} ({tg.taxValue}%)
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
+                                    <td className="px-3 py-4 min-w-[190px]">
+                                        <Select
+                                            instanceId={`item-tax-group-select-${idx}`}
+                                            value={selectedTaxValue ? {
+                                                value: selectedTaxValue, label: (() => {
+                                                    const tg = taxGroups.find(t => String(t.taxId ?? t.taxGroupId ?? t.taxCode) === String(selectedTaxValue));
+                                                    return tg ? `${tg.taxCode} (${tg.taxValue}%)` : selectedTaxValue;
+                                                })()
+                                            } : null}
+                                            onChange={(selected) => handleTaxGroupSelect(idx, selected ? selected.value : "")}
+                                            options={taxGroups.map(tg => ({
+                                                value: String(tg.taxId ?? tg.taxGroupId ?? tg.taxCode),
+                                                label: `${tg.taxCode} (${tg.taxValue}%)`
+                                            }))}
+                                            isDisabled={item.taxCalculation === "N/A"}
+                                            isClearable
+                                            placeholder="-- Tax Group --"
+                                            classNamePrefix="react-select"
+                                            styles={{
+                                                menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                                control: (base, state) => ({
+                                                    ...base,
+                                                    borderRadius: "0.5rem",
+                                                    borderColor: "#d1d5db",
+                                                    minHeight: "34px",
+                                                    fontSize: "0.875rem",
+                                                    boxShadow: "none",
+                                                    "&:hover": { borderColor: "#3b82f6" },
+                                                }),
+                                            }}
+                                            menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                        />
                                     </td>
 
                                     <td className="px-3 py-4 text-right text-gray-700 whitespace-nowrap min-w-[110px]">
@@ -506,7 +578,6 @@ export default function OrderItemsTable({
                 </table>
             </div>
 
-            {/* Discount Side Panel */}
             {discountPanel.open && (
                 <OrderDiscountSidePanel
                     isOpen={discountPanel.open}
@@ -517,7 +588,6 @@ export default function OrderItemsTable({
                 />
             )}
 
-            {/* Extra Charge Side Panel */}
             {extraChargePanel.open && (
                 <OrderExtraChargeSidePanel
                     isOpen={extraChargePanel.open}

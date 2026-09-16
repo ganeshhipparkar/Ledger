@@ -13,12 +13,13 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { multerConfig } from 'src/packages/config/multer.config';
+import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { QuotationService } from './quotation.service';
+import { QuotationPdfService } from './quotation.pdf.service';
 import {
   QuotationDto,
   QuotationListDto,
@@ -28,7 +29,10 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('quotation')
 export class QuotationContorller {
-  constructor(private readonly quotationService: QuotationService) {}
+  constructor(
+    private readonly quotationService: QuotationService,
+    private readonly quotationPdfService: QuotationPdfService,
+  ) {}
 
   @Post('quotation-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -58,7 +62,7 @@ export class QuotationContorller {
         { name: 'attachments', maxCount: 10 },
         { name: 'termsConditionsFile', maxCount: 1 },
       ],
-      multerConfig,
+      attachmentMulterConfig,
     ),
   )
   async insertQuotation(
@@ -70,7 +74,6 @@ export class QuotationContorller {
       termsConditionsFile?: Express.Multer.File[];
     },
   ) {
-    console.log(body,"body")
     const result = await this.quotationService.insertQuotation(body, req, files);
 
     return { encrypted: encryptResponse(result) };
@@ -85,7 +88,7 @@ export class QuotationContorller {
         { name: 'attachments', maxCount: 10 },
         { name: 'termsConditionsFile', maxCount: 1 },
       ],
-      multerConfig,
+      attachmentMulterConfig,
     ),
   )
   async updateQuotation(
@@ -131,5 +134,22 @@ export class QuotationContorller {
       req,
     );
     return { encrypted: encryptResponse(result) };
+  }
+
+  @Post('quotation-invoice-regenerate/:quotationId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('quotationUpdate')
+  async regenerateInvoicePdf(
+    @Req() _req: any,
+    @Param('quotationId') quotationId: string,
+  ) {
+    try {
+      const invoicePdfPath = await this.quotationPdfService.generateAndStoreInvoicePdf(
+        Number(quotationId),
+      );
+      return { encrypted: encryptResponse({ success: 1, invoicePdfPath }) };
+    } catch (err: any) {
+      return { encrypted: encryptResponse({ success: 0, message: err.message }) };
+    }
   }
 }

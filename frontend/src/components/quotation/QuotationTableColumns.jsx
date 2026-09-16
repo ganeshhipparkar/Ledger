@@ -1,8 +1,11 @@
 "use client";
+import { toast } from "react-toastify";
 
-import { MoreVertical, Copy, RefreshCw, ClipboardList } from "lucide-react";
+
+import { MoreVertical, Copy, RefreshCw, ClipboardList, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { formatDisplayDate, downloadFile } from "@/lib/utils";
 
 const STATUS_COLORS = {
     DRAFT: "bg-amber-100 text-amber-700",
@@ -24,7 +27,7 @@ const STATUS_LABELS = {
 
 function fmtDate(d) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDisplayDate(d);
 }
 
 function fmtAmount(n, symbol) {
@@ -32,20 +35,19 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export function getQuotationTableColumns({ can, onStatusUpdate }) {
+export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf, onCustomerClick, onAddedByClick, onQuotationClick }) {
     const router = () => (typeof window !== "undefined" ? window._nextRouter : null);
 
     return [
         {
-            id: "quotationNumber",
-            header: "Quotation No.",
-            accessorKey: "quotationNumber",
+            id: "quotationCode",
+            header: "Quotation Code",
+            accessorKey: "quotationCode",
             cell: ({ row }) => (
                 <span
                     className="font-semibold text-blue-600 cursor-pointer hover:underline"
-                    onClick={() => window.location.href = `/quotation/${row.original.quotationId}`}
-                >
-                    {row.original.quotationNumber ?? `QN-${row.original.quotationId}`}
+                    onClick={() => onQuotationClick?.(`${row.original.quotationId}`)}                 >
+                    {row.original.quotationCode || "-"}
                 </span>
             ),
         },
@@ -53,7 +55,14 @@ export function getQuotationTableColumns({ can, onStatusUpdate }) {
             id: "customerName",
             header: "Customer",
             accessorKey: "customerName",
-            cell: ({ row }) => <span className="text-gray-800">{row.original.customerName ?? "—"}</span>,
+            cell: ({ row }) => (
+                <span
+                    className={row.original.customerId ? "text-blue-600 hover:underline cursor-pointer" : "text-gray-800"}
+                    onClick={() => row.original.customerId && onCustomerClick?.(row.original.customerId)}
+                >
+                    {row.original.customerName ?? "—"}
+                </span>
+            ),
         },
         {
             id: "issueDate",
@@ -67,23 +76,23 @@ export function getQuotationTableColumns({ can, onStatusUpdate }) {
             accessorKey: "expiryDate",
             cell: ({ row }) => fmtDate(row.original.expiryDate),
         },
-        {
-            id: "currencyCode",
-            header: "Currency",
-            accessorKey: "currencyCode",
-            cell: ({ row }) => (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
-                    {row.original.currencyCode ?? "—"}
-                </span>
-            ),
-        },
+        // {
+        //     id: "currencyCode",
+        //     header: "Currency",
+        //     accessorKey: "currencyCode",
+        //     cell: ({ row }) => (
+        //         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+        //             {row.original.currencyCode ?? "—"}
+        //         </span>
+        //     ),
+        // },
         {
             id: "finalAmount",
             header: "Final Amount",
             accessorKey: "finalAmount",
             cell: ({ row }) => (
-                <span className="font-semibold text-gray-800">
-                    {fmtAmount(row.original.finalAmount, row.original.currencySymbol ?? row.original.currencyCode)}
+                <span className="font-semibold text-gray-700">
+                    {fmtAmount(row.original.finalAmount, row.original.currency?.symbol ?? row.original.currencyCode)}
                 </span>
             ),
         },
@@ -106,11 +115,18 @@ export function getQuotationTableColumns({ can, onStatusUpdate }) {
             id: "addedByName",
             header: "Added By",
             accessorKey: "addedByName",
-            cell: ({ row }) => <span className="text-gray-600">{row.original.addedByName ?? "—"}</span>,
+            cell: ({ row }) => (
+                <span
+                    className={row.original.addedBy ? "text-blue-600 hover:underline cursor-pointer" : "text-gray-600"}
+                    onClick={() => row.original.addedBy && onAddedByClick?.(row.original.addedBy)}
+                >
+                    {row.original.addedByName ?? "—"}
+                </span>
+            ),
         },
         {
             id: "actions",
-            header: "",
+            header: "Actions",
             enableSorting: false,
             cell: ({ row }) => {
                 const q = row.original;
@@ -123,9 +139,9 @@ export function getQuotationTableColumns({ can, onStatusUpdate }) {
                             </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
-                            <DropdownMenuItem onClick={() => window.location.href = `/quotation/${q.quotationId}`} className="cursor-pointer text-sm py-2">
+                            {/* <DropdownMenuItem onClick={() => window.location.href = `/quotation/${q.quotationId}`} className="cursor-pointer text-sm py-2">
                                 View Details
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             {isLatestVersion && q.status === "DRAFT" && can?.("quotationUpdate") && (
                                 <>
                                     <DropdownMenuItem onClick={() => window.location.href = `/quotation/${q.quotationId}?edit=true`} className="cursor-pointer text-sm py-2">
@@ -150,6 +166,32 @@ export function getQuotationTableColumns({ can, onStatusUpdate }) {
                                 <DropdownMenuItem onClick={() => window.location.href = `/add-order?quotationId=${q.quotationId}`} className="cursor-pointer text-sm py-2">
                                     Convert to Order
                                 </DropdownMenuItem>
+                            )}
+                            {isLatestVersion && q.status === "CONFIRMED" && (
+                                <>
+                                    {q.invoicePdfPath && (
+                                        <>
+                                            <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
+                                                View Pdf
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
+                                                } catch (err) {
+                                                    toast.error("Failed to download invoice", { position: "top-right" });
+                                                }
+                                            }} className="cursor-pointer text-sm py-2">
+                                                Download Pdf
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {can?.("quotationUpdate") && (
+                                        <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.quotationId)} className="cursor-pointer text-sm py-2">
+                                            Regenerate PDF
+                                        </DropdownMenuItem>
+                                    )}
+                                </>
                             )}
                             {isLatestVersion && can?.("quotationAdd") && (
                                 <DropdownMenuItem onClick={() => window.location.href = `/add-quotation?cloneFrom=${q.quotationId}`} className="cursor-pointer text-sm py-2">

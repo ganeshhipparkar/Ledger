@@ -127,7 +127,6 @@ export default function CustomerDetails({ id }) {
             <Header page="customer-details" />
 
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 pb-20">
-                {/* Breadcrumbs */}
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -143,7 +142,7 @@ export default function CustomerDetails({ id }) {
                         Customers
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Customer Details</span>
+                    <span className="text-gray-800">Details</span>
                 </nav>
 
                 {/* Title + action buttons */}

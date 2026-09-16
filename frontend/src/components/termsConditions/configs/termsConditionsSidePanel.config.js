@@ -1,7 +1,4 @@
-/**
- * Config for the Terms & Conditions read-only preview side panel.
- * Used by DetailsSidePanel in TermsConditionsList.jsx.
- */
+
 export const termsConditionsSidePanelConfig = {
     title: "Terms & Conditions Details",
     fetchEndpoint: "terms-conditions-details",

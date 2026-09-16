@@ -252,15 +252,10 @@ export default function BankFormSidePanel({
                     className={`pointer-events-auto w-screen max-w-md transform bg-white shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
                         }`}
                 >
-                    {/* Header */}
                     <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">{config.title}</h2>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                {config.mode === "add"
-                                    ? "Add a new bank to the system."
-                                    : "Update bank details."}
-                            </p>
+
                         </div>
                         <button
                             type="button"
@@ -271,7 +266,6 @@ export default function BankFormSidePanel({
                         </button>
                     </div>
 
-                    {/* Form body */}
                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
                             {fetching ? (
@@ -280,7 +274,6 @@ export default function BankFormSidePanel({
                                 </div>
                             ) : (
                                 <>
-                                    {/* Bank Code (Read-only display in update mode) */}
                                     {config.mode === "update" && bankCode && (
                                         <div>
                                             <label className={labelClass}>Bank Code</label>
@@ -293,7 +286,6 @@ export default function BankFormSidePanel({
                                         </div>
                                     )}
 
-                                    {/* Bank Name */}
                                     <div>
                                         <label className={labelClass}>
                                             Bank Name <span className="text-red-500">*</span>

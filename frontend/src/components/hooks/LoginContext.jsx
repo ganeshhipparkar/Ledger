@@ -16,7 +16,7 @@ export default function LoginContext({ children }) {
         companies: "grid",
         users: "grid",
         customers: "grid",
-        "payment-transactions": "grid",
+        "payment-transactions": "table",
         "quotation-list": "table",
         "order-list": "table"
     });

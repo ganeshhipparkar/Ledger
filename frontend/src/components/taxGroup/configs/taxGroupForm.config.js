@@ -4,14 +4,14 @@ export const taxGroupFormConfig = {
     contexts: {
         "taxGroup-add": {
             mode: "add",
-            title: "Add Tax Group",
+            title: "Tax Group",
             api: {
                 method: "POST",
                 endpoint: "tax-group-add",
                 module: "tax-group",
             },
             schema: TaxGroupFormSchema,
-            submitButtonText: "Add Tax Group",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Tax Group created successfully",
             fields: [
@@ -48,7 +48,7 @@ export const taxGroupFormConfig = {
         },
         "taxGroup-update": {
             mode: "update",
-            title: "Edit Tax Group",
+            title: "Tax Group",
             api: {
                 fetchEndpoint: "tax-group-details",
                 method: "PUT",
@@ -56,7 +56,7 @@ export const taxGroupFormConfig = {
                 module: "tax-group",
             },
             schema: TaxGroupUpdateSchema,
-            submitButtonText: "Update Tax Group",
+            submitButtonText: "Update",
             loadingButtonText: "Updating...",
             successMessage: "Tax Group updated successfully",
             fields: [

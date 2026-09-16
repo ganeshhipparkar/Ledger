@@ -131,7 +131,7 @@ export default function TaxGroupList() {
             <Header page="tax-groups" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
+
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -140,7 +140,7 @@ export default function TaxGroupList() {
                         Home
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Tax Group</span>
+                    <span className="text-gray-800">Tax-Groups</span>
                 </nav>
 
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

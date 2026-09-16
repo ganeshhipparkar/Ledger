@@ -21,6 +21,7 @@ import { OrderExtraChargeEntity } from './entity/order.extra.charge.entity';
 import { OrderAttachmentsEntity } from './entity/order.attachments';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
+import { OrderPdfService } from './order.pdf.service';
 
 @Module({
   imports: [
@@ -46,7 +47,7 @@ import { OrderService } from './order.service';
     ]),
   ],
   controllers: [OrderController],
-  providers: [OrderService, Filter, FileTransfer, CodeGeneratorService],
+  providers: [OrderService, Filter, FileTransfer, CodeGeneratorService, OrderPdfService],
   exports: [TypeOrmModule, OrderService],
 })
 export class OrderModule {}

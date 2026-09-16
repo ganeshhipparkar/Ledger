@@ -35,7 +35,6 @@ function groupColour(groupName) {
     };
 }
 
-// ─── Profile Card ─────────────────────────────────────────────────────────────
 
 function ProfileCard({ assignment, selected, onSelect }) {
     const colours = groupColour(assignment.groupName);
@@ -165,7 +164,6 @@ export default function LoginPage() {
         else localStorage.removeItem("rememberMeCredentials");
     };
 
-    // ── Step 1: verify credentials ────────────────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
         const result = userLoginSchema.safeParse(formData);
@@ -214,14 +212,11 @@ export default function LoginPage() {
                 setMessage(msg);
                 return;
             }
-
-            // Option A: exactly one active assignment — auto-proceed silently.
             if (activeAssignments.length === 1) {
                 await doSelectProfile(userId, activeAssignments[0], name);
                 return;
             }
 
-            // Two or more — show selection panel.
             setPendingAuth({ userId, email, name, activeAssignments });
             setSelectedAssignment(null);
             setStep("select-profile");
@@ -234,7 +229,6 @@ export default function LoginPage() {
         }
     };
 
-    // ── Shared: call step 2 API, finalise session ─────────────────────────────
     async function doSelectProfile(userId, assignment, displayName) {
         try {
             const data = await callSelectProfile(userId, assignment.id);
@@ -252,7 +246,6 @@ export default function LoginPage() {
         }
     }
 
-    // ── Step 2: proceed with chosen profile ───────────────────────────────────
     const handleProceed = async () => {
         if (!selectedAssignment || !pendingAuth) return;
         setProceedLoading(true);
@@ -270,17 +263,15 @@ export default function LoginPage() {
     return (
         <div className="grid grid-cols-2 h-screen">
 
-            {/* Left panel */}
             <div className="relative bg-white flex flex-col justify-center px-24">
                 <div className="absolute top-6 left-6">
                     <img src="/logo.png" className="h-16" alt="Logo" />
                 </div>
 
-                {/* STEP 1: Credentials */}
                 {step === "credentials" && (
                     <div className="max-w-md ms-24">
                         <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-                            Log in to Production Planning
+                            Log in to Sales Portal
                         </h1>
                         <p className="text-gray-500 mb-10">Enter your credentials to continue</p>
                         <form className="space-y-5" onSubmit={handleSubmit}>

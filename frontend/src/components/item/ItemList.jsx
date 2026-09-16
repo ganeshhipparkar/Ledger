@@ -124,6 +124,15 @@ export default function ItemList() {
                     </nav>
                 </div>
 
+                {viewMode !== "table" && (
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+                        <h1 className="text-2xl font-semibold text-[#1f2937]">
+                            {"Item Master"}
+                        </h1>
+                    </div>
+                )}
+
+
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">

@@ -13,6 +13,7 @@ import { ActivityCode } from '../activity/enums/activity-code.enum';
 import { Filter } from 'src/utilities/filter';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
+import { OrderPdfService } from './order.pdf.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
@@ -61,6 +62,7 @@ type TaxValidationResult =
 
 @Injectable()
 export class OrderService {
+  private readonly dataSource: DataSource;
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
@@ -89,13 +91,13 @@ export class OrderService {
     @InjectRepository(taxGroupEntity)
     private readonly taxGroupRepo: Repository<taxGroupEntity>,
 
-    private readonly eventEmitter: EventEmitter2,
+    private readonly filter: Filter,
     private readonly fileTransfer: FileTransfer,
-    private readonly dataSource: DataSource,
-  ) { }
-
-  @Inject()
-  private readonly filter!: Filter;
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderPdfService: OrderPdfService,
+  ) {
+    this.dataSource = this.orderRepo.manager.connection;
+  }
 
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
@@ -236,7 +238,8 @@ export class OrderService {
       0,
     );
     const vatWithheldAmount = vatWithheld === 'YES' ? taxAmount : 0;
-    const finalAmount = totalAmount + taxAmount + extraCharge - discount - vatWithheldAmount;
+    const itemsFinalTotal = computedItems.reduce((s, i) => s + this.toValidNumber(i.finalAmount, 0), 0);
+    const finalAmount = itemsFinalTotal + extraCharge - discount - vatWithheldAmount;
     return {
       totalAmount: isNaN(totalAmount) ? 0 : totalAmount,
       taxableAmount: isNaN(taxableAmount) ? 0 : taxableAmount,
@@ -307,7 +310,10 @@ export class OrderService {
       const queryString = await this.filter.makeFilterString(
         param.filters,
         'order',
-        {},
+        {
+          customerName: 'customer',
+          companyName: 'company',
+        },
         param.condition === 'Any' ? 'Any' : 'All',
       );
       if (queryString && queryString !== '') {
@@ -327,7 +333,7 @@ export class OrderService {
         .leftJoinAndSelect('order.bankBook', 'bankBook')
         .skip(skip)
         .take(limit)
-        .orderBy('order.orderCode', 'ASC');
+        .orderBy('order.addedDate', 'DESC');
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -462,10 +468,9 @@ export class OrderService {
 
       const orderCode = await this.codeGeneratorService.generateCode(
         this.orderRepo,
-        body.customerId.toString(),
+        `OD${body.customerId}`,
         Number(body.companyId),
         'orderCode',
-        'ORD',
       );
 
       const currency = await this.currencyRepo.findOne({
@@ -544,19 +549,20 @@ export class OrderService {
         const computed = computedItems[i];
 
         const validItemId = this.toOptionalNumber(item.itemId);
-        if (!validItemId || validItemId <= 0) {
+        if ((!validItemId || validItemId <= 0) && !item.description?.trim()) {
           if (queryRunner.isTransactionActive) {
             await queryRunner.rollbackTransaction();
           }
           return {
             success: 0,
-            message: `Row ${i + 1}: Valid item selection is required.`,
+            message: `Row ${i + 1}: Valid item selection or description is required.`,
           };
         }
 
         const itemInsert = await queryRunner.manager.insert(OrderItemEntity, {
           orderId: insertId,
           itemId: validItemId,
+          description: item.description ?? null,
           quantity: this.toValidNumber(item.quantity, 0),
           unitPrice: this.toValidNumber(item.unitPrice, 0),
           taxCalculation: item.taxCalculation,
@@ -893,19 +899,20 @@ export class OrderService {
           const computed = computedItems[i];
 
           const validItemId = this.toOptionalNumber(item.itemId);
-          if (!validItemId || validItemId <= 0) {
+          if ((!validItemId || validItemId <= 0) && !item.description?.trim()) {
             if (queryRunner.isTransactionActive) {
               await queryRunner.rollbackTransaction();
             }
             return {
               success: 0,
-              message: `Row ${i + 1}: Valid item selection is required.`,
+              message: `Row ${i + 1}: Valid item selection or description is required.`,
             };
           }
 
           const itemInsert = await queryRunner.manager.insert(OrderItemEntity, {
             orderId,
             itemId: validItemId,
+            description: item.description ?? null,
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
             taxCalculation: item.taxCalculation,
@@ -1067,6 +1074,12 @@ export class OrderService {
       }
 
       await this.orderRepo.update({ orderId }, { status: OrderStatus.PLACED });
+
+      this.orderPdfService
+        .generateAndStoreInvoicePdf(orderId)
+        .catch((err: Error) =>
+          console.error(`[PDF] Failed to generate invoice for order ${orderId}:`, err.message),
+        );
 
       const { performerId, performerEmail } = this.resolvePerformer(req);
       this.eventEmitter.emit('activity.log', {

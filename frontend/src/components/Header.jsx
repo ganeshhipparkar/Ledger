@@ -68,8 +68,8 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                     ]
                     : page === "item-categories"
                         ? [
-                            { id: "categoryName", label: "Category Name" },
-                            { id: "categoryCode", label: "Category Code" },
+                            { id: "itemCategoryName", label: "Category Name" },
+                            { id: "itemCategoryCode", label: "Category Code" },
                             { id: "companyName", label: "Company" },
                             { id: "status", label: "Status" }
                         ]
@@ -153,13 +153,27 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                                                     { id: "companyName", label: "Company" },
                                                                     { id: "status", label: "Status" }
                                                                 ]
-                                                                : [
-                                                                    { id: "name", label: "Name" },
-                                                                    { id: "email", label: "Email" },
-                                                                    { id: "phone", label: "Phone" },
-                                                                    { id: "groupName", label: "Group Name" },
-                                                                    { id: "status", label: "Status" }
-                                                                ];
+                                                                : page === "quotation-list"
+                                                                    ? [
+                                                                        { id: "quotationCode", label: "Quotation Code" },
+                                                                        { id: "customerName", label: "Customer" },
+                                                                        { id: "companyName", label: "Company" },
+                                                                        { id: "status", label: "Status" }
+                                                                    ]
+                                                                    : page === "order-list"
+                                                                        ? [
+                                                                            { id: "orderCode", label: "Order Code" },
+                                                                            { id: "customerName", label: "Customer" },
+                                                                            { id: "companyName", label: "Company" },
+                                                                            { id: "status", label: "Status" }
+                                                                        ]
+                                                                        : [
+                                                                            { id: "name", label: "Name" },
+                                                                            { id: "email", label: "Email" },
+                                                                            { id: "phone", label: "Phone" },
+                                                                            { id: "groupName", label: "Group Name" },
+                                                                            { id: "status", label: "Status" }
+                                                                        ];
 
     const defaultField = fieldsConfig[0]?.id || "name";
     const isListPage = page === "users" || page === "companies" || page === "currencies" || page === "groups" || page === "items"
@@ -466,7 +480,7 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                             "bank-books": { perm: "bankBookAdd", label: "Add Bank Book" },
                             uoms: { perm: "uomAdd", label: "Add UOM" },
                             packages: { perm: "packageAdd", label: "Add Package" },
-                            "payment-transactions": { perm: "paymentTransactionAdd", label: "Add Payment Transaction" },
+                            "payment-transactions": { perm: "paymentTransactionAdd", label: "Add Payment" },
                             "terms-conditions": { perm: "termsConditionsAdd", label: "Add Terms & Conditions" },
                             "tax-groups": { perm: "taxGroupAdd", label: "Add Tax Group" },
                             "quotation-list": { perm: "quotationAdd", label: "Add Quotation" },
@@ -750,7 +764,6 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                         {openProfile && (
                             <div className="absolute right-0 top-14 z-50 w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
 
-                                {/* Profile switcher section — shown when user has more than one assignment */}
                                 {hasMounted && Array.isArray(displayUser?.assignments) && displayUser.assignments.length > 1 && (
                                     <div className="border-b">
                                         <p className="px-5 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Switch Profile</p>

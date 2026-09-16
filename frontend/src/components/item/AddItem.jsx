@@ -443,7 +443,7 @@ export default function AddItem() {
                                     Purchase Price ({baseCode})
                                 </label>
                                 <input type="text" readOnly value={convertedPurchasePrice} className={readonlyClass}
-                                    placeholder="Auto-computed" />
+                                    placeholder="Auto-filled on entering purchase price" />
                             </div>
 
                             <div>
@@ -459,7 +459,7 @@ export default function AddItem() {
                                     Cost Per Unit ({baseCode})
                                 </label>
                                 <input type="text" readOnly value={convertedCostPerUnit} className={readonlyClass}
-                                    placeholder="Auto-computed" />
+                                    placeholder="Auto-filled on entering cost per unit" />
                             </div>
 
                             <div>
@@ -534,7 +534,6 @@ export default function AddItem() {
                                 onChange={handleFileChange}
                                 className={inputClass("itemImages")}
                             />
-                            <p className="mt-1 text-xs text-gray-400">First image will be used as primary/logo</p>
                             {filePreviews.length > 0 && (
                                 <div className="flex flex-wrap gap-4 mt-4">
                                     {filePreviews.map((url, idx) => (

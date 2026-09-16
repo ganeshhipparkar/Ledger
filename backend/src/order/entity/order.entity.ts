@@ -177,6 +177,9 @@ export class OrderEntity {
   @Column({ type: 'varchar', nullable: true })
   accountNumber?: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  invoicePdfPath?: string | null;
+
   @Column({
     type: 'enum',
     enum: OrderStatus,

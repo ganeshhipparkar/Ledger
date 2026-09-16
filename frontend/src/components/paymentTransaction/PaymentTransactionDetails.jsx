@@ -8,16 +8,12 @@ import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import Loader from "../ui/Loader";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
+import LinkedCustomerCell from "../common/LinkedCustomerCell";
+import LinkedBankBookCell from "../common/LinkedBankBookCell";
 import PaymentTransactionStatusSidePanel from "./PaymentTransactionStatusSidePanel";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
-import { Paperclip, ChevronDown, CheckCircle, XCircle, FileText } from "lucide-react";
-
-const getFileType = (fileName) => {
-    const ext = fileName?.split('.').pop()?.toLowerCase();
-    if (ext === 'pdf') return 'pdf';
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
-    return 'other';
-};
+import { ChevronDown, CheckCircle, XCircle } from "lucide-react";
+import MultiFilePicker from "../common/MultiFilePicker";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -130,7 +126,7 @@ export default function PaymentTransactionDetails({ id }) {
                         Payment Transactions
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800 font-semibold">{displayCode}</span>
+                    <span className="text-gray-800 font-semibold">{"payment"}</span>
                 </nav>
 
                 <div className="mb-6 flex items-center justify-between">
@@ -216,15 +212,21 @@ export default function PaymentTransactionDetails({ id }) {
                                             </div>
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Customer</p>
-                                                <p className="font-medium text-gray-800">
-                                                    {transaction.customerName || transaction.customer?.customerName || "-"}
-                                                </p>
+                                                <div className="font-medium text-gray-800">
+                                                    <LinkedCustomerCell
+                                                        customerId={transaction.customerId}
+                                                        customerName={transaction.customerName || transaction.customer?.customerName}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Bank Account</p>
-                                                <p className="font-medium text-gray-800">
-                                                    {transaction.bankBookName || transaction.bankBook?.bankBookName || "-"}
-                                                </p>
+                                                <div className="font-medium text-gray-800">
+                                                    <LinkedBankBookCell
+                                                        bankBookId={transaction.bankBookId}
+                                                        bankBookName={transaction.bankBookName || transaction.bankBook?.bankBookName}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Company</p>
@@ -313,45 +315,11 @@ export default function PaymentTransactionDetails({ id }) {
                                     </div>
 
                                     <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
-                                        <h3 className="text-base font-bold text-gray-800 border-b pb-3 border-gray-100">
-                                            Attachments
-                                        </h3>
-                                        {Array.isArray(transaction.attachments) && transaction.attachments.length > 0 ? (
-                                            <div className="space-y-2">
-                                                {transaction.attachments.map((att) => {
-                                                    const fileName = att.attachmentUrl ? att.attachmentUrl.split("/").pop() : "Attachment";
-                                                    return (
-                                                        <a
-                                                            key={att.paymentTransactionAttachmentId}
-                                                            href={att.attachmentUrl ? `http://localhost:4000${att.attachmentUrl}` : "#"}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/60 border border-gray-200 hover:border-blue-300 transition text-sm text-gray-700 group"
-                                                        >
-                                                                <div className="flex items-center gap-2 truncate max-w-[80%]">
-                                                                    {getFileType(fileName) === 'image' ? (
-                                                                        <img 
-                                                                            src={`http://localhost:4000${att.attachmentUrl}`} 
-                                                                            className="h-8 w-8 rounded object-cover" 
-                                                                            alt={fileName}
-                                                                        />
-                                                                    ) : getFileType(fileName) === 'pdf' ? (
-                                                                        <FileText className="h-4 w-4 text-red-500 group-hover:text-red-600" />
-                                                                    ) : (
-                                                                        <Paperclip className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
-                                                                    )}
-                                                                    <span className="truncate font-medium group-hover:text-blue-600">{fileName}</span>
-                                                                </div>
-                                                            <span className="text-xs text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition">
-                                                                View →
-                                                            </span>
-                                                        </a>
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-gray-400 italic">No attachments uploaded.</p>
-                                        )}
+                                        <MultiFilePicker
+                                            readOnly
+                                            existingAttachments={transaction.attachments ?? []}
+                                            label="Attachments"
+                                        />
                                     </div>
                                 </div>
                                 <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">

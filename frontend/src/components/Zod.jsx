@@ -692,14 +692,19 @@ export const PaymentTransactionUpdateSchema = z.object({
 });
 
 const QuotationItemRowSchema = z.object({
-    itemId: z.union([z.string(), z.number()])
-        .refine((val) => val !== undefined && val !== null && String(val).trim() !== "" && Number(val) > 0, {
-            message: "Item selection is required.",
-        }),
+    itemId: z.union([z.string(), z.number()]).optional(),
+    description: z.string().optional(),
     quantity: z.union([z.string(), z.number()])
         .refine((val) => parseFloat(val) > 0, { message: "Quantity must be greater than 0." }),
     unitPrice: z.union([z.string(), z.number()])
-        .refine((val) => parseFloat(val) >= 0, { message: "Unit Price cannot be negative." }),
+        .refine((val) => parseFloat(val) > 0, { message: "Unit Price must be greater than 0." }),
+}).refine((data) => {
+    const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "" && Number(data.itemId) > 0;
+    const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
+    return hasItemId || hasDescription;
+}, {
+    message: "Item selection is required.",
+    path: ["itemId"],
 });
 
 export const QuotationFormSchema = z.object({
@@ -777,19 +782,26 @@ export const QuotationUpdateFormSchema = z.object({
 const nonEmpty = (val) => val !== undefined && val !== null && String(val).trim() !== "";
 
 const OrderItemRowSchema = z.object({
-    itemId: z.union([z.string(), z.number()]).refine(nonEmpty, "Item is required."),
+    itemId: z.union([z.string(), z.number()]).optional(),
+    description: z.string().optional(),
     itemGL: z.string().optional(),
     quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
-    unitPrice: z.number({ coerce: true }).nonnegative("Unit Price must be ≥ 0"),
+    unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
     taxCalculation: z.enum(["N/A", "EXCLUSIVE", "INCLUSIVE"]),
+}).refine((data) => {
+    const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
+    const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
+    return hasItemId || hasDescription;
+}, {
+    message: "Item is required.",
+    path: ["itemId"],
 });
 
 export const OrderFormSchema = z.object({
     customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
     currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Currency is required."),
     contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Contact Person is required."),
-    orderDate: z.string().min(1, "Order Date is required.")
-        .refine(val => dayjs(val) >= dayjs().startOf("day"), "Order Date cannot be in the past."),
+    orderDate: z.string().min(1, "Order Date is required."),
     deliveryDate: z.string().optional(),
     businessTerms: z.string().min(1, "Business Terms required."),
     paymentType: z.string().min(1, "Payment Type required."),

@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getInitials } from "@/lib/utils";
+import { getInitials, formatDisplayDate } from "@/lib/utils";
 
 export const QUOTATION_STATUS_COLORS = {
     DRAFT: "mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-700 font-medium",
@@ -40,7 +40,7 @@ export function QuotationStatusBadge({ status }) {
 
 function fmtDate(d) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDisplayDate(d);
 }
 
 function fmtAmount(n, symbol) {
@@ -48,9 +48,8 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function QuotationCard({ quotation, onStatusUpdate, can }) {
+export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCustomerClick, onAddedByClick }) {
     const router = useRouter();
-    const q = quotation;
 
     const handleView = () => router.push(`/quotation/${q.quotationId}`);
     const handleEdit = () => router.push(`/quotation/${q.quotationId}?edit=true`);
@@ -59,122 +58,16 @@ export default function QuotationCard({ quotation, onStatusUpdate, can }) {
     const handleConfirm = () => onStatusUpdate?.(q.quotationId, "CONFIRMED");
     const handleSubmit = () => onStatusUpdate?.(q.quotationId, "SUBMITTED");
 
-    const initials = getInitials(q.quotationNumber ?? `QN-${q.quotationId}`);
+    const initials = getInitials(q.quotationCode || "-");
 
     const isLatestVersion = q.parentQuotationId == null;
 
-    let primaryBtn = null;
-    if (isLatestVersion && q.status === "DRAFT") {
-        if (can?.("quotationUpdate")) {
-            primaryBtn = (
-                <button
-                    type="button"
-                    onClick={handleEdit}
-                    className="w-full rounded-full border border-amber-500 px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 transition cursor-pointer"
-                >
-                    Edit Quotation
-                </button>
-            );
-        }
-    } else if (isLatestVersion && q.status === "SUBMITTED") {
-        if (can?.("quotationUpdate")) {
-            primaryBtn = (
-                <button
-                    type="button"
-                    onClick={handleConfirm}
-                    className="w-full rounded-full border border-green-600 px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 transition cursor-pointer"
-                >
-                    Confirm Quotation
-                </button>
-            );
-        }
-    } else if (isLatestVersion) {
-        primaryBtn = (
-            <button
-                type="button"
-                onClick={handleClone}
-                className="w-full rounded-full border border-blue-500 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-            >
-                Clone Quotation
-            </button>
-        );
-    }
+
 
     return (
         <div className="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
-            {/* Actions Menu */}
-            <div className="absolute top-4 right-4 z-10">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <span
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                            title="Actions"
-                        >
-                            <MoreVertical className="h-5 w-5" />
-                        </span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl">
-                        <DropdownMenuItem
-                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleView();
-                            }}
-                        >
-                            View Details
-                        </DropdownMenuItem>
-                        {isLatestVersion && q.status === "DRAFT" && can?.("quotationUpdate") && (
-                            <>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEdit();
-                                    }}
-                                >
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSubmit();
-                                    }}
-                                >
-                                    Submit
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        {isLatestVersion && q.status === "SUBMITTED" && can?.("quotationUpdate") && (
-                            <>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleChange();
-                                    }}
-                                >
-                                    Change Quotation
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        {isLatestVersion && can?.("quotationAdd") && (
-                            <DropdownMenuItem
-                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleClone();
-                                }}
-                            >
-                                Clone Quotation
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
 
-            {/* Header row: avatar + info */}
+
             <div className="flex items-start gap-4 mb-4">
                 <div className="flex h-20 w-20 min-w-[80px] items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl font-bold uppercase text-blue-600 shadow-md">
                     <span className="text-blue-600">{initials}</span>
@@ -184,7 +77,7 @@ export default function QuotationCard({ quotation, onStatusUpdate, can }) {
                         className={`font-semibold text-lg truncate ${can?.("quotationView") !== false ? "cursor-pointer hover:underline text-[#3563e9]" : "text-gray-800"}`}
                         onClick={handleView}
                     >
-                        {q.quotationNumber ?? `QN-${q.quotationId}`}
+                        {q.quotationCode || "-"}
                     </div>
                     <div className="text-sm text-gray-600 break-all mt-1">
                         {q.customerName || "—"}
@@ -194,17 +87,84 @@ export default function QuotationCard({ quotation, onStatusUpdate, can }) {
                 </div>
             </div>
 
-            {/* Divider section for Customer */}
-            <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1">
-                <span className="text-[#71717b] text-xs uppercase tracking-wide">
-                    Customer
-                </span>
-                <p className="font-semibold mt-1 break-words">
-                    {q.customerName || "—"}
-                </p>
+            <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1 flex flex-row">
+                <div>
+                    <span className="text-[#71717b] text-xs uppercase tracking-wide">
+                        Customer
+                    </span>
+                    <p
+                        className={`font-semibold mt-1 break-words ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : ""}`}
+                        onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
+                    >
+                        {q.customerName || "—"}
+                    </p>
+                </div>
+                <div className="ml-auto">
+                    {isLatestVersion && (
+                        <div className="mt-4 pt-3 ">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div
+                                        type="button"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center justify-center gap-1.5 w-full rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                    >
+                                        Actions
+                                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl">
+                                    {q.status === "DRAFT" && can?.("quotationUpdate") && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit();
+                                                }}
+                                            >
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSubmit();
+                                                }}
+                                            >
+                                                Submit
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {q.status === "SUBMITTED" && can?.("quotationUpdate") && (
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleChange();
+                                            }}
+                                        >
+                                            Change Quotation
+                                        </DropdownMenuItem>
+                                    )}
+                                    {can?.("quotationAdd") && (
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleClone();
+                                            }}
+                                        >
+                                            Clone Quotation
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Detail rows */}
             <div className="space-y-2 mt-4">
                 <div className="text-sm text-gray-600 break-all">
                     <span className="font-medium">Issue Date:</span>{" "}
@@ -216,20 +176,19 @@ export default function QuotationCard({ quotation, onStatusUpdate, can }) {
                 </div>
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Added By:</span>{" "}
-                    {q.addedByName || "—"}
+                    <span
+                        className={q.addedBy ? "cursor-pointer text-blue-600 hover:underline" : ""}
+                        onClick={() => q.addedBy && onAddedByClick?.(q.addedBy)}
+                    >
+                        {q.addedByName || "—"}
+                    </span>
                 </div>
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Final Amount:</span>{" "}
-                    <span className="font-semibold text-gray-800">{fmtAmount(q.finalAmount, q.currencySymbol ?? q.currencyCode)}</span>
+                    <span className="font-semibold text-gray-800">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</span>
                 </div>
             </div>
 
-            {/* Bottom action button */}
-            {primaryBtn && (
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                    {primaryBtn}
-                </div>
-            )}
         </div>
     );
 }

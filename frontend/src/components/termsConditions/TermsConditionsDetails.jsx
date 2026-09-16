@@ -98,10 +98,9 @@ export default function TermsConditionsDetails({ id }) {
                         Terms & Conditions
                     </span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Details</span>
+                    <span className="text-gray-800">Terms</span>
                 </nav>
 
-                {/* Title + action buttons */}
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">
                         Details

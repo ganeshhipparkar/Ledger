@@ -32,6 +32,7 @@ import {
   QuotationUpdateDto,
 } from './dto/quotation.dto';
 import { TaxCalculation } from './entity/quotation.item.entity';
+import { QuotationPdfService } from './quotation.pdf.service';
 
 
 interface ComputedItemAmounts {
@@ -89,6 +90,7 @@ export class QuotationService {
     private readonly eventEmitter: EventEmitter2,
     private readonly fileTransfer: FileTransfer,
     private readonly dataSource: DataSource,
+    private readonly quotationPdfService: QuotationPdfService,
   ) {}
 
   @Inject()
@@ -213,7 +215,8 @@ export class QuotationService {
       0,
     );
     const vatWithheldAmount = vatWithheld === 'YES' ? taxAmount : 0;
-    const finalAmount = totalAmount + taxAmount + extraCharge - discount - vatWithheldAmount;
+    const itemsFinalTotal = computedItems.reduce((s, i) => s + this.toValidNumber(i.finalAmount, 0), 0);
+    const finalAmount = itemsFinalTotal + extraCharge - discount - vatWithheldAmount;
     return {
       totalAmount: isNaN(totalAmount) ? 0 : totalAmount,
       taxableAmount: isNaN(taxableAmount) ? 0 : taxableAmount,
@@ -265,7 +268,10 @@ export class QuotationService {
       const queryString = await this.filter.makeFilterString(
         param.filters,
         'quotation',
-        {},
+        {
+          customerName: 'customer',
+          companyName: 'company',
+        },
         param.condition === 'Any' ? 'Any' : 'All',
       );
       if (queryString && queryString !== '') {
@@ -287,7 +293,7 @@ export class QuotationService {
         .leftJoinAndSelect('quotation.bankBook', 'bankBook')
         .skip(skip)
         .take(limit)
-        .orderBy('quotation.quotationCode', 'ASC');
+        .orderBy('quotation.addedDate', 'DESC');
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -368,7 +374,7 @@ export class QuotationService {
       ? await this.userEntity.findOne({ where: { userId: quotation.updatedBy } })
       : null;
 
-    const versionHistory = await this.quotationRepo.find({
+    const versionHistoryRaw = await this.quotationRepo.find({
       where: { parentQuotationId: id },
       order: { addedDate: 'DESC' },
       select: [
@@ -378,8 +384,20 @@ export class QuotationService {
         'status',
         'finalAmount',
         'addedDate',
+        'issueDate',
+        'expiryDate',
+        'addedBy',
       ],
     });
+
+    const userIds = [...new Set(versionHistoryRaw.map(v => v.addedBy).filter(Boolean))];
+    const users = userIds.length > 0 ? await this.userEntity.find({ where: { userId: In(userIds) } }) : [];
+    const userMap = new Map(users.map(u => [u.userId, u.name]));
+
+    const versionHistory = versionHistoryRaw.map(v => ({
+      ...v,
+      addedByName: v.addedBy ? userMap.get(v.addedBy) || null : null,
+    }));
 
     return {
       ...quotation,
@@ -427,10 +445,9 @@ export class QuotationService {
 
       const quotationCode = await this.codeGeneratorService.generateCode(
         this.quotationRepo,
-        body.customerId.toString(),
+        `QN${body.customerId}`,
         Number(body.companyId),
         'quotationCode',
-        'QUO',
       );
 
       const currency = await this.currencyRepo.findOne({
@@ -473,7 +490,7 @@ export class QuotationService {
         accountNumber: body.accountNumber ?? undefined,
         salesPersonId: this.toOptionalNumber(body.salesPersonId) ?? null,
         currencyConversionRate: this.toValidNumber(body.currencyConversionRate, 1),
-        vatWithheld: body.vatWithheld,
+        vatWithheld: body.vatWithheld,  
         totalAmount: this.toValidNumber(totals.totalAmount, 0),
         taxableAmount: this.toValidNumber(totals.taxableAmount, 0),
         taxAmount: this.toValidNumber(totals.taxAmount, 0),
@@ -482,7 +499,8 @@ export class QuotationService {
         vatWithheldAmount: this.toValidNumber(totals.vatWithheldAmount, 0),
         finalAmount: this.toValidNumber(totals.finalAmount, 0),
         versionCode: body.versionCode || 'V1',
-        parentQuotationId: null, // New quotation is main by default
+        parentQuotationId: null, 
+        status: body.status ?? 'DRAFT',
         addedBy: this.toOptionalNumber(performerId),
         addedDate: new Date(),
       });
@@ -517,7 +535,10 @@ export class QuotationService {
 
         await queryRunner.manager.update(
           QuotationEntity,
-          { quotationId: parentId },
+          [
+            { quotationId: parentId },
+            { parentQuotationId: parentId },
+          ],
           { parentQuotationId: insertId },
         );
       }
@@ -542,16 +563,17 @@ export class QuotationService {
         const computed = computedItems[i];
 
         const validItemId = this.toOptionalNumber(item.itemId);
-        if (!validItemId || validItemId <= 0) {
+        if ((!validItemId || validItemId <= 0) && !item.description?.trim()) {
           if (queryRunner.isTransactionActive) {
             await queryRunner.rollbackTransaction();
           }
-          return { success: 0, message: `Row ${i + 1}: Valid item selection is required.` };
+          return { success: 0, message: `Row ${i + 1}: Valid item selection or description is required.` };
         }
 
         const itemInsert = await queryRunner.manager.insert(QuotationItemEntity, {
           quotationId: insertId,
           itemId: validItemId,
+          description: item.description ?? null,
           quantity: this.toValidNumber(item.quantity, 0),
           unitPrice: this.toValidNumber(item.unitPrice, 0),
           taxCalculation: item.taxCalculation,
@@ -794,9 +816,11 @@ export class QuotationService {
       if (body.salesPersonId !== undefined) patch.salesPersonId = this.toOptionalNumber(body.salesPersonId) ?? null;
       if (body.currencyConversionRate !== undefined) patch.currencyConversionRate = this.toValidNumber(body.currencyConversionRate, existing.currencyConversionRate || 1);
       if (body.vatWithheld !== undefined) patch.vatWithheld = body.vatWithheld;
-      if (body.status !== undefined) patch.status = body.status; 
+      if (body.status !== undefined) patch.status = body.status;
 
-      // recomputed financial columns if items were replaced
+      const isBeingConfirmed =
+        body.status === 'CONFIRMED' && existing.status !== 'CONFIRMED';
+
       if (totals) {
         patch.totalAmount = this.toValidNumber(totals.totalAmount, 0);
         patch.taxableAmount = this.toValidNumber(totals.taxableAmount, 0);
@@ -814,12 +838,10 @@ export class QuotationService {
       await queryRunner.connect();
       await queryRunner.startTransaction();
 
-      //Update main quotation row
       if (Object.keys(patch).length > 0) {
         await queryRunner.manager.update(QuotationEntity, { quotationId }, patch);
       }
 
-      // replace line items (full delete-then-reinsert)
       if (body.quotationItems && body.quotationItems.length > 0 && computedItems) {
         const existingItems = await queryRunner.manager.find(QuotationItemEntity, {
           where: { quotationId },
@@ -843,16 +865,17 @@ export class QuotationService {
           const computed = computedItems[i];
 
           const validItemId = this.toOptionalNumber(item.itemId);
-          if (!validItemId || validItemId <= 0) {
+          if ((!validItemId || validItemId <= 0) && !item.description?.trim()) {
             if (queryRunner.isTransactionActive) {
               await queryRunner.rollbackTransaction();
             }
-            return { success: 0, message: `Row ${i + 1}: Valid item selection is required.` };
+            return { success: 0, message: `Row ${i + 1}: Valid item selection or description is required.` };
           }
 
           const itemInsert = await queryRunner.manager.insert(QuotationItemEntity, {
             quotationId,
             itemId: validItemId,
+            description: item.description ?? null,
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
             taxCalculation: item.taxCalculation,
@@ -974,6 +997,14 @@ export class QuotationService {
         },
         metadata: {},
       });
+
+      if (isBeingConfirmed) {
+        try {
+          await this.quotationPdfService.generateAndStoreInvoicePdf(quotationId);
+        } catch (err: any) {
+          console.error(`[PDF] Failed to generate invoice for quotation ${quotationId}:`, err.message);
+        }
+      }
 
       return { success: 1, message: 'Quotation updated successfully' };
     } catch (err: any) {

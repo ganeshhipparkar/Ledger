@@ -251,15 +251,10 @@ export default function TaxGroupFormSidePanel({
                     className={`pointer-events-auto w-screen max-w-md transform bg-white shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
                         }`}
                 >
-                    {/* Header */}
                     <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">{config.title}</h2>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                {config.mode === "add"
-                                    ? "Add new Tax Group."
-                                    : "Update Tax Group."}
-                            </p>
+
                         </div>
                         <button
                             type="button"
@@ -270,7 +265,6 @@ export default function TaxGroupFormSidePanel({
                         </button>
                     </div>
 
-                    {/* Form body */}
                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
                             {fetching ? (
@@ -279,7 +273,6 @@ export default function TaxGroupFormSidePanel({
                                 </div>
                             ) : (
                                 <>
-                                    {/* Code (Read-only display in update mode) */}
                                     {config.mode === "update" && taxCode && (
                                         <div>
                                             <label className={labelClass}>Tax Code</label>
@@ -291,8 +284,6 @@ export default function TaxGroupFormSidePanel({
                                             />
                                         </div>
                                     )}
-
-                                    {/* Tax Name */}
                                     <div>
                                         <label className={labelClass}>
                                             Tax Name <span className="text-red-500">*</span>
@@ -308,7 +299,6 @@ export default function TaxGroupFormSidePanel({
                                         {errors.taxName && <p className={errorClass}>{errors.taxName}</p>}
                                     </div>
 
-                                    {/* Tax Value */}
                                     <div>
                                         <label className={labelClass}>
                                             Tax Value (%) <span className="text-red-500">*</span>

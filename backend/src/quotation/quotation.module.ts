@@ -21,6 +21,7 @@ import { QuotationExtraChargeEntity } from './entity/quotation.extra.charge.enti
 import { QuotationAttachmentsEntity } from './entity/quotation.attachments';
 import { QuotationContorller } from './quotation.controller';
 import { QuotationService } from './quotation.service';
+import { QuotationPdfService } from './quotation.pdf.service';
 
 @Module({
   imports: [
@@ -46,7 +47,7 @@ import { QuotationService } from './quotation.service';
     ]),
   ],
   controllers: [QuotationContorller],
-  providers: [QuotationService, Filter, FileTransfer, CodeGeneratorService],
+  providers: [QuotationService, QuotationPdfService, Filter, FileTransfer, CodeGeneratorService],
   exports: [TypeOrmModule, QuotationService],
 })
 export class QuotationModule {}

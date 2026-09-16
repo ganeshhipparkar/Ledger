@@ -14,14 +14,18 @@ import { getQuotationTableColumns } from "./QuotationTableColumns";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, ChevronDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getInitials } from "@/lib/utils";
+import { getInitials, formatDisplayDate, downloadFile } from "@/lib/utils";
+import { createPortal } from "react-dom";
+import CustomerSidePanel from "../customer/CustomerSidePanel";
+import UserSidePanel from "../user/UserSidePanel";
+import QuotationSidePanel from "./QuotationSidePanel";
 
 const MySwal = withReactContent(Swal);
 
@@ -31,6 +35,11 @@ export default function QuotationList() {
     const router = useRouter();
     const { can, viewModes, setViewModeForPage } = useContext(loginContext) || {};
     const activeView = viewModes?.["quotation-list"] || "table";
+    const [expandedRows, setExpandedRows] = useState({});
+
+    const toggleRow = (id) => {
+        setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
     const setViewMode = (mode) => setViewModeForPage("quotation-list", mode);
 
     const [data, setData] = useState([]);
@@ -42,6 +51,10 @@ export default function QuotationList() {
     const [totalRecords, setTotalRecords] = useState(0);
     const [statusFilter, setStatusFilter] = useState("");
     const [currentFilters, setCurrentFilters] = useState({});
+
+    const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [selectedQuotationIdForPanel, setSelectedQuotationIdForPanel] = useState(null);
 
     const fetchList = useCallback(async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
         setError("");
@@ -126,10 +139,36 @@ export default function QuotationList() {
         }
     };
 
+    const handleRegeneratePdf = async (quotationId) => {
+        try {
+            const res = await fetch("/relayapi", {
+                method: "POST",
+                headers: { ...authHeaders(), endpoint: `quotation-invoice-regenerate/${quotationId}`, module: "quotation" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            if (data?.success === 1) {
+                toast.success("Invoice PDF regenerated.", { position: "top-right" });
+                fetchList(page, limit, statusFilter, currentFilters);
+            } else {
+                toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
+            }
+        } catch (err) {
+            toast.error(err.message, { position: "top-right" });
+        }
+    };
+
     const handlePageChange = (p) => setPage(p);
     const handleLimitChange = (e) => { setLimit(Number(e.target.value)); setPage(1); };
 
-    const columns = getQuotationTableColumns({ can, onStatusUpdate: handleStatusUpdate });
+    const columns = getQuotationTableColumns({
+        can,
+        onStatusUpdate: handleStatusUpdate,
+        onRegeneratePdf: handleRegeneratePdf,
+        onCustomerClick: (id) => setSelectedCustomerId(id),
+        onAddedByClick: (id) => setSelectedUserId(id),
+        onQuotationClick: (id) => setSelectedQuotationIdForPanel(id)
+    });
 
     return (
         <div className="min-h-screen bg-[#f5f6fa]">
@@ -151,16 +190,25 @@ export default function QuotationList() {
 
             <div className="px-6 py-4 space-y-5">
 
+                {activeView !== "table" && (
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+                        <h1 className="text-2xl font-semibold text-[#1f2937]">
+                            {"Quotation"}
+                        </h1>
+                    </div>
+                )}
+
                 {loading && <div className="flex justify-center py-16"><Loader label="Loading quotations..." /></div>}
                 {!loading && error && <p className="text-center text-red-500 py-12">{error}</p>}
 
                 {!loading && !error && activeView === "table" && (
-                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="rounded-2xl overflow-hidden">
                         <DataTable
                             columns={columns}
+                            title="Quotation"
                             data={data}
                             filterableColumns={[
-                                { id: "quotationNumber", label: "Quotation No.", filterKey: "quotationCode" },
+                                { id: "quotationCode", label: "Quotation Code", filterKey: "quotationCode" },
                                 { id: "customerName", label: "Customer", filterKey: "customerName" },
                                 { id: "currencyCode", label: "Currency", filterKey: "currencyCode" },
                                 { id: "status", label: "Status", filterKey: "status" },
@@ -181,7 +229,13 @@ export default function QuotationList() {
                                 key={q.quotationId}
                                 quotation={q}
                                 onStatusUpdate={handleStatusUpdate}
+                                onRegeneratePdf={handleRegeneratePdf}
                                 can={can}
+                                onCustomerClick={(id) => setSelectedCustomerId(id)}
+                                onAddedByClick={(id) => setSelectedUserId(id)}
+                                onQuotationClick={(id) => setSelectedQuotationIdForPanel(id)}
+                                isOpen={!!expandedRows[q.quotationId]}
+                                onToggle={() => toggleRow(q.quotationId)}
                             />
                         ))}
                     </div>
@@ -197,6 +251,11 @@ export default function QuotationList() {
                                     quotation={q}
                                     onStatusUpdate={handleStatusUpdate}
                                     can={can}
+                                    onCustomerClick={(id) => setSelectedCustomerId(id)}
+                                    onAddedByClick={(id) => setSelectedUserId(id)}
+                                    onQuotationClick={(id) => setSelectedQuotationIdForPanel(id)}
+                                    isOpen={!!expandedRows[q.quotationId]}
+                                    onToggle={() => toggleRow(q.quotationId)}
                                 />
                             ))}
                         </div>
@@ -229,13 +288,37 @@ export default function QuotationList() {
                     </div>
                 )}
             </div>
-        </div >
+            {selectedCustomerId && typeof document !== "undefined" &&
+                createPortal(
+                    <CustomerSidePanel
+                        customerId={selectedCustomerId}
+                        onClose={() => setSelectedCustomerId(null)}
+                    />,
+                    document.body
+                )}
+
+            {selectedUserId && typeof document !== "undefined" &&
+                createPortal(
+                    <UserSidePanel
+                        userId={selectedUserId}
+                        onClose={() => setSelectedUserId(null)}
+                    />,
+                    document.body
+                )}
+
+            {selectedQuotationIdForPanel && (
+                <QuotationSidePanel
+                    id={selectedQuotationIdForPanel}
+                    onClose={() => setSelectedQuotationIdForPanel(null)}
+                />
+            )}
+        </div>
     );
 }
 
-function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
+function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, onCustomerClick, onAddedByClick, onQuotationClick, isOpen, onToggle }) {
     const router = useRouter();
-    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    const fmtDate = (d) => formatDisplayDate(d);
     const fmtAmt = (n, sym) => n != null ? `${sym ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim() : "—";
     const isLatestVersion = q.parentQuotationId == null;
 
@@ -253,14 +336,14 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
                     <div className="text-sm text-gray-500 mb-1">Quotation No.</div>
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 min-w-[40px] items-center justify-center overflow-hidden rounded-full bg-blue-600 text-base font-bold uppercase text-white">
-                            <span className="text-white font-bold">{getInitials(q.quotationNumber ?? `QN-${q.quotationId}`)}</span>
+                            <span className="text-white font-bold">{getInitials(q.quotationCode || "-")}</span>
                         </div>
                         <div className="min-w-0">
                             <div
                                 className={`text-base font-semibold truncate ${can?.("quotationView") !== false ? "cursor-pointer hover:underline text-[#3563e9]" : "text-gray-800"}`}
                                 onClick={handleView}
                             >
-                                {q.quotationNumber ?? `QN-${q.quotationId}`}
+                                {q.quotationCode || "-"}
                             </div>
                             <div className="text-sm text-gray-500 truncate">{q.customerName ?? "—"}</div>
                         </div>
@@ -269,7 +352,12 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
 
                 <div>
                     <div className="text-sm text-gray-500 mb-1">Customer</div>
-                    <div className="text-base text-gray-800 break-all">{q.customerName || "—"}</div>
+                    <div
+                        className={`text-base break-all ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
+                        onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
+                    >
+                        {q.customerName || "—"}
+                    </div>
                 </div>
 
                 <div>
@@ -280,7 +368,7 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
                 <div className="flex items-start justify-between gap-2">
                     <div>
                         <div className="text-sm text-gray-500 mb-1">Final Amount</div>
-                        <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q.currencyCode)}</div>
+                        <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q.currency?.symbol ?? q?.currencyCode)}</div>
                     </div>
                     <div className="flex items-center gap-1">
                         <DropdownMenu>
@@ -294,15 +382,7 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
                                 </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl">
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleView();
-                                    }}
-                                >
-                                    View Details
-                                </DropdownMenuItem>
+
                                 {isLatestVersion && q.status === "DRAFT" && can?.("quotationUpdate") && (
                                     <>
                                         <DropdownMenuItem
@@ -347,6 +427,41 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
                                         </DropdownMenuItem>
                                     </>
                                 )}
+                                {isLatestVersion && q.status === "CONFIRMED" && (
+                                    <>
+                                        {q.invoicePdfPath && (
+                                            <>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
+                                                >
+                                                    View Invoice
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
+                                                        } catch (err) {
+                                                            toast.error("Failed to download invoice", { position: "top-right" });
+                                                        }
+                                                    }}
+                                                >
+                                                    Download Invoice
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {can?.("quotationUpdate") && (
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.quotationId); }}
+                                            >
+                                                Regenerate PDF
+                                            </DropdownMenuItem>
+                                        )}
+                                    </>
+                                )}
                                 {isLatestVersion && can?.("quotationAdd") && (
                                     <DropdownMenuItem
                                         className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -360,9 +475,51 @@ function QuotationListRow({ quotation: q, onStatusUpdate, can }) {
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggle?.();
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2"
+                        >
+                            <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        </button>
                     </div>
                 </div>
             </div>
+            {isOpen && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Issue Date</div>
+                            <div className="text-base text-gray-800 break-all">{q.issueDate ? fmtDate(q.issueDate) : "—"}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Expiry Date</div>
+                            <div className="text-base text-gray-800 break-all">{q.expiryDate ? fmtDate(q.expiryDate) : "—"}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Added By</div>
+                            <div
+                                className={`text-base break-all ${q.addedBy ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
+                                onClick={() => q.addedBy && onAddedByClick?.(q.addedBy)}
+                            >
+                                {q.addedByName || "—"}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Currency Details</div>
+                            <div className="text-base text-gray-800 break-all">{q.currencyCode || "—"} {q.currencySymbol ? `(${q.currencySymbol})` : ""}</div>
+                        </div>
+                        {q.invoiceNo && (
+                            <div>
+                                <div className="text-sm text-gray-500 mb-1">Invoice No.</div>
+                                <div className="text-base text-gray-800 break-all">{q.invoiceNo}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

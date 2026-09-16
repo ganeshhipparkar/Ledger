@@ -8,7 +8,7 @@ import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye
+    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye, Download
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -18,9 +18,11 @@ import { loginContext } from "../hooks/LoginContext";
 import OrderSummaryPanel from "./OrderSummaryPanel";
 import OrderUpdatePriceSidePanel from "./OrderUpdatePriceSidePanel";
 import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
-import { getImageUrl } from "@/lib/utils";
+import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ORDER_STATUS_COLORS } from "./OrderCard";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 
 const MySwal = withReactContent(Swal);
 
@@ -65,7 +67,7 @@ const ITEM_GL_LABELS = {
 
 function fmtDate(d) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDisplayDate(d);
 }
 
 function fmtAmount(n, symbol) {
@@ -88,6 +90,7 @@ export default function OrderDetails({ id }) {
 
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
+    const [selectedItemId, setSelectedItemId] = useState(null);
 
     const fetchDetails = useCallback(async () => {
         try {
@@ -167,6 +170,34 @@ export default function OrderDetails({ id }) {
                 else fetchDetails();
             } else {
                 toast.error(data?.message || `Failed to ${confirmText.toLowerCase()}.`, { position: "top-right" });
+            }
+        } catch (err) {
+            toast.error(err.message, { position: "top-right" });
+        }
+    };
+
+    const handleRegeneratePdf = async () => {
+        const result = await MySwal.fire({
+            title: "Regenerate Order Invoice PDF?",
+            text: "This will overwrite the existing invoice PDF.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Regenerate",
+            confirmButtonColor: "#2563eb",
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch("/relayapi", {
+                method: "POST",
+                headers: { ...authHeaders(), endpoint: `order-invoice-regenerate/${id}`, module: "order" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            if (data?.success === 1) {
+                toast.success("Invoice PDF regenerated.", { position: "top-right" });
+                fetchDetails();
+            } else {
+                toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
             }
         } catch (err) {
             toast.error(err.message, { position: "top-right" });
@@ -256,24 +287,63 @@ export default function OrderDetails({ id }) {
             );
         } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
             actionBlock = (
-                <div className="flex rounded-full overflow-hidden border border-red-500">
-                    <button
-                        type="button"
-                        onClick={() => handleStatusUpdate("CANCEL")}
-                        className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer border-r border-red-200"
-                    >
-                        Cancel Order
-                    </button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <div className="px-3 bg-white text-red-600 hover:bg-red-50 transition cursor-pointer flex items-center justify-center">
-                                <ChevronDown className="h-4 w-4" />
-                            </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                <div className="flex gap-2 items-center">
+                    {q.invoicePdfPath && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")}
+                                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
+                                title="View Invoice PDF"
+                            >
+                                <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                        await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                                    } catch (err) {
+                                        toast.error("Failed to download invoice", { position: "top-right" });
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
+                                title="Download Invoice PDF"
+                            >
+                                <Download className="h-4 w-4" />
+                            </button>
+                        </>
+                    )}
+                    {can?.("orderUpdate") && (
+                        <button
+                            type="button"
+                            onClick={handleRegeneratePdf}
+                            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
+                            title="Regenerate Invoice PDF"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                        </button>
+                    )}
+                    <div className="flex rounded-full overflow-hidden border border-red-500">
+                        <button
+                            type="button"
+                            onClick={() => handleStatusUpdate("CANCEL")}
+                            className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer border-r border-red-200"
+                        >
+                            Cancel Order
+                        </button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <div className="px-3 bg-white text-red-600 hover:bg-red-50 transition cursor-pointer flex items-center justify-center">
+                                    <ChevronDown className="h-4 w-4" />
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
             );
         } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate")) {
@@ -311,7 +381,7 @@ export default function OrderDetails({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/order-list")}>Orders</span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">{q.orderCode ?? `#${id}`}</span>
+                    <span className="text-gray-800">{"Order"}</span>
                 </nav>
             </div>
 
@@ -444,10 +514,22 @@ export default function OrderDetails({ id }) {
                                                     <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                                                         <td className="w-12 px-4 py-3.5 text-center text-gray-500 font-medium">{idx + 1}</td>
                                                         <td className="min-w-[200px] px-4 py-3.5 text-left">
-                                                            <a href={`/item/${item.itemId}`} className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words">
-                                                                {item.item?.itemName ?? "—"}
-                                                            </a>
-                                                            <p className="text-xs text-gray-400 mt-0.5">{item.item?.itemCode ?? "N/A"}</p>
+                                                            {item.itemId ? (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setSelectedItemId(item.item?.itemId ?? item.itemId)}
+                                                                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words text-left bg-transparent border-none p-0 cursor-pointer"
+                                                                    >
+                                                                        {item.item?.itemName ?? "—"}
+                                                                    </button>
+                                                                    <p className="text-xs text-gray-400 mt-0.5">{item.item?.itemCode ?? "N/A"}</p>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-semibold text-gray-800 break-words">
+                                                                    {item.description ?? "—"}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td className="min-w-[100px] px-4 py-3.5 text-left text-gray-700 whitespace-nowrap">{ITEM_GL_LABELS[item.itemGL] || item.itemGL || "0"}</td>
                                                         <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
@@ -555,6 +637,13 @@ export default function OrderDetails({ id }) {
                 fileUrl={tcPreviewUrl}
                 fileType="pdf"
             />
+            {selectedItemId && (
+                <DetailsSidePanel
+                    config={itemSidePanelConfig}
+                    id={selectedItemId}
+                    onClose={() => setSelectedItemId(null)}
+                />
+            )}
         </div>
     );
 }

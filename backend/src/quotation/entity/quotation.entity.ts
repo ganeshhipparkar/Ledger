@@ -170,6 +170,9 @@ export class QuotationEntity {
   @Column('decimal', { precision: 18, scale: 4, default: 0 })
   vatWithheldAmount!: number;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  invoicePdfPath?: string | null;
+
   @Column({ nullable: true })
   addedBy?: number;
 

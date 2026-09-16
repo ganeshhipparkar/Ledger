@@ -36,7 +36,6 @@ export default function MultiFilePicker({
     const [error, setError] = useState("");
     const [previewState, setPreviewState] = useState({ open: false, url: "", type: "" });
 
-    // Manage object URLs for newly uploaded local File objects
     const localPreviews = useMemo(() => {
         return selectedFiles.map((file) => {
             if (typeof window !== "undefined" && file instanceof File) {
@@ -50,7 +49,6 @@ export default function MultiFilePicker({
         });
     }, [selectedFiles]);
 
-    // Cleanup object URLs on unmount/change
     useEffect(() => {
         return () => {
             localPreviews.forEach((item) => {
@@ -67,16 +65,36 @@ export default function MultiFilePicker({
         if (filesArr.length === 0) return;
 
         if (accept) {
-            const isPdfOnly = accept.includes("pdf");
+            const allowed = accept.split(",").map((s) => s.trim().toLowerCase());
             const invalidFile = filesArr.find((f) => {
-                if (isPdfOnly) {
-                    return !f.type.includes("pdf") && !f.name.toLowerCase().endsWith(".pdf");
-                }
-                return false;
+                const fType = f.type ? f.type.toLowerCase() : "";
+                const extMatch = f.name.toLowerCase().match(/\.[a-z0-9]+$/);
+                const fExt = extMatch ? extMatch[0] : "";
+
+                const typeAllowed = allowed.some(a => a === fType || (a.endsWith("/*") && fType.startsWith(a.replace("/*", ""))));
+                const extAllowed = allowed.some(a => {
+                    if (a.startsWith(".")) return a === fExt;
+                    const inferredExt = "." + a.split("/").pop();
+                    if (inferredExt === fExt) return true;
+                    if (a === "image/jpeg" && (fExt === ".jpg" || fExt === ".jpeg")) return true;
+                    return false;
+                });
+
+                return !(typeAllowed || extAllowed);
             });
 
             if (invalidFile) {
-                setError("Only PDF files are allowed.");
+                const hasPdf = accept.includes("pdf");
+                const hasImg = accept.includes("image");
+                if (hasPdf && hasImg) {
+                    setError("Only PDF and image files (JPG, PNG, WEBP, GIF) are allowed.");
+                } else if (hasPdf) {
+                    setError("Only PDF files are allowed.");
+                } else if (hasImg) {
+                    setError("Only image files are allowed.");
+                } else {
+                    setError("Selected file type is not allowed.");
+                }
                 e.target.value = "";
                 return;
             }
@@ -148,7 +166,6 @@ export default function MultiFilePicker({
 
             {hasAnyAttachments ? (
                 <div className="flex flex-wrap gap-2.5 pt-1">
-                    {/* Existing Server Attachments */}
                     {existingAttachments.map((att, idx) => {
                         const rawPath = att.attachmentUrl || att.url || att.fileUrl || "";
                         const fullUrl = getImageUrl(rawPath);
@@ -192,14 +209,12 @@ export default function MultiFilePicker({
                                     </div>
                                 )}
 
-                                {/* Hover preview overlay */}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <div className="h-6 w-6 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow">
                                         <Eye className="h-3 w-3" />
                                     </div>
                                 </div>
 
-                                {/* Delete button in edit/add mode */}
                                 {!readOnly && onDeleteExisting && (
                                     <button
                                         type="button"
@@ -217,7 +232,6 @@ export default function MultiFilePicker({
                         );
                     })}
 
-                    {/* Newly Selected Local Files */}
                     {localPreviews.map((item, idx) => (
                         <div
                             key={`local-${idx}`}
@@ -250,14 +264,12 @@ export default function MultiFilePicker({
                                 </div>
                             )}
 
-                            {/* Hover preview overlay */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <div className="h-6 w-6 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow">
                                     <Eye className="h-3 w-3" />
                                 </div>
                             </div>
 
-                            {/* Delete button in edit/add mode */}
                             {!readOnly && (
                                 <button
                                     type="button"
@@ -281,7 +293,6 @@ export default function MultiFilePicker({
                 </div>
             ) : null}
 
-            {/* Same-Page Preview Modal */}
             <AttachmentPreviewModal
                 open={previewState.open}
                 onClose={() => setPreviewState({ open: false, url: "", type: "" })}

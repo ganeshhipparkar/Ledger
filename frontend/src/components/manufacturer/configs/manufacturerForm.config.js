@@ -4,14 +4,14 @@ export const manufacturerFormConfig = {
     contexts: {
         "manufacturer-add": {
             mode: "add",
-            title: "Add Manufacturer",
+            title: "Manufacturer",
             api: {
                 method: "POST",
                 endpoint: "manufacturer-add",
                 module: "manufacturer",
             },
             schema: ManufacturerFormSchema,
-            submitButtonText: "Add Manufacturer",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Manufacturer created successfully",
             fields: [
@@ -19,7 +19,7 @@ export const manufacturerFormConfig = {
                     name: "manufacturerName",
                     label: "Manufacturer Name",
                     type: "text",
-                    placeholder: "e.g. Sony, Dell, Samsung",
+                    placeholder: "Enter Manufacturer Name",
                     required: true,
                     defaultValue: "",
                     readOnly: false,

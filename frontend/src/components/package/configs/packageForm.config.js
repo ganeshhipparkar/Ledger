@@ -4,14 +4,14 @@ export const packageFormConfig = {
     contexts: {
         "package-add": {
             mode: "add",
-            title: "Add Package",
+            title: "Package",
             api: {
                 method: "POST",
                 endpoint: "package-add",
                 module: "package",
             },
             schema: PackageFormSchema,
-            submitButtonText: "Add Package",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "Package created successfully",
             fields: [

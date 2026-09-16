@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 import { toast } from "react-toastify";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { limitDecimals } from "@/lib/utils";
+import { limitDecimals, formatDisplayDate } from "@/lib/utils";
+import OrderSidePanel from "./OrderSidePanel";
 import Loader from "../ui/Loader";
 
 export default function OrderUpdatePriceSidePanel({
@@ -17,6 +18,7 @@ export default function OrderUpdatePriceSidePanel({
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetchingOrder, setFetchingOrder] = useState(false);
+    const [selectedOrderIdForPanel, setSelectedOrderIdForPanel] = useState(null);
 
     useEffect(() => {
         if (!isOpen || !order?.orderId) {
@@ -138,7 +140,16 @@ export default function OrderUpdatePriceSidePanel({
                     <div>
                         <h2 className="text-lg font-semibold text-gray-800">Update Item Price</h2>
                         {order?.orderCode && (
-                            <span className="text-xs text-gray-500 font-mono">Order: {order.orderCode}</span>
+                            <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
+                                Order:
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedOrderIdForPanel(order.orderId)}
+                                    className="text-blue-600 hover:underline cursor-pointer border-none bg-transparent p-0 font-mono"
+                                >
+                                    {order.orderCode}
+                                </button>
+                            </span>
                         )}
                     </div>
                     <button
@@ -211,6 +222,13 @@ export default function OrderUpdatePriceSidePanel({
                     </button>
                 </div>
             </div>
+
+            {selectedOrderIdForPanel && (
+                <OrderSidePanel
+                    id={selectedOrderIdForPanel}
+                    onClose={() => setSelectedOrderIdForPanel(null)}
+                />
+            )}
         </>
     );
 }

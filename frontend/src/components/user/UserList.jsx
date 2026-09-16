@@ -236,7 +236,7 @@ export default function UsersPage() {
                 {viewMode !== "table" && (
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
                         <h1 className="text-2xl font-semibold text-[#1f2937]">
-                            {superAdmin ? "All Users" : companyAdmin ? "Company Users" : "Users"}
+                            {superAdmin ? "Users" : companyAdmin ? "Users" : "Users"}
                         </h1>
                     </div>
                 )}
@@ -568,7 +568,7 @@ export default function UsersPage() {
 
                     {!error && viewMode === "table" && (
                         <DataTable
-                            title={superAdmin ? "All Users" : companyAdmin ? "Company Users" : "Users"}
+                            title={superAdmin ? "Users" : companyAdmin ? "Users" : "Users"}
                             columns={getColumns((userId) => setSelectedUserId(userId), superAdmin)}
                             data={users}
                             filterableColumns={[

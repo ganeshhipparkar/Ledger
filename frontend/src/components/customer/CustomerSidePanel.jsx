@@ -64,51 +64,43 @@ export default function CustomerSidePanel({ customerId, onClose }) {
 
     const sections = customer
         ? [
-              {
-                  title: "Customer Info",
-                  rows: [
-                      { label: "Customer Code", value: customer.customerCode || "-" },
-                      { label: "Customer Name", value: customer.customerName || "-" },
-                      { label: "Email", value: customer.customerEmail || "-" },
-                      {
-                          label: "Phone",
-                          value: customer.phone ? `${customer.dialCode ? `+${customer.dialCode} ` : ""}${customer.phone}` : "-",
-                      },
-                      {
-                          label: "Company",
-                          value: (
-                              <LinkedCompanyCell
-                                  companyId={customer.companyId}
-                                  companyName={customer.companyName || customer.company?.companyName}
-                              />
-                          ),
-                      },
-                      { label: "Location", value: `${customer.city ? `${customer.city}, ` : ""}${customer.state || ""}, ${customer.country || ""}` },
-                      { label: "Currencies", value: formattedCurrencies },
-                      { label: "Status", value: customer.status || "-" },
-                  ],
-              },
-              {
-                  title: "Owner Info",
-                  rows: [
-                      { label: "Owner Name", value: `${customer.ownerFirstName || ""} ${customer.ownerLastName || ""}`.trim() || "-" },
-                      { label: "Owner Email", value: customer.ownerEmail || "-" },
-                      {
-                          label: "Owner Phone",
-                          value: customer.ownerPhone ? `${customer.ownerDialCode ? `+${customer.ownerDialCode} ` : ""}${customer.ownerPhone}` : "-",
-                      },
-                  ],
-              },
-              {
-                  title: "Audit",
-                  rows: [
-                      { label: "Added By", value: customer.addedByName || "-" },
-                      { label: "Created Date", value: formatDate(customer.createdDate) },
-                      { label: "Updated By", value: customer.updatedByName || "-" },
-                      { label: "Updated Date", value: formatDate(customer.updatedDate) },
-                  ],
-              },
-          ]
+            {
+                title: "Customer Info",
+                rows: [
+                    { label: "Customer Code", value: customer.customerCode || "-" },
+                    { label: "Customer Name", value: customer.customerName || "-" },
+                    { label: "Email", value: customer.customerEmail || "-" },
+                    {
+                        label: "Phone",
+                        value: customer.phone ? `${customer.dialCode ? `+${customer.dialCode} ` : ""}${customer.phone}` : "-",
+                    },
+                    {
+                        label: "Company",
+                        value: (
+                            <LinkedCompanyCell
+                                companyId={customer.companyId}
+                                companyName={customer.companyName || customer.company?.companyName}
+                            />
+                        ),
+                    },
+                    { label: "Location", value: `${customer.city ? `${customer.city}, ` : ""}${customer.state || ""}, ${customer.country || ""}` },
+                    { label: "Currencies", value: formattedCurrencies },
+                    { label: "Status", value: customer.status || "-" },
+                ],
+            },
+            {
+                title: "Owner Info",
+                rows: [
+                    { label: "Owner Name", value: `${customer.ownerFirstName || ""} ${customer.ownerLastName || ""}`.trim() || "-" },
+                    { label: "Owner Email", value: customer.ownerEmail || "-" },
+                    {
+                        label: "Owner Phone",
+                        value: customer.ownerPhone ? `${customer.ownerDialCode ? `+${customer.ownerDialCode} ` : ""}${customer.ownerPhone}` : "-",
+                    },
+                ],
+            },
+
+        ]
         : [];
 
     return (

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { MoreVertical, ChevronDown } from "lucide-react";
+import { formatDisplayDate } from "@/lib/utils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,16 +39,15 @@ export function OrderStatusBadge({ status }) {
 
 function fmtDate(d) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDisplayDate(d);
 }
 
 function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function OrderCard({ order, onStatusUpdate, onUpdatePrice, can }) {
+export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can, onCustomerClick, onAddedByClick }) {
     const router = useRouter();
-    const q = order;
 
     const handleView = () => router.push(`/order/${q.orderId}`);
     const handleEdit = () => router.push(`/order/${q.orderId}?edit=true`);
@@ -96,7 +96,7 @@ export default function OrderCard({ order, onStatusUpdate, onUpdatePrice, can })
 
     return (
         <div className="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
-            {/* Actions Menu */}
+
             <div className="absolute top-4 right-4 z-10">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -197,14 +197,13 @@ export default function OrderCard({ order, onStatusUpdate, onUpdatePrice, can })
                 </DropdownMenu>
             </div>
 
-            {/* Header row */}
             <div className="flex items-start gap-4 mb-4">
                 <div className="flex h-20 w-20 min-w-[80px] items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl font-bold uppercase text-blue-600 shadow-md">
                     <span className="text-blue-600">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0 pr-6">
                     <div
-                        className={`font-semibold text-lg truncate \${can?.("orderView") !== false ? "cursor-pointer hover:underline text-[#3563e9]" : "text-gray-800"}`}
+                        className={`font-semibold text-lg truncate ${can?.("orderView") !== false ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
                         onClick={handleView}
                     >
                         {q.orderCode ?? `OD-\${q.orderId}`}
@@ -224,17 +223,18 @@ export default function OrderCard({ order, onStatusUpdate, onUpdatePrice, can })
                 </div>
             </div>
 
-            {/* Divider section */}
             <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1">
                 <span className="text-[#71717b] text-xs uppercase tracking-wide">
                     Customer
                 </span>
-                <p className="font-semibold mt-1 break-words">
+                <p
+                    className={`font-semibold mt-1 break-words ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : ""}`}
+                    onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
+                >
                     {q.customerName || "—"}
                 </p>
             </div>
 
-            {/* Detail rows */}
             <div className="space-y-2 mt-4">
                 <div className="text-sm text-gray-600 break-all">
                     <span className="font-medium">Order Date:</span>{" "}
@@ -246,15 +246,19 @@ export default function OrderCard({ order, onStatusUpdate, onUpdatePrice, can })
                 </div>
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Added By:</span>{" "}
-                    {q.addedByName || "—"}
+                    <span
+                        className={q.addedBy ? "cursor-pointer text-blue-600 hover:underline" : ""}
+                        onClick={() => q.addedBy && onAddedByClick?.(q.addedBy)}
+                    >
+                        {q.addedByName || "—"}
+                    </span>
                 </div>
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Final Amount:</span>{" "}
-                    <span className="font-semibold text-gray-800">{fmtAmount(q.finalAmount, q.currencySymbol ?? q.currencyCode)}</span>
+                    <span className="font-semibold text-gray-800">{fmtAmount(q.finalAmount, q?.currency.symbol ?? q.currencyCode)}</span>
                 </div>
             </div>
 
-            {/* Bottom action */}
             {primaryBtn && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                     {primaryBtn}

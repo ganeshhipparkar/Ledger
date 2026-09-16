@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Paperclip } from "lucide-react";
 import OrderLevelAdjSidePanel from "./OrderLevelAdjSidePanel";
 import MultiFilePicker from "../common/MultiFilePicker";
@@ -20,6 +20,7 @@ export default function OrderSummaryPanel({
     onDeleteExisting,
     readOnly = false,
     staticTotals = null,
+    onTotalsChange,
 }) {
     const [discountPanelOpen, setDiscountPanelOpen] = useState(false);
     const [extraChargePanelOpen, setExtraChargePanelOpen] = useState(false);
@@ -29,7 +30,8 @@ export default function OrderSummaryPanel({
     const taxAmount = items.reduce((s, it) => s + (parseFloat(it.taxAmount) || 0), 0);
     const oDiscount = orderDiscounts.reduce((s, d) => s + (parseFloat(d.amount ?? d.discountPrice) || 0), 0);
     const oExtraCharge = orderExtraCharges.reduce((s, ec) => s + (parseFloat(ec.amount ?? ec.extraChargesPrice) || 0), 0);
-    const netAmount = grossAmount + taxAmount + oExtraCharge - oDiscount;
+    const itemsFinalTotal = items.reduce((s, it) => s + (parseFloat(it.finalAmount) || 0), 0);
+    const netAmount = itemsFinalTotal + oExtraCharge - oDiscount;
     const vatWithheldAmount = vatWithheld === "YES" ? taxAmount : 0;
     const finalAmount = netAmount - vatWithheldAmount;
 
@@ -44,6 +46,12 @@ export default function OrderSummaryPanel({
         vatWithheldAmount,
         finalAmount,
     };
+
+    useEffect(() => {
+        if (onTotalsChange && !staticTotals) {
+            onTotalsChange(totals);
+        }
+    }, [grossAmount, taxableAmount, taxAmount, oDiscount, oExtraCharge, netAmount, vatWithheldAmount, finalAmount]);
 
     const fmt = (n) =>
         `${currencySymbol} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`.trim();
@@ -112,6 +120,7 @@ export default function OrderSummaryPanel({
 
             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                 <MultiFilePicker
+                    accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
                     selectedFiles={selectedFiles}
                     onFilesChange={onFilesChange}
                     existingAttachments={existingAttachments}

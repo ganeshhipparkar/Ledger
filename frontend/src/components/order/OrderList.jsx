@@ -23,6 +23,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getInitials } from "@/lib/utils";
+import { createPortal } from "react-dom";
+import CustomerSidePanel from "../customer/CustomerSidePanel";
+import UserSidePanel from "../user/UserSidePanel";
+import OrderSidePanel from "./OrderSidePanel";
 
 const MySwal = withReactContent(Swal);
 
@@ -32,6 +36,11 @@ export default function OrderList() {
     const router = useRouter();
     const { can, viewModes, setViewModeForPage } = useContext(loginContext) || {};
     const activeView = viewModes?.["order-list"] || "table";
+    const [expandedRows, setExpandedRows] = useState({});
+
+    const toggleRow = (id) => {
+        setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
     const setViewMode = (mode) => setViewModeForPage("order-list", mode);
 
     const [data, setData] = useState([]);
@@ -43,6 +52,10 @@ export default function OrderList() {
     const [totalRecords, setTotalRecords] = useState(0);
     const [statusFilter, setStatusFilter] = useState("");
     const [currentFilters, setCurrentFilters] = useState({});
+
+    const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [selectedOrderIdForPanel, setSelectedOrderIdForPanel] = useState(null);
 
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [pricePanelOrder, setPricePanelOrder] = useState(null);
@@ -159,13 +172,36 @@ export default function OrderList() {
         }
     };
 
+    const handleRegeneratePdf = async (orderId) => {
+        try {
+            const res = await fetch("/relayapi", {
+                method: "POST",
+                headers: { ...authHeaders(), endpoint: `order-invoice-regenerate/${orderId}`, module: "order" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            if (data?.success === 1) {
+                toast.success("Order PDF regenerated.", { position: "top-right" });
+                fetchList(page, limit, statusFilter, currentFilters);
+            } else {
+                toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
+            }
+        } catch (err) {
+            toast.error(err.message, { position: "top-right" });
+        }
+    };
+
     const handlePageChange = (p) => setPage(p);
     const handleLimitChange = (e) => { setLimit(Number(e.target.value)); setPage(1); };
 
     const columns = getOrderTableColumns({
         can,
         onStatusUpdate: handleStatusUpdate,
-        onUpdatePrice: (order) => { setPricePanelOrder(order); setPricePanelOpen(true); }
+        onRegeneratePdf: handleRegeneratePdf,
+        onUpdatePrice: (order) => { setPricePanelOrder(order); setPricePanelOpen(true); },
+        onCustomerClick: (id) => setSelectedCustomerId(id),
+        onAddedByClick: (id) => setSelectedUserId(id),
+        onOrderClick: (id) => setSelectedOrderIdForPanel(id)
     });
 
     return (
@@ -187,14 +223,23 @@ export default function OrderList() {
 
             <div className="px-6 py-4 space-y-5">
 
+                {activeView !== "table" && (
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+                        <h1 className="text-2xl font-semibold text-[#1f2937]">
+                            {"Order"}
+                        </h1>
+                    </div>
+                )}
+
                 {loading && <div className="flex justify-center py-16"><Loader label="Loading orders..." /></div>}
                 {!loading && error && <p className="text-center text-red-500 py-12">{error}</p>}
 
                 {!loading && !error && activeView === "table" && (
-                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden mt-4">
+                    <div className="rounded-2xl overflow-hidden">
                         <DataTable
                             columns={columns}
                             data={data}
+                            title={"Order"}
                             filterableColumns={[
                                 { id: "orderCode", label: "Order No.", filterKey: "orderCode" },
                                 { id: "customerName", label: "Customer", filterKey: "customerName" },
@@ -216,8 +261,12 @@ export default function OrderList() {
                                 key={q.orderId}
                                 order={q}
                                 onStatusUpdate={handleStatusUpdate}
+                                onRegeneratePdf={handleRegeneratePdf}
                                 onUpdatePrice={(order) => { setPricePanelOrder(order); setPricePanelOpen(true); }}
                                 can={can}
+                                onCustomerClick={(id) => setSelectedCustomerId(id)}
+                                onAddedByClick={(id) => setSelectedUserId(id)}
+                                onOrderClick={(id) => setSelectedOrderIdForPanel(id)}
                             />
                         ))}
                     </div>
@@ -234,6 +283,10 @@ export default function OrderList() {
                                     onStatusUpdate={handleStatusUpdate}
                                     onUpdatePrice={(order) => { setPricePanelOrder(order); setPricePanelOpen(true); }}
                                     can={can}
+                                    onCustomerClick={(id) => setSelectedCustomerId(id)}
+                                    onAddedByClick={(id) => setSelectedUserId(id)}
+                                    isExpanded={!!expandedRows[q.orderId]}
+                                    onToggle={() => toggleRow(q.orderId)}
                                 />
                             ))}
                         </div>
@@ -275,13 +328,43 @@ export default function OrderList() {
                     fetchList();
                 }}
             />
-        </div >
+
+            {selectedCustomerId && typeof document !== "undefined" &&
+                createPortal(
+                    <CustomerSidePanel
+                        customerId={selectedCustomerId}
+                        onClose={() => setSelectedCustomerId(null)}
+                    />,
+                    document.body
+                )}
+
+            {selectedUserId && typeof document !== "undefined" &&
+                createPortal(
+                    <UserSidePanel
+                        userId={selectedUserId}
+                        onClose={() => setSelectedUserId(null)}
+                    />,
+                    document.body
+                )}
+
+            {selectedOrderIdForPanel && (
+                <OrderSidePanel
+                    id={selectedOrderIdForPanel}
+                    onClose={() => setSelectedOrderIdForPanel(null)}
+                />
+            )}
+        </div>
     );
 }
 
-function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
+function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf, can, onCustomerClick, onAddedByClick, isExpanded, onToggle }) {
     const router = useRouter();
     const fmtAmt = (n, sym) => `${sym ?? ""} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim();
+    const fmtDate = (d) => {
+        if (!d) return "—";
+        const date = new Date(d);
+        return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    };
 
     const handleView = () => router.push(`/order/${q.orderId}`);
     const handleEdit = () => router.push(`/order/${q.orderId}?edit=true`);
@@ -315,7 +398,12 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
 
                 <div>
                     <div className="text-sm text-gray-500 mb-1">Customer</div>
-                    <div className="text-base text-gray-800 break-all">{q.customerName || "—"}</div>
+                    <div
+                        className={`text-base break-all ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
+                        onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
+                    >
+                        {q.customerName || "—"}
+                    </div>
                 </div>
 
                 <div>
@@ -333,7 +421,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
                 <div className="flex items-start justify-between gap-2">
                     <div>
                         <div className="text-sm text-gray-500 mb-1">Final Amount</div>
-                        <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q.currencyCode)}</div>
+                        <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q?.currency?.symbol ?? q?.currencyCode)}</div>
                     </div>
                     <div className="flex items-center gap-1">
                         <DropdownMenu>
@@ -347,7 +435,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
                                 </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
-                                <DropdownMenuItem
+                                {/* <DropdownMenuItem
                                     className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -355,7 +443,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
                                     }}
                                 >
                                     View Details
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                                 {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
                                     <>
                                         <DropdownMenuItem
@@ -387,26 +475,62 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
                                         </DropdownMenuItem>
                                     </>
                                 )}
-                                {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
+                                {isOpen && q.status === "PLACED" && (
                                     <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onUpdatePrice?.(q);
-                                            }}
-                                        >
-                                            Update Price
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCancel();
-                                            }}
-                                        >
-                                            Cancel Order
-                                        </DropdownMenuItem>
+                                        {q.invoicePdfPath && (
+                                            <>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
+                                                >
+                                                    View Invoice
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                                                        } catch (err) {
+                                                            toast.error("Failed to download invoice", { position: "top-right" });
+                                                        }
+                                                    }}
+                                                >
+                                                    Download Invoice
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {can?.("orderUpdate") !== false && (
+                                            <>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onRegeneratePdf?.(q.orderId);
+                                                    }}
+                                                >
+                                                    Regenerate PDF
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onUpdatePrice?.(q);
+                                                    }}
+                                                >
+                                                    Update Price
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCancel();
+                                                    }}
+                                                >
+                                                    Cancel Order
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
                                     </>
                                 )}
                                 {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
@@ -433,9 +557,45 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, can }) {
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggle?.();
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2"
+                        >
+                            <ChevronDown className={`h-5 w-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        </button>
                     </div>
                 </div>
             </div>
+            {isExpanded && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Order Date</div>
+                            <div className="text-base text-gray-800 break-all">{q.orderDate ? fmtDate(q.orderDate) : "—"}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Delivery Date</div>
+                            <div className="text-base text-gray-800 break-all">{q.deliveryDate ? fmtDate(q.deliveryDate) : "—"}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Added By</div>
+                            <div
+                                className={`text-base break-all ${q.addedBy ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
+                                onClick={() => q.addedBy && onAddedByClick?.(q.addedBy)}
+                            >
+                                {q.addedByName || "—"}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Currency Details</div>
+                            <div className="text-base text-gray-800 break-all">{q.currencyCode || "—"} {q.currencySymbol ? `(${q.currencySymbol})` : ""}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

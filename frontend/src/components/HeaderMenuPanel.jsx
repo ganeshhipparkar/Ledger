@@ -69,10 +69,12 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
             ]
         },
         {
-            id: "finance",
-            title: "Finance",
+            id: "Sales",
+            title: "Sales",
             items: [
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: activePermissions.includes("paymentTransactionList") || isSuper },
+                { label: "Quotation", redirectTo: "/quotation-list", show: activePermissions.includes("quotationList") || isSuper },
+                { label: "Order", redirectTo: "/order-list", show: activePermissions.includes("orderList") || isSuper },
             ]
         }
     ];
@@ -111,7 +113,6 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
 
     return (
         <>
-            {/* Menu Panel Backdrop */}
             {isOpen && (
                 <div
                     className="fixed inset-0 top-[72px] bg-black/40 z-30 transition-opacity"
@@ -119,12 +120,10 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 />
             )}
 
-            {/* Menu Panel Drawer */}
             <div
                 className={`fixed inset-x-0 bottom-0 top-[72px] bg-white z-40 shadow-2xl flex transition-transform duration-300 ease-in-out ${isOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
                     }`}
             >
-                {/* Left sidebar: category selector */}
                 <div className="w-64 border-r border-gray-200 bg-gray-50/50 p-4 flex flex-col gap-1 overflow-y-auto">
                     <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Modules
@@ -149,70 +148,60 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                     })}
                 </div>
 
-                {/* Right main area: category items */}
                 <div className="flex-1 p-6 overflow-y-auto bg-white">
                     {currentCat && (
-                        <div className="space-y-6">
-                            <div className="pb-3 border-b border-gray-100">
-                                <h3 className="text-lg font-bold text-gray-800">{currentCat.title}</h3>
-                            </div>
-
-                            {/* Flat Items */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
                             {currentCat.items.some(item => !item.children) && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {currentCat.items
-                                        .filter(item => !item.children)
-                                        .map((item, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => {
-                                                    onClose();
-                                                    router.push(item.redirectTo);
-                                                }}
-                                                className="group flex flex-col gap-1 p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-500 hover:shadow-md transition-all cursor-pointer text-left"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-semibold text-gray-800 group-hover:text-blue-600">
-                                                        {item.label}
-                                                    </span>
-                                                    <span className="text-gray-400 group-hover:text-blue-600 text-sm">
-                                                        →
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        ))}
+                                <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                                    <div className="border-b px-6 py-4">
+                                        <h3 className="text-lg font-semibold text-gray-800">
+                                            {currentCat.title}
+                                        </h3>
+                                    </div>
+                                    <ul className="space-y-3 px-6 py-3">
+                                        {currentCat.items
+                                            .filter(item => !item.children)
+                                            .map((item, idx) => (
+                                                <li
+                                                    key={idx}
+                                                    onClick={() => {
+                                                        onClose();
+                                                        router.push(item.redirectTo);
+                                                    }}
+                                                    className="flex items-center text-gray-600 hover:text-black cursor-pointer transition"
+                                                >
+                                                    <span className="mr-3 text-xs">•</span>
+                                                    {item.label}
+                                                </li>
+                                            ))}
+                                    </ul>
                                 </div>
                             )}
 
-                            {/* Grouped Sub-sections */}
                             {currentCat.items
                                 .filter(item => item.children)
                                 .map((group, gIdx) => (
-                                    <div key={gIdx} className="space-y-3 pt-2">
-                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                            {group.groupLabel}
-                                        </h4>
-                                        <div className="flex flex-col gap-3">
+                                    <div key={gIdx} className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                                        <div className="border-b px-6 py-4">
+                                            <h3 className="text-lg font-semibold text-gray-800">
+                                                {group.groupLabel}
+                                            </h3>
+                                        </div>
+                                        <ul className="space-y-3 px-6 py-3">
                                             {group.children.map((child, cIdx) => (
-                                                <button
+                                                <li
                                                     key={cIdx}
                                                     onClick={() => {
                                                         onClose();
                                                         router.push(child.redirectTo);
                                                     }}
-                                                    className="group flex flex-col gap-1 p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-500 hover:shadow-md transition-all cursor-pointer text-left"
+                                                    className="flex items-center text-gray-600 hover:text-black cursor-pointer transition"
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-semibold text-gray-800 group-hover:text-blue-600">
-                                                            {child.label}
-                                                        </span>
-                                                        <span className="text-gray-400 group-hover:text-blue-600 text-sm">
-                                                            →
-                                                        </span>
-                                                    </div>
-                                                </button>
+                                                    <span className="mr-3 text-xs">•</span>
+                                                    {child.label}
+                                                </li>
                                             ))}
-                                        </div>
+                                        </ul>
                                     </div>
                                 ))}
                         </div>

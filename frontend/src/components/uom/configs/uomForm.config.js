@@ -4,14 +4,14 @@ export const uomFormConfig = {
     contexts: {
         "uom-add": {
             mode: "add",
-            title: "Add UOM",
+            title: "UOM",
             api: {
                 method: "POST",
                 endpoint: "uom-add",
                 module: "uom",
             },
             schema: UomFormSchema,
-            submitButtonText: "Add UOM",
+            submitButtonText: "Save",
             loadingButtonText: "Creating...",
             successMessage: "UOM created successfully",
             fields: [

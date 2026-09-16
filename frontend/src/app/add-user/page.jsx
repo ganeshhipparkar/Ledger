@@ -311,15 +311,13 @@ export default function AddUserPage() {
                         </button> */}
                     </div>
 
-                    <div className="w-full rounded-2xl bg-white p-8 shadow-sm">
+                    <div className="w-full rounded-2xl bg-white p-8">
                         <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
 
-                            {/* Basic Information */}
                             <div className="rounded-2xl bg-white p-8 shadow-sm mb-6">
                                 <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Basic Information</h2>
                                 <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
 
-                                    {/* Name */}
                                     <div className="w-full">
                                         <label className="mb-2 block text-sm font-medium text-gray-700">
                                             User Name <span className="text-red-500 text-[16px]">*</span>
@@ -335,7 +333,6 @@ export default function AddUserPage() {
                                         {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                                     </div>
 
-                                    {/* full name */}
                                     <div className="w-full">
                                         <label className="mb-2 block text-sm font-medium text-gray-700">
                                             Name <span className="text-red-500 text-[16px]">*</span>

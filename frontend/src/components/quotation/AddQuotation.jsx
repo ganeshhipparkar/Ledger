@@ -1,4 +1,5 @@
 "use client";
+import Select from "react-select";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +14,8 @@ import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import { QuotationFormSchema } from "../Zod";
-import QuotationItemsTable, { newEmptyItem, computeItem, generateRowId, getItemLabel } from "./QuotationItemsTable";
+import QuotationItemsTable, { newEmptyItem, generateRowId } from "./QuotationItemsTable";
+import { computeItem, getItemLabel } from "@/lib/itemTaxCalc";
 import QuotationSummaryPanel from "./QuotationSummaryPanel";
 import TermsConditionsWidget from "./TermsConditionsWidget";
 
@@ -64,6 +66,9 @@ export default function AddQuotation() {
     });
 
     const [errors, setErrors] = useState({});
+    const [itemErrors, setItemErrors] = useState({});
+    const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [totals, setTotals] = useState({});
 
     const setFormField = (key, value) => {
         if (key === "issueDate") {
@@ -228,6 +233,7 @@ export default function AddQuotation() {
                                 _id: generateRowId(),
                                 itemId: String(it.itemId ?? it.item?.itemId ?? it.id ?? ""),
                                 itemLabel: getItemLabel(it),
+                                description: it.description || "",
                                 isDecimalAllowed: true,
                                 baseCurrencyPrice: basePrice,
                                 quantity: it.quantity,
@@ -449,6 +455,7 @@ export default function AddQuotation() {
     };
 
     const handleSubmit = async (status) => {
+        setSubmitAttempted(true);
         const payloadToValidate = {
             ...formData,
             items,
@@ -457,18 +464,41 @@ export default function AddQuotation() {
         const parseRes = QuotationFormSchema.safeParse(payloadToValidate);
         if (!parseRes.success) {
             const fieldErrors = {};
+            const itemErrors = {};
             parseRes.error.issues.forEach((err) => {
-                const field = err.path[0];
-                if (field && !fieldErrors[field]) {
-                    fieldErrors[field] = err.message;
+                if (err.path[0] === "items" && typeof err.path[1] === "number") {
+                    const idx = err.path[1];
+                    const field = err.path[2];
+                    itemErrors[idx] = { ...(itemErrors[idx] || {}), [field]: err.message };
+                } else {
+                    const field = err.path[0];
+                    if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
                 }
             });
             setErrors(fieldErrors);
+            setItemErrors(itemErrors);
             // toast.error("Please resolve the validation errors before proceeding.", { position: "top-right" });
             return;
         }
 
         setErrors({});
+        setItemErrors({});
+
+        if ((totals.finalAmount ?? 0) <= 0) {
+            toast.error("Discount cannot be more than the total amount.", { position: "top-right" });
+            return;
+        }
+        if (status === "DRAFT") {
+            const confirm = await MySwal.fire({
+                title: "Save as Draft?",
+                text: "Are you sure to save this as Draft ?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Save as Draft",
+                confirmButtonColor: "#2563eb",
+            });
+            if (!confirm.isConfirmed) return;
+        }
 
         if (status === "SUBMITTED") {
             const confirm = await MySwal.fire({
@@ -509,6 +539,7 @@ export default function AddQuotation() {
                     : undefined;
                 return {
                     itemId: validItemId,
+                    description: it.description || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
                     taxCalculation: it.taxCalculation === "N/A" ? "NA" : (it.taxCalculation || "NA"),
@@ -601,7 +632,7 @@ export default function AddQuotation() {
                                 <AsyncSelect
                                     instanceId="customer-select"
                                     cacheOptions
-                                    // defaultOptions
+                                    defaultOptions
                                     loadOptions={loadCustomerOptions}
                                     value={formData.customerId ? { value: formData.customerId, label: formData.customerLabel } : null}
                                     onChange={(selected) => handleCustomerSelect(selected?.raw || null)}
@@ -630,20 +661,37 @@ export default function AddQuotation() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Currency <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.currencyId}
-                                onChange={(e) => handleCurrencySelect(e.target.value)}
-                                disabled={!formData.customerId || currencies.length === 0}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.currencyId ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"
-                                    }`}
-                            >
-                                <option value="">{formData.customerId ? "Select currency" : "Select customer first"}</option>
-                                {currencies.map((c, curIdx) => (
-                                    <option key={c.curId ?? c.currencyId ?? `cur-${curIdx}`} value={c.curId ?? c.currencyId}>
-                                        {c.code} {c.symbol ? `(${c.symbol})` : ""}
-                                    </option>
-                                ))}
-                            </select>
+                            <Select
+                                instanceId="currency-select"
+                                value={formData.currencyId ? {
+                                    value: formData.currencyId, label: currencies.map(c => ({
+                                        value: String(c.curId ?? c.currencyId),
+                                        label: c.code + (c.symbol ? ` (${c.symbol})` : "")
+                                    })).find(o => String(o.value) === String(formData.currencyId))?.label || formData.currencyId
+                                } : null}
+                                onChange={(selected) => handleCurrencySelect(selected ? selected.value : "")}
+                                options={currencies.map(c => ({
+                                    value: String(c.curId ?? c.currencyId),
+                                    label: c.code + (c.symbol ? ` (${c.symbol})` : "")
+                                }))}
+                                isClearable
+                                isDisabled={!formData.customerId || currencies.length === 0 || lockedCustomer}
+                                placeholder={formData.customerId ? "-- Select currency --" : "Select customer first"}
+                                classNamePrefix="react-select"
+                                styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    control: (base) => ({
+                                        ...base,
+                                        borderRadius: "0.75rem",
+                                        borderColor: errors.currencyId ? "#ef4444" : "#d1d5db",
+                                        padding: "1px",
+                                        fontSize: "0.875rem",
+                                        boxShadow: "none",
+                                        "&:hover": { borderColor: errors.currencyId ? "#ef4444" : "#3b82f6" },
+                                    }),
+                                }}
+                                menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                            />
                             {errors.currencyId && <p className="text-red-500 text-xs mt-1 font-medium">{errors.currencyId}</p>}
                         </div>
 
@@ -655,6 +703,7 @@ export default function AddQuotation() {
                                 type="date"
                                 value={formData.issueDate}
                                 onChange={(e) => setFormField("issueDate", e.target.value)}
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.issueDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                                     }`}
                             />
@@ -670,6 +719,7 @@ export default function AddQuotation() {
                                 value={formData.expiryDate}
                                 min={getMinExpiryDate(formData.issueDate)}
                                 onChange={(e) => setFormField("expiryDate", e.target.value)}
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.expiryDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                                     }`}
                             />
@@ -686,8 +736,10 @@ export default function AddQuotation() {
                             if (errors.items) setErrors((prev) => ({ ...prev, items: null }));
                         }}
                         companyId={companyId}
+                        submitAttempted={submitAttempted}
                         currencyConversionRate={formData.currencyConversionRate}
                         currencySymbol={formData.currencySymbol}
+                        itemErrors={itemErrors}
                     />
                     {errors.items && <p className="text-red-500 text-xs mt-1 font-medium px-2">{errors.items}</p>}
                 </div>
@@ -707,35 +759,52 @@ export default function AddQuotation() {
                                             : [];
                                         return (
                                             <>
-                                                <select
-                                                    value={formData.bankBookId}
-                                                    onChange={(e) => {
-                                                        const bb = bankBooks.find((b) => String(b.bankBookId) === e.target.value);
+                                                <Select
+                                                    instanceId="bank-book-select"
+                                                    value={formData.bankBookId ? {
+                                                        value: formData.bankBookId, label: filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId)) ? (() => {
+                                                            const bb = filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId));
+                                                            const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
+                                                            const currencyStr = bb.currencyCode || bb.currency?.code || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.curCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.currencyCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.code || "";
+                                                            return currencyStr ? `${baseName} (${currencyStr})` : baseName;
+                                                        })() : formData.bankBookLabel
+                                                    } : null}
+                                                    onChange={(selected) => {
+                                                        const val = selected ? selected.value : "";
+                                                        const bb = bankBooks.find((b) => String(b.bankBookId ?? b.value) === val);
                                                         setFormData((prev) => ({
                                                             ...prev,
-                                                            bankBookId: e.target.value,
-                                                            bankBookLabel: bb?.accountNumber ?? "",
+                                                            bankBookId: val,
+                                                            bankBookLabel: bb?.accountNumber ?? bb?.bankBookName ?? "",
                                                         }));
                                                         if (errors.bankBookId) setErrors((prev) => ({ ...prev, bankBookId: null }));
                                                     }}
-                                                    disabled={!formData.currencyId || filteredBankBooks.length === 0}
-                                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.bankBookId ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-blue-500"
-                                                        }`}
-                                                >
-                                                    <option value="">
-                                                        {formData.currencyId ? "-- Select bank account --" : "Select currency first"}
-                                                    </option>
-                                                    {filteredBankBooks.map((bb, bbIdx) => {
-                                                        const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId}`);
-                                                        const currencyStr = bb.currencyCode || bb.currency?.code || currencies.find((c) => String(c.currencyId ?? c.id) === String(bb.currencyId))?.currencyCode || currencies.find((c) => String(c.currencyId ?? c.id) === String(bb.currencyId))?.code || "";
-                                                        const labelText = currencyStr ? `${baseName} (${currencyStr})` : baseName;
-                                                        return (
-                                                            <option key={bb.bankBookId ?? `bb-${bbIdx}`} value={bb.bankBookId}>
-                                                                {labelText}
-                                                            </option>
-                                                        );
+                                                    options={filteredBankBooks.map(bb => {
+                                                        const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
+                                                        const currencyStr = bb.currencyCode || bb.currency?.code || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.curCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.currencyCode || currencies.find((c) => String(c.curId ?? c.currencyId ?? c.id) === String(bb.currencyId))?.code || "";
+                                                        return {
+                                                            value: String(bb.bankBookId ?? bb.value),
+                                                            label: currencyStr ? `${baseName} (${currencyStr})` : baseName
+                                                        };
                                                     })}
-                                                </select>
+                                                    isDisabled={!formData.currencyId || filteredBankBooks.length === 0}
+                                                    isClearable
+                                                    placeholder={formData.currencyId ? "-- Select bank account --" : "Select currency first"}
+                                                    classNamePrefix="react-select"
+                                                    styles={{
+                                                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                                        control: (base) => ({
+                                                            ...base,
+                                                            borderRadius: "0.75rem",
+                                                            borderColor: errors.bankBookId ? "#ef4444" : "#d1d5db",
+                                                            padding: "1px",
+                                                            fontSize: "0.875rem",
+                                                            boxShadow: "none",
+                                                            "&:hover": { borderColor: errors.bankBookId ? "#ef4444" : "#3b82f6" },
+                                                        }),
+                                                    }}
+                                                    menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                                />
 
                                             </>
                                         );
@@ -747,14 +816,37 @@ export default function AddQuotation() {
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                         VAT Withheld <span className="text-red-500">*</span>
                                     </label>
-                                    <select
-                                        value={formData.vatWithheld}
-                                        onChange={(e) => setFormField("vatWithheld", e.target.value)}
-                                        className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
-                                    >
-                                        <option value="NO">No</option>
-                                        <option value="YES">Yes</option>
-                                    </select>
+                                    <Select
+                                        instanceId="vat-withheld-select"
+                                        value={formData.vatWithheld ? {
+                                            value: formData.vatWithheld, label: [
+                                                { value: "NO", label: "No" },
+                                                { value: "YES", label: "Yes" }
+                                            ].find(o => String(o.value) === String(formData.vatWithheld))?.label || formData.vatWithheld
+                                        } : null}
+                                        onChange={(selected) => setFormField("vatWithheld", selected ? selected.value : "")}
+                                        options={[
+                                            { value: "NO", label: "No" },
+                                            { value: "YES", label: "Yes" }
+                                        ]}
+                                        isClearable
+
+                                        placeholder="No"
+                                        classNamePrefix="react-select"
+                                        styles={{
+                                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                            control: (base) => ({
+                                                ...base,
+                                                borderRadius: "0.75rem",
+                                                borderColor: errors.vatWithheld ? "#ef4444" : "#d1d5db",
+                                                padding: "1px",
+                                                fontSize: "0.875rem",
+                                                boxShadow: "none",
+                                                "&:hover": { borderColor: errors.vatWithheld ? "#ef4444" : "#3b82f6" },
+                                            }),
+                                        }}
+                                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                    />
                                 </div>
 
                                 <div>
@@ -764,7 +856,7 @@ export default function AddQuotation() {
                                     <AsyncSelect
                                         instanceId="sales-person-select"
                                         cacheOptions
-                                        // defaultOptions
+                                        defaultOptions
                                         loadOptions={loadSalesPersonOptions}
                                         value={formData.salesPersonId ? { value: formData.salesPersonId, label: formData.salesPersonLabel } : null}
                                         onChange={(selected) => {
@@ -839,6 +931,7 @@ export default function AddQuotation() {
                             onFilesChange={setSelectedFiles}
                             existingAttachments={existingAttachments}
                             onDeleteExisting={(id) => setDeletedAttachmentIds((prev) => [...prev, id])}
+                            onTotalsChange={setTotals}
                         />
                     </div>
                 </div>

@@ -467,6 +467,7 @@ export default function AddPaymentTransaction() {
                                     min={minDate}
                                     value={formData.paymentDate}
                                     onChange={handleChange}
+                                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                     className={inputClass("paymentDate")}
                                 />
                                 {errors.paymentDate && (
@@ -508,6 +509,7 @@ export default function AddPaymentTransaction() {
                                     min={minDate}
                                     value={formData.exchangeDate}
                                     onChange={handleChange}
+                                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                     className={inputClass("exchangeDate")}
                                 />
                                 {errors.exchangeDate && (
@@ -597,12 +599,13 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            <div>
+                            <div className="pt-20">
                                 <MultiFilePicker
                                     selectedFiles={selectedFiles}
                                     onFilesChange={setSelectedFiles}
                                     label="Attachments"
                                     required={true}
+                                    accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
                                 />
                             </div>
                         </div>

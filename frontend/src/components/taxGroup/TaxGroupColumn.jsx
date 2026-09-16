@@ -11,11 +11,10 @@ function TaxNameCell({ row, onPreview }) {
     return (
         <div className="flex items-center gap-2">
             <span
-                className={`font-semibold text-base ${
-                    can("taxGroupView")
+                className={`font-semibold text-base ${can("taxGroupView")
                         ? "text-blue-600 cursor-pointer hover:underline"
                         : "text-gray-800"
-                }`}
+                    }`}
                 onClick={(e) => {
                     if (!can("taxGroupView")) return;
                     e.stopPropagation();
@@ -89,15 +88,6 @@ export const getTaxGroupColumns = (onPreview, onEdit) => [
             const item = row.original;
             return (
                 <div className="flex items-center gap-2">
-                    {can("taxGroupView") && (
-                        <button
-                            title="View Details"
-                            onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview(item.taxId); }}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition cursor-pointer"
-                        >
-                            <Eye className="h-4 w-4" />
-                        </button>
-                    )}
                     {can("taxGroupUpdate") && (
                         <button
                             title="Edit"

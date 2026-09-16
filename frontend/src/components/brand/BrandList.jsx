@@ -130,7 +130,6 @@ export default function BrandList() {
             <Header page="brands" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <span
                         className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -221,7 +220,6 @@ export default function BrandList() {
                     document.body
                 )}
 
-            {/* Add / Edit form side panel */}
             <BrandFormSidePanel
                 isOpen={formPanelOpen}
                 onClose={() => setFormPanelOpen(false)}

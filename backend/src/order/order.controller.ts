@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { multerConfig } from 'src/packages/config/multer.config';
+import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import {
   PermissionsGuard,
   RequirePermission,
@@ -27,9 +27,14 @@ import {
 } from './dto/order.dto';
 import { encryptResponse } from 'src/utilities/crypto';
 
+import { OrderPdfService } from './order.pdf.service';
+
 @Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) { }
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly orderPdfService: OrderPdfService,
+  ) { }
 
   @Post('order-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -56,7 +61,7 @@ export class OrderController {
         { name: 'attachments', maxCount: 10 },
         { name: 'termsConditionsFile', maxCount: 1 },
       ],
-      multerConfig,
+      attachmentMulterConfig,
     ),
   )
   async insertOrder(
@@ -81,7 +86,7 @@ export class OrderController {
         { name: 'attachments', maxCount: 10 },
         { name: 'termsConditionsFile', maxCount: 1 },
       ],
-      multerConfig,
+      attachmentMulterConfig,
     ),
   )
   async updateOrder(
@@ -171,5 +176,22 @@ export class OrderController {
       req,
     );
     return { encrypted: encryptResponse(result) };
+  }
+
+  @Post('order-invoice-regenerate/:orderId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('orderUpdate')
+  async regenerateInvoicePdf(
+    @Req() _req: any,
+    @Param('orderId') orderId: string,
+  ) {
+    try {
+      const invoicePdfPath = await this.orderPdfService.generateAndStoreInvoicePdf(
+        Number(orderId),
+      );
+      return { encrypted: encryptResponse({ success: 1, invoicePdfPath }) };
+    } catch (err: any) {
+      return { encrypted: encryptResponse({ success: 0, message: err.message }) };
+    }
   }
 }

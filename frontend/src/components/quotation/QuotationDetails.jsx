@@ -8,7 +8,7 @@ import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList, GitBranch,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Paperclip, FileText, Eye,
+    RefreshCw, Copy, ClipboardList, Paperclip, FileText, Eye, Download,
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -17,7 +17,9 @@ import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import QuotationSummaryPanel from "./QuotationSummaryPanel";
 import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
-import { getImageUrl } from "@/lib/utils";
+import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 
 const MySwal = withReactContent(Swal);
 
@@ -51,7 +53,7 @@ function StatusBadge({ status }) {
 
 function fmtDate(d) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDisplayDate(d);
 }
 
 function fmtAmount(n, symbol) {
@@ -73,6 +75,7 @@ export default function QuotationDetails({ id }) {
     const [activeTab, setActiveTab] = useState("summary");
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
+    const [selectedItemId, setSelectedItemId] = useState(null);
 
     const fetchDetails = useCallback(async () => {
         try {
@@ -127,6 +130,34 @@ export default function QuotationDetails({ id }) {
         }
     };
 
+    const handleRegeneratePdf = async () => {
+        const result = await MySwal.fire({
+            title: "Regenerate Invoice PDF?",
+            text: "This will overwrite the existing invoice PDF.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Regenerate",
+            confirmButtonColor: "#2563eb",
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch("/relayapi", {
+                method: "POST",
+                headers: { ...authHeaders(), endpoint: `quotation-invoice-regenerate/${id}`, module: "quotation" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            if (data?.success === 1) {
+                toast.success("Invoice PDF regenerated.", { position: "top-right" });
+                fetchDetails();
+            } else {
+                toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
+            }
+        } catch (err) {
+            toast.error(err.message, { position: "top-right" });
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[#f5f6fa] flex items-center justify-center">
@@ -167,7 +198,7 @@ export default function QuotationDetails({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/quotation-list")}>Quotations</span>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">{q.quotationNumber ?? `#${id}`}</span>
+                    <span className="text-gray-800">{"Quotation"}</span>
                 </nav>
             </div>
 
@@ -176,7 +207,7 @@ export default function QuotationDetails({ id }) {
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 flex-1">
-                            <InfoCard label="Quotation No." value={q.quotationNumber ?? `#${id}`} mono />
+                            <InfoCard label="Quotation No." value={q.quotationCode || "-"} mono />
                             <InfoCard
                                 label="Customer"
                                 value={q.customerName ?? "—"}
@@ -230,6 +261,41 @@ export default function QuotationDetails({ id }) {
                                             variant="outline"
                                         />
                                     )}
+                                    {q.status === "CONFIRMED" && (
+                                        <>
+                                            {q.invoicePdfPath && (
+                                                <>
+                                                    <ActionBtn
+                                                        onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")}
+                                                        icon={<Eye className="h-4 w-4" />}
+                                                        title="view"
+                                                        variant="outline"
+                                                    />
+                                                    <ActionBtn
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
+                                                            } catch (err) {
+                                                                toast.error("Failed to download invoice", { position: "top-right" });
+                                                            }
+                                                        }}
+                                                        icon={<Download className="h-4 w-4" />}
+                                                        label=""
+                                                        variant="outline"
+                                                    />
+                                                </>
+                                            )}
+                                            {can?.("quotationUpdate") && (
+                                                <ActionBtn
+                                                    onClick={handleRegeneratePdf}
+                                                    icon={<RefreshCw className="h-4 w-4" />}
+                                                    label=""
+                                                    variant="outline"
+                                                />
+                                            )}
+                                        </>
+                                    )}
                                     {can?.("quotationAdd") && (
                                         <ActionBtn
                                             onClick={() => router.push(`/add-quotation?cloneFrom=${id}`)}
@@ -248,7 +314,6 @@ export default function QuotationDetails({ id }) {
             <div className="flex flex-1 gap-4 px-6 pb-8">
                 <div className={`shrink-0 transition-all duration-200 ${sidebarExpanded ? "w-44" : "w-12"}`}>
                     <div className="sticky top-4 rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-                        {/* Toggle button */}
                         <button
                             type="button"
                             onClick={() => setSidebarExpanded(!sidebarExpanded)}
@@ -327,10 +392,22 @@ export default function QuotationDetails({ id }) {
                                                     <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                                                         <td className="w-12 px-4 py-3.5 text-center text-gray-500 font-medium">{idx + 1}</td>
                                                         <td className="min-w-[200px] px-4 py-3.5 text-left">
-                                                            <a href={`/item/${item.itemId}`} className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words">
-                                                                {item.item?.itemName ?? item.itemCode ?? "—"}
-                                                            </a>
-                                                            <p className="text-xs text-gray-400 mt-0.5">{item.itemCode ?? item.item?.itemCode ?? ""}</p>
+                                                            {item.itemId ? (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setSelectedItemId(item.item?.itemId ?? item.itemId)}
+                                                                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words text-left bg-transparent border-none p-0 cursor-pointer"
+                                                                    >
+                                                                        {item.item?.itemName ?? item.itemCode ?? "—"}
+                                                                    </button>
+                                                                    <p className="text-xs text-gray-400 mt-0.5">{item.itemCode ?? item.item?.itemCode ?? ""}</p>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-semibold text-gray-800 break-words">
+                                                                    {item.description ?? "—"}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
@@ -363,7 +440,6 @@ export default function QuotationDetails({ id }) {
                                         </div>
                                     </div>
 
-                                    {/* Remarks */}
                                     <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <span className="text-gray-400">☰</span> Remarks
@@ -465,7 +541,7 @@ export default function QuotationDetails({ id }) {
                                             <tr key={v.quotationId} className="hover:bg-gray-50/50">
                                                 <td className="px-5 py-3">
                                                     <a href={`/quotation/${v.quotationId}`} className="font-semibold text-blue-600 hover:underline">
-                                                        {v.versionCode ?? `#${v.quotationId}`}
+                                                        {v.quotationCode || "-"}
                                                     </a>
                                                 </td>
                                                 <td className="px-5 py-3 text-gray-600">{fmtDate(v.issueDate)}</td>
@@ -489,6 +565,13 @@ export default function QuotationDetails({ id }) {
                 fileUrl={tcPreviewUrl}
                 fileType="pdf"
             />
+            {selectedItemId && (
+                <DetailsSidePanel
+                    config={itemSidePanelConfig}
+                    id={selectedItemId}
+                    onClose={() => setSelectedItemId(null)}
+                />
+            )}
         </div>
     );
 }

@@ -15,10 +15,10 @@ export default function TermsConditionsWidget({
     termsConditionsFile,
     termsConditionsId,
     termsConditionsText,
-    onFileChange,        // (file | null) => void
-    onTemplateChange,    // (templateId | null) => void
-    onTextChange,        // (html string) => void
-    existingFileName,    // string — shown in update form when a file already exists
+    onFileChange,
+    onTemplateChange,
+    onTextChange,
+    existingFileName,
 }) {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -36,21 +36,18 @@ export default function TermsConditionsWidget({
         },
     });
 
-    // Sync initial content when editing existing quotation
     useEffect(() => {
         if (editor && termsConditionsText && editor.isEmpty) {
             editor.commands.setContent(termsConditionsText);
         }
     }, [termsConditionsText, editor]);
 
-    // Sync initial template selection
     useEffect(() => {
         if (termsConditionsId) {
             setSelectedTemplate(String(termsConditionsId));
         }
     }, [termsConditionsId]);
 
-    // Fetch templates (scoped by companyId)
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
@@ -80,7 +77,6 @@ export default function TermsConditionsWidget({
         setSelectedTemplate(val);
         onTemplateChange?.(val ? Number(val) : null);
 
-        // Load template content into editor
         if (val && editor) {
             const tpl = templates.find((t) => String(t.termsConditionsId) === String(val));
             const templateText = tpl?.content || tpl?.termsConditionsText || "";
@@ -109,7 +105,6 @@ export default function TermsConditionsWidget({
                 Terms and Conditions
             </h3>
 
-            {/* File Upload Zone (using MultiFilePicker in single-file PDF mode) */}
             <div>
                 <MultiFilePicker
                     accept="application/pdf"
@@ -126,14 +121,12 @@ export default function TermsConditionsWidget({
                 />
             </div>
 
-            {/* Divider */}
             <div className="flex items-center gap-3">
                 <div className="flex-1 border-t border-gray-200" />
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">OR</span>
                 <div className="flex-1 border-t border-gray-200" />
             </div>
 
-            {/* Template Selector */}
             <div>
                 <p className="text-xs font-medium text-gray-500 mb-1.5">Select Template</p>
                 <select
@@ -150,11 +143,10 @@ export default function TermsConditionsWidget({
                 </select>
             </div>
 
-            {/* TipTap Editor */}
             {editor && (
                 <div className="rounded-xl border border-gray-200 overflow-hidden">
                     <p className="text-xs font-medium text-gray-500 px-3 pt-3 pb-1">Edit / Append Template</p>
-                    {/* Toolbar */}
+
                     <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 px-2 py-1.5 bg-gray-50">
                         <ToolbarBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold">
                             <Bold className="h-3.5 w-3.5" />
@@ -182,7 +174,7 @@ export default function TermsConditionsWidget({
                     </div>
                     <EditorContent
                         editor={editor}
-                        className="min-h-[180px] max-h-[340px] overflow-y-auto px-4 py-3 text-sm text-gray-800 prose prose-sm max-w-none focus:outline-none [&_.ProseMirror]:outline-none"
+                        className="min-h-[180px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-800 prose prose-sm max-w-none focus:outline-none [&_.ProseMirror]:outline-none"
                     />
                     <div className="flex justify-end px-3 py-1.5 bg-gray-50 border-t border-gray-200">
                         <span className="text-xs text-gray-400">

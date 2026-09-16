@@ -31,14 +31,17 @@ export class QuotationItemEntity {
   @JoinColumn({ name: 'quotationId' })
   quotation!: QuotationEntity;
 
-  @Column()
-  itemId!: number;
+  @Column({ nullable: true })
+  itemId?: number;
 
   @ManyToOne(() => ItemEntity, (item) => item.quotationItems, {
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'itemId' })
-  item!: ItemEntity;
+  item?: ItemEntity;
+
+  @Column({ type: 'varchar', nullable: true })
+  description?: string | null;
 
   @Column('decimal', { precision: 18, scale: 4 })
   quantity!: number;

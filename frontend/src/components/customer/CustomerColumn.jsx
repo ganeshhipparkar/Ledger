@@ -11,7 +11,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-function StatusBadge({ status }) {
+export function CustomerStatusBadge({ status }) {
     if (!status) return <span className="text-gray-400 text-sm">-</span>;
     const formatted = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
     const cls =
@@ -119,7 +119,7 @@ export const getCustomerColumns = (onPreview, onEdit, router) => [
     {
         accessorKey: "status",
         header: sortableHeader("Status"),
-        cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+        cell: ({ row }) => <CustomerStatusBadge status={row.getValue("status")} />,
         filterFn: "includesString",
     },
     {
@@ -177,7 +177,7 @@ export const getCustomerColumns = (onPreview, onEdit, router) => [
                             }}
                         >
                             <Pencil className="h-4 w-4 text-amber-600" />
-                            Edit
+
                         </button>
                     )}
                 </div>
