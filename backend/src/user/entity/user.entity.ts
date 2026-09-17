@@ -8,6 +8,7 @@ import {
 import { UserCompanyGroupEntity } from '../../packages/entity/user.company.group.entity';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -91,4 +92,10 @@ export class UserEntity {
 
   @OneToMany(() => OrderEntity, (order) => order.contactPerson)
   ordersAsContactPerson?: OrderEntity[];
+
+  @OneToMany(() => InvoiceEntity, (invoice) => invoice.salesPerson)
+  invoicesAsSalesPerson?: InvoiceEntity[];
+
+  @OneToMany(() => InvoiceEntity, (invoice) => invoice.contactPerson)
+  invoicesAsContactPerson?: InvoiceEntity[];
 }

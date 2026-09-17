@@ -28,7 +28,7 @@ import AsyncSelect from "react-select/async";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { limitDecimals } from "@/lib/utils";
-import { TAX_CALC_OPTIONS, getItemLabel, computeItem } from "@/lib/itemTaxCalc";
+import { TAX_CALC_OPTIONS, getItemLabel, computeItem, formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import OrderDiscountSidePanel from "./OrderDiscountSidePanel";
 import OrderExtraChargeSidePanel from "./OrderExtraChargeSidePanel";
 
@@ -509,7 +509,7 @@ export default function OrderItemsTable({
                                             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
                                         >
                                             {TAX_CALC_OPTIONS.map((opt) => (
-                                                <option key={opt} value={opt}>{opt}</option>
+                                                <option key={opt} value={opt}>{formatTaxCalcLabel(opt)}</option>
                                             ))}
                                         </select>
                                     </td>

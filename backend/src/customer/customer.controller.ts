@@ -37,6 +37,14 @@ export class CustomerContorller {
     return { encrypted: encryptResponse(result) };
   }
 
+  @Post('customer-currencies-list')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('customerList')
+  async customerCurrenciesList(@Req() req: any, @Body() body: CustomerListDto) {
+    const result = await this.customerService.customerCurrenciesList(body, req);
+    return { encrypted: encryptResponse(result) };
+  }
+
   @Get('customer-details/:id')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('customerView')

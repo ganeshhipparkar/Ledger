@@ -112,7 +112,7 @@ export class OrderPdfService {
     const customerAttn = [customer?.ownerFirstName, customer?.ownerLastName].filter(Boolean).join(' ') || customer?.customerName || '—';
 
     const items = (o.orderItems ?? []).map((item: any) => ({
-      description: item.description ?? item.item?.itemName ?? `Item #${item.itemId}`,
+      description: item.description || item.item?.itemName || (item.itemId ? `Item #${item.itemId}` : 'Service'),
       qty:         Number(item.quantity ?? 0),
       unitPrice:   Number(item.unitPrice ?? 0),
       taxGroup:    item.taxGroup ?? '—',
@@ -127,7 +127,7 @@ export class OrderPdfService {
         <td class="tr">${item.qty % 1 === 0 ? item.qty : item.qty.toFixed(4)}</td>
         <td class="tr">${fmt(item.unitPrice)}</td>
         <td class="tc">${item.taxGroup}</td>
-        <td class="tr">${vatWithheldAmount > 0 ? fmt(-(vatWithheldAmount / (items.length || 1))) : '—'}</td>
+        <td class="tr">${'—'}</td>
         <td class="tr">${fmt(item.finalAmount)}</td>
       </tr>`).join('');
 
@@ -142,23 +142,27 @@ export class OrderPdfService {
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:#fff}
 .page{width:210mm;min-height:297mm;padding:12mm 14mm 8mm 14mm;display:flex;flex-direction:column}
-.header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #e8a000;padding-bottom:6px;margin-bottom:8px}
-.company-name{font-size:18pt;font-weight:bold;color:#cc3300;letter-spacing:.5px; margin:0 auto;}
-.meta-section{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.billing-address{flex:0 0 55%}
-.billing-address .co-label{font-weight:bold;font-size:9.5pt}
-.billing-address .addr{color:#444;font-size:8.5pt;line-height:1.5}
-.billing-address .attn{margin-top:4px;font-size:8.5pt}
+.header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #e8a000;padding-bottom:6px;margin-bottom:12px}
+.company-name{font-size:18pt;font-weight:bold;color:#cc3300;letter-spacing:.5px}
+.invoice-title-block{text-align:right}
+.invoice-title{font-size:13pt;font-weight:bold;color:#cc3300;margin-bottom:2px;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.status-badge{font-size:7pt;background:#eee;color:#333;padding:2px 6px;border-radius:4px;font-weight:bold;text-transform:uppercase;border:1px solid #ccc}
+.invoice-subtitle{font-size:8pt;color:#555}
+.meta-section{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.billing-address{flex:0 0 55%;display:flex;gap:16px}
+.address-col{flex:1}
+.billing-address .co-label{font-weight:bold;font-size:9pt;margin-bottom:3px;color:#222}
+.billing-address .addr{color:#444;font-size:8.5pt;line-height:1.6}
+.billing-address .attn{margin-top:4px;font-size:8.5pt;color:#333}
 
-.info-container{display:flex;flex:0 0 42%;gap:8px;font-size:8pt}
-.info-box{border:1px solid #ddd;border-radius:3px;overflow:hidden;flex:1}
+.info-box{border:1px solid #ddd;border-radius:3px;overflow:hidden;flex:0 0 42%;font-size:8pt}
 .info-box table{width:100%;border-collapse:collapse}
-.info-box td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}
-.info-box .lc{font-weight:bold;white-space:nowrap;color:#444}
+.info-box td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top}
+.info-box .lc{font-weight:bold;white-space:nowrap;color:#444;width:45%}
 .info-box .vc{color:#222}
 .info-box tr:last-child td{border-bottom:none}
 
-.items-section{margin-bottom:10px}
+.items-section{margin-bottom:12px}
 .items-table{width:100%;border-collapse:collapse;font-size:8pt}
 .items-table thead tr{background:#444;color:#fff}
 .items-table thead th{padding:5px 6px;text-align:left;font-weight:600;font-size:8pt}
@@ -170,11 +174,11 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 .row-even{background:#fff}
 .row-odd{background:#f9f9f9}
 
-.bottom-section{display:flex;justify-content:space-between;page-break-inside:avoid;margin-top:20px;gap:12px;}
-.terms-column{width:52%;font-size:8pt;}
-.terms-column h4{font-weight:bold;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:6px;}
+.bottom-section{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:12px}
+.terms-column{flex:0 0 52%;font-size:8pt;}
+.terms-column h4{font-weight:bold;font-size:9pt;margin-bottom:4px;border-bottom:1px solid #ccc;padding-bottom:3px}
 .terms-content{white-space:pre-wrap;color:#444;}
-.totals-column{width:44%;font-size:8.5pt;border-top:2px solid #ccc}
+.totals-column{flex:0 0 44%;font-size:8.5pt;border-top:2px solid #ccc}
 .totals-column table{width:100%;border-collapse:collapse}
 .totals-column td{padding:3px 4px;border-bottom:1px solid #eee}
 .tot-label{color:#444;text-align:left}
@@ -182,8 +186,8 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 .totals-column tr.net-amount td{font-weight:bold;font-size:10pt;border-top:2px solid #888;border-bottom:none}
 .totals-column tr:last-child td{border-bottom:none}
 
-.thank-you-bar{border-top:2px solid #e8a000;border-bottom:2px solid #e8a000;text-align:center;padding:5px 0;margin:14px 0 10px;font-style:italic;font-size:9pt;color:#555}
-.footer{margin-top:auto;padding-top:8px;border-top:1px solid #ddd;font-size:7.5pt;color:#555}
+.thank-you-bar{margin-top:auto;border-top:2px solid #e8a000;border-bottom:2px solid #e8a000;text-align:center;padding:5px 0;margin-bottom:10px;font-style:italic;font-size:9pt;color:#555}
+.footer{padding-top:8px;border-top:1px solid #ddd;font-size:7.5pt;color:#555}
 .footer .fn{font-weight:bold;font-size:8.5pt;color:#222}
 </style>
 </head>
@@ -196,29 +200,25 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 
 <div class="meta-section">
   <div class="billing-address">
-    <div class="co-label">${company?.companyName ?? ''}</div>
-    <div class="addr">${companyAddr || '—'}</div>
-    ${company?.phone ? `<div class="addr">Tel: ${company.phone}</div>` : ''}
-    ${company?.email ? `<div class="addr">Email: ${company.email}</div>` : ''}
-    <div class="attn"><strong>ATTN: </strong>${customerAttn}</div>
+    <div class="address-col">
+      <div class="co-label">${company?.companyName ?? ''}</div>
+      <div class="addr">${companyAddr || '—'}</div>
+      ${company?.phone ? `<div class="addr">Tel: ${company.phone}</div>` : ''}
+      ${company?.email ? `<div class="addr">Email: ${company.email}</div>` : ''}
+    </div>
+    <div class="address-col">
+      <div class="co-label">Bill To: ${customer?.customerName ?? ''}</div>
+      <div class="addr">${customerAddr || '—'}</div>
+      <div class="attn"><strong>ATTN: </strong>${customerAttn}</div>
+    </div>
   </div>
-  <div class="info-container">
-    <div class="info-box">
-      <table>
-        <tr><td class="lc">Order Date</td></tr>
-        <tr><td class="vc">${fmtDate(o.orderDate)}</td></tr>
-        <tr><td class="lc">Delivery Date</td></tr>
-        <tr><td class="vc">${fmtDate(o.deliveryDate)}</td></tr>
-      </table>
-    </div>
-    <div class="info-box">
-      <table>
-        <tr><td class="lc">Order#</td></tr>
-        <tr><td class="vc">${o.orderCode ?? '—'}</td></tr>
-        <tr><td class="lc">Quotation No</td></tr>
-        <tr><td class="vc">${o.sourceQuotation?.quotationCode ?? '—'}</td></tr>
-      </table>
-    </div>
+  <div class="info-box">
+    <table>
+      <tr><td class="lc">Order No.</td><td class="vc">${o.orderCode ?? '—'}</td></tr>
+      <tr><td class="lc">Order Date</td><td class="vc">${fmtDate(o.orderDate)}</td></tr>
+      <tr><td class="lc">Source Quotation</td><td class="vc">${o.sourceQuotation?.quotationCode ?? '—'}</td></tr>
+      <tr><td class="lc">Sales Person</td><td class="vc">${[o.salesPerson?.firstName].filter(Boolean).join(' ') || '—'}</td></tr>
+    </table>
   </div>
 </div>
 

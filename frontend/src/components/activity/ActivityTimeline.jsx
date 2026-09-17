@@ -40,7 +40,7 @@ const getIcon = (code) => {
   }
 };
 
-export default function ActivityTimeline({ userId }) {
+export default function ActivityTimeline({ userId, targetType, targetId }) {
   const LIMIT = 10;
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,12 +53,15 @@ export default function ActivityTimeline({ userId }) {
     setLoading(true);
     setError('');
     try {
+      const filters = [];
+      if (userId) filters.push({ key: 'userProfileId', value: String(userId), operator: 'eq' });
+      if (targetType) filters.push({ key: 'targetType', value: targetType, operator: 'eq' });
+      if (targetId) filters.push({ key: 'targetId', value: String(targetId), operator: 'eq' });
+
       const body = {
         page,
         limit: LIMIT,
-        ...(userId ? {
-          filters: [{ key: 'userProfileId', value: String(userId), operator: 'eq' }]
-        } : {}),
+        ...(filters.length > 0 ? { filters } : {}),
         ...(range?.startDate ? { startDate: toIsoDate(range.startDate) } : {}),
         ...(range?.endDate ? { endDate: toIsoDate(range.endDate) } : {}),
       };
@@ -100,8 +103,7 @@ export default function ActivityTimeline({ userId }) {
 
   useEffect(() => {
     fetchData(1, appliedRange, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, appliedRange]);
+  }, [userId, targetType, targetId, appliedRange]);
 
   const handleLoadMore = () => {
     if (currentPage >= totalPages) return;

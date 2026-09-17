@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, EllipsisVertical, LayoutList } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,7 +29,7 @@ export const QUOTATION_STATUS_LABELS = {
 };
 
 export function QuotationStatusBadge({ status }) {
-    const cls = QUOTATION_STATUS_COLORS[status] ?? "mt-2 inline-block rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium";
+    const cls = QUOTATION_STATUS_COLORS[status] ?? "mt-2 inline-block rounded-sm bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium";
     const label = QUOTATION_STATUS_LABELS[status] ?? status;
     return (
         <span className={cls}>
@@ -65,8 +65,49 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
 
 
     return (
-        <div className="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
-
+        <div className="relative bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
+            <div className="absolute top-4 right-4 z-10">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <span
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                            title="Navigation"
+                        >
+                            <EllipsisVertical className="h-5 w-5" />
+                        </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
+                        <DropdownMenuItem
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/quotation/${q.quotationId}?tab=summary`);
+                            }}
+                        >
+                            Summary
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/quotation/${q.quotationId}?tab=versions`);
+                            }}
+                        >
+                            Versions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/quotation/${q.quotationId}?tab=activity`);
+                            }}
+                        >
+                            Activity
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
             <div className="flex items-start gap-4 mb-4">
                 <div className="flex h-20 w-20 min-w-[80px] items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl font-bold uppercase text-blue-600 shadow-md">
@@ -107,13 +148,13 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
                                     <div
                                         type="button"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="flex items-center justify-center gap-1.5 w-full rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                        className="flex items-center justify-center gap-1.5 w-full rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
                                     >
                                         Actions
                                         <ChevronDown className="h-4 w-4 text-gray-500" />
                                     </div>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl">
+                                <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-sm">
                                     {q.status === "DRAFT" && can?.("quotationUpdate") && (
                                         <>
                                             <DropdownMenuItem

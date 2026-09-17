@@ -4,6 +4,7 @@ import { CurrencyEntity } from "src/currency/entity/currency.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 import { PaymentTransactionEntity } from "src/payment_transaction/entity/payment.transaction.entity";
 
 export enum Status {
@@ -83,6 +84,9 @@ export class BankBookEntity {
 
   @OneToMany(() => OrderEntity, (order) => order.bankBook)
   orders?: OrderEntity[];
+
+  @OneToMany(() => InvoiceEntity, (invoice) => invoice.bankBook)
+  invoices?: InvoiceEntity[];
 
   @OneToMany(() => PaymentTransactionEntity, (paymentTransaction) => paymentTransaction.bankBook)
   paymentTransactions?: PaymentTransactionEntity[];

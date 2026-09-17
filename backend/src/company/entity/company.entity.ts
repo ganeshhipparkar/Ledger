@@ -23,6 +23,7 @@ import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment.transaction.entity';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 
 @Entity('company')
 export class CompanyEntity {
@@ -152,5 +153,8 @@ export class CompanyEntity {
 
   @OneToMany(() => PaymentTransactionEntity, (paymentTransaction) => paymentTransaction.company)
   paymentTransactions?: PaymentTransactionEntity[];
+
+  @OneToMany(() => InvoiceEntity, (invoice) => invoice.company)
+  invoices?: InvoiceEntity[];
 }
 

@@ -37,6 +37,7 @@ export class QuotationPdfService {
         'quotationItems.extraCharges',
         'discounts',
         'extraCharges',
+        'termsConditions',
       ],
     });
 
@@ -114,7 +115,7 @@ export class QuotationPdfService {
     const customerAttn = [customer?.ownerFirstName, customer?.ownerLastName].filter(Boolean).join(' ') || customer?.customerName || '—';
 
     const items = (q.quotationItems ?? []).map((item: any) => ({
-      description: item.item?.itemName ?? `Item #${item.itemId}`,
+      description: item.description || item.item?.itemName || (item.itemId ? `Item #${item.itemId}` : 'Service'),
       qty:         Number(item.quantity ?? 0),
       unitPrice:   Number(item.unitPrice ?? 0),
       taxGroup:    item.taxGroup ?? '—',
@@ -130,9 +131,11 @@ export class QuotationPdfService {
         <td class="tr">${fmt(item.unitPrice)}</td>
         <td class="tc">${item.taxGroup}</td>
         <td class="tr">${item.taxCalc !== 'NA' ? fmt(item.taxAmount) : '—'}</td>
-        <td class="tr">${vatWithheldAmount > 0 ? fmt(-(vatWithheldAmount / (items.length || 1))) : '—'}</td>
+        <td class="tr">${'—'}</td>
         <td class="tr">${fmt(item.finalAmount)}</td>
       </tr>`).join('');
+
+    const termsConditionsContent = q.termsConditionsText ? String(q.termsConditionsText) : '';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -143,23 +146,25 @@ export class QuotationPdfService {
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:#fff}
 .page{width:210mm;min-height:297mm;padding:12mm 14mm 8mm 14mm;display:flex;flex-direction:column}
-.header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #e8a000;padding-bottom:6px;margin-bottom:8px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #e8a000;padding-bottom:6px;margin-bottom:12px}
 .company-name{font-size:18pt;font-weight:bold;color:#cc3300;letter-spacing:.5px}
 .invoice-title-block{text-align:right}
-.invoice-title{font-size:13pt;font-weight:bold;color:#cc3300;margin-bottom:2px}
+.invoice-title{font-size:13pt;font-weight:bold;color:#cc3300;margin-bottom:2px;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.status-badge{font-size:7pt;background:#eee;color:#333;padding:2px 6px;border-radius:4px;font-weight:bold;text-transform:uppercase;border:1px solid #ccc}
 .invoice-subtitle{font-size:8pt;color:#555}
-.meta-section{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.billing-address{flex:0 0 55%}
-.billing-address .co-label{font-weight:bold;font-size:9.5pt}
-.billing-address .addr{color:#444;font-size:8.5pt;line-height:1.5}
-.billing-address .attn{margin-top:4px;font-size:8.5pt}
+.meta-section{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.billing-address{flex:0 0 55%;display:flex;gap:16px}
+.address-col{flex:1}
+.billing-address .co-label{font-weight:bold;font-size:9pt;margin-bottom:3px;color:#222}
+.billing-address .addr{color:#444;font-size:8.5pt;line-height:1.6}
+.billing-address .attn{margin-top:4px;font-size:8.5pt;color:#333}
 .info-box{border:1px solid #ddd;border-radius:3px;overflow:hidden;flex:0 0 42%;font-size:8pt}
 .info-box table{width:100%;border-collapse:collapse}
-.info-box td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}
+.info-box td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top}
 .info-box .lc{font-weight:bold;white-space:nowrap;color:#444;width:45%}
 .info-box .vc{color:#222}
 .info-box tr:last-child td{border-bottom:none}
-.items-section{margin-bottom:10px}
+.items-section{margin-bottom:12px}
 .items-table{width:100%;border-collapse:collapse;font-size:8pt}
 .items-table thead tr{background:#444;color:#fff}
 .items-table thead th{padding:5px 6px;text-align:left;font-weight:600;font-size:8pt}
@@ -170,13 +175,16 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 .items-table .tc{text-align:center}
 .row-even{background:#fff}
 .row-odd{background:#f9f9f9}
-.bottom-section{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:10px}
-.bank-details{flex:0 0 52%;font-size:8pt}
+.bottom-section{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:12px}
+.left-column{flex:0 0 52%;font-size:8pt}
+.bank-details{margin-bottom:12px}
 .bank-details h4{font-weight:bold;font-size:9pt;margin-bottom:4px;border-bottom:1px solid #ccc;padding-bottom:3px}
 .bank-details table{width:100%;border-collapse:collapse}
 .bank-details td{padding:2px 0;vertical-align:top}
 .bd-label{color:#555;width:58%;font-size:8pt}
 .bd-val{color:#222;font-size:8pt}
+.terms-column h4{font-weight:bold;font-size:9pt;margin-bottom:4px;border-bottom:1px solid #ccc;padding-bottom:3px}
+.terms-content{white-space:pre-wrap;color:#444}
 .totals{flex:0 0 44%;font-size:8.5pt;border-top:2px solid #ccc}
 .totals table{width:100%;border-collapse:collapse}
 .totals td{padding:3px 4px;border-bottom:1px solid #eee}
@@ -184,8 +192,8 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 .tot-val{text-align:right;font-weight:500;white-space:nowrap}
 .totals tr.receivable td{font-weight:bold;font-size:10pt;border-top:2px solid #888;border-bottom:none}
 .totals tr:last-child td{border-bottom:none}
-.thank-you-bar{border-top:2px solid #e8a000;border-bottom:2px solid #e8a000;text-align:center;padding:5px 0;margin:14px 0 10px;font-style:italic;font-size:9pt;color:#555}
-.footer{margin-top:auto;padding-top:8px;border-top:1px solid #ddd;font-size:7.5pt;color:#555}
+.thank-you-bar{margin-top:auto;border-top:2px solid #e8a000;border-bottom:2px solid #e8a000;text-align:center;padding:5px 0;margin-bottom:10px;font-style:italic;font-size:9pt;color:#555}
+.footer{padding-top:8px;border-top:1px solid #ddd;font-size:7.5pt;color:#555}
 .footer .fn{font-weight:bold;font-size:8.5pt;color:#222}
 </style>
 </head>
@@ -195,27 +203,30 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 <div class="header">
   <div class="company-name">${company?.companyName ?? ''}</div>
   <div class="invoice-title-block">
-    <div class="invoice-title">${company?.companyName ?? ''}</div>
-    <div class="invoice-subtitle">Tax Invoice</div>
+
   </div>
 </div>
 
 <div class="meta-section">
   <div class="billing-address">
-    <div class="co-label">${company?.companyName ?? ''}</div>
-    <div class="addr">${companyAddr || '—'}</div>
-    ${company?.phone ? `<div class="addr">Tel: ${company.phone}</div>` : ''}
-    ${company?.email ? `<div class="addr">Email: ${company.email}</div>` : ''}
-    <div class="attn"><strong>ATTN: </strong>${customerAttn}</div>
+    <div class="address-col">
+      <div class="co-label">${company?.companyName ?? ''}</div>
+      <div class="addr">${companyAddr || '—'}</div>
+      ${company?.phone ? `<div class="addr">Tel: ${company.phone}</div>` : ''}
+      ${company?.email ? `<div class="addr">Email: ${company.email}</div>` : ''}
+    </div>
+    <div class="address-col">
+      <div class="co-label">Bill To: ${customer?.customerName ?? ''}</div>
+      <div class="addr">${customerAddr || '—'}</div>
+      <div class="attn"><strong>ATTN: </strong>${customerAttn}</div>
+    </div>
   </div>
   <div class="info-box">
     <table>
-      <tr><td class="lc">Order / Quotation No.</td><td class="vc">${q.quotationCode ?? '—'}</td></tr>
-      <tr><td class="lc">Issue / Tax Date</td><td class="vc">${fmtDate(q.issueDate)}</td></tr>
-      <tr><td class="lc">Invoice#</td><td class="vc">${q.quotationCode ?? '—'}</td></tr>
-      <tr><td class="lc">Waybill No.</td><td class="vc">—</td></tr>
-      <tr><td class="lc">Due Date</td><td class="vc">${fmtDate(q.expiryDate)}</td></tr>
-      <tr><td class="lc">IRN No.</td><td class="vc">—</td></tr>
+      <tr><td class="lc">Quotation No.</td><td class="vc">${q.quotationCode ?? '—'}</td></tr>
+      <tr><td class="lc">Issue Date</td><td class="vc">${fmtDate(q.issueDate)}</td></tr>
+      <tr><td class="lc">Valid Until</td><td class="vc">${fmtDate(q.expiryDate)}</td></tr>
+      <tr><td class="lc">Sales Person</td><td class="vc">${[q.salesPerson?.firstName].filter(Boolean).join(' ') || '—'}</td></tr>
     </table>
   </div>
 </div>
@@ -240,18 +251,24 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#222;background:
 </div>
 
 <div class="bottom-section">
-  <div class="bank-details">
-    <h4>Bank Details</h4>
-    <table>
-      <tr><td class="bd-label">Beneficiary Name</td><td class="bd-val">${bankBook?.beneficiaryName ?? '—'}</td></tr>
-      <tr><td class="bd-label">Beneficiary Bank Name</td><td class="bd-val">${bank?.bankName ?? '—'}</td></tr>
-      <tr><td class="bd-label">Beneficiary Account No. ${symLabel}</td><td class="bd-val">${bankBook?.accountNumber ?? '—'}</td></tr>
-      <tr><td class="bd-label">Bank Swift Code</td><td class="bd-val">${bank?.bankCode ?? '—'}</td></tr>
-      <tr><td class="bd-label">Correspondent Bank Name</td><td class="bd-val">—</td></tr>
-      <tr><td class="bd-label">Correspondent Bank Swift Code</td><td class="bd-val">—</td></tr>
-      <tr><td class="bd-label">Correspondent Bank Routing No.</td><td class="bd-val">—</td></tr>
-      <tr><td class="bd-label">Correspondent Bank Account No.</td><td class="bd-val">—</td></tr>
-    </table>
+  <div class="left-column">
+    <div class="bank-details">
+      <h4>Bank Details</h4>
+      <table>
+        <tr><td class="bd-label">Beneficiary Name</td><td class="bd-val">${bankBook?.beneficiaryName ?? '—'}</td></tr>
+        <tr><td class="bd-label">Beneficiary Bank Name</td><td class="bd-val">${bank?.bankName ?? '—'}</td></tr>
+        <tr><td class="bd-label">Beneficiary Account No. ${symLabel}</td><td class="bd-val">${bankBook?.accountNumber ?? '—'}</td></tr>
+        <tr><td class="bd-label">Bank Swift Code</td><td class="bd-val">${bank?.bankCode ?? '—'}</td></tr>
+       
+      </table>
+    </div>
+
+    ${termsConditionsContent ? `
+    <div class="terms-column">
+      <h4>Terms And Conditions</h4>
+      <div class="terms-content">${termsConditionsContent}</div>
+    </div>
+    ` : ''}
   </div>
 
   <div class="totals">

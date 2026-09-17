@@ -37,6 +37,12 @@ import { OrderItemEntity } from 'src/order/entity/order.item.entity';
 import { OrderDiscountEntity } from 'src/order/entity/order.discount.entity';
 import { OrderExtraChargeEntity } from 'src/order/entity/order.extra.charge.entity';
 import { OrderAttachmentsEntity } from 'src/order/entity/order.attachments';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
+import { InvoiceItemEntity } from 'src/invoice/entity/invoice.item.entity';
+import { InvoiceDiscountEntity } from 'src/invoice/entity/invoice.discount.entity';
+import { InvoiceExtraChargeEntity } from 'src/invoice/entity/invoice.extra.charge.entity';
+import { InvoiceAttachmentsEntity } from 'src/invoice/entity/invoice.attachments';
+import { InvoiceDueDateHistoryEntity } from 'src/invoice/entity/invoice.due.date.history.entity';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -81,6 +87,12 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     OrderDiscountEntity,
     OrderExtraChargeEntity,
     OrderAttachmentsEntity,
+    InvoiceEntity,
+    InvoiceItemEntity,
+    InvoiceDiscountEntity,
+    InvoiceExtraChargeEntity,
+    InvoiceAttachmentsEntity,
+    InvoiceDueDateHistoryEntity,
   ],
   synchronize: true, 
   migrationsRun: true,

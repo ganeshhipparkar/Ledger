@@ -62,3 +62,8 @@ export function computeItem(item) {
         finalAmount: isNaN(finalAmount) ? 0 : finalAmount,
     };
 }
+
+export function formatTaxCalcLabel(value) {
+    if (!value || value === "N/A" || value === "NA") return "N/A";
+    return value.charAt(0) + value.slice(1).toLowerCase();
+}

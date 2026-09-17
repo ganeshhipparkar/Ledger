@@ -5,6 +5,8 @@ import { QuotationDiscountEntity } from 'src/quotation/entity/quotation.discount
 import { QuotationExtraChargeEntity } from 'src/quotation/entity/quotation.extra.charge.entity';
 import { OrderDiscountEntity } from 'src/order/entity/order.discount.entity';
 import { OrderExtraChargeEntity } from 'src/order/entity/order.extra.charge.entity';
+import { InvoiceDiscountEntity } from 'src/invoice/entity/invoice.discount.entity';
+import { InvoiceExtraChargeEntity } from 'src/invoice/entity/invoice.extra.charge.entity';
 
 export enum Status{
     ACTIVE="Active",
@@ -64,5 +66,11 @@ orderDiscounts?: OrderDiscountEntity[];
 
 @OneToMany(() => OrderExtraChargeEntity, (ec) => ec.manufacturer)
 orderExtraCharges?: OrderExtraChargeEntity[];
+
+@OneToMany(() => InvoiceDiscountEntity, (d) => d.manufacturer)
+invoiceDiscounts?: InvoiceDiscountEntity[];
+
+@OneToMany(() => InvoiceExtraChargeEntity, (ec) => ec.manufacturer)
+invoiceExtraCharges?: InvoiceExtraChargeEntity[];
 
 }

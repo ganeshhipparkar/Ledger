@@ -2,7 +2,7 @@
 import { toast } from "react-toastify";
 
 
-import { MoreVertical, Copy, RefreshCw, ClipboardList, Eye } from "lucide-react";
+import { ChevronDown, Copy, RefreshCw, ClipboardList, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatDisplayDate, downloadFile } from "@/lib/utils";
@@ -134,8 +134,12 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <div className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer">
-                                <MoreVertical className="h-4 w-4" />
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto w-fit"
+                            >
+                                Actions
+                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
                             </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
@@ -171,8 +175,8 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                                 <>
                                     {q.invoicePdfPath && (
                                         <>
-                                            <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
-                                                View Pdf
+                                            <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm p-0">
+                                                <span className="w-full h-full py-2 px-4" title="View PDF">View Pdf</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={async (e) => {
                                                 e.stopPropagation();
@@ -181,14 +185,14 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                                                 } catch (err) {
                                                     toast.error("Failed to download invoice", { position: "top-right" });
                                                 }
-                                            }} className="cursor-pointer text-sm py-2">
-                                                Download Pdf
+                                            }} className="cursor-pointer text-sm p-0">
+                                                <span className="w-full h-full py-2 px-4" title="Download PDF">Download Pdf</span>
                                             </DropdownMenuItem>
                                         </>
                                     )}
                                     {can?.("quotationUpdate") && (
-                                        <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.quotationId)} className="cursor-pointer text-sm py-2">
-                                            Regenerate PDF
+                                        <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.quotationId)} className="cursor-pointer text-sm p-0">
+                                            <span className="w-full h-full py-2 px-4" title="Regenerate PDF">Regenerate PDF</span>
                                         </DropdownMenuItem>
                                     )}
                                 </>

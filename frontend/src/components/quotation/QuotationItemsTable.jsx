@@ -28,7 +28,7 @@ import AsyncSelect from "react-select/async";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { limitDecimals } from "@/lib/utils";
-import { TAX_CALC_OPTIONS, getItemLabel, computeItem } from "@/lib/itemTaxCalc";
+import { TAX_CALC_OPTIONS, getItemLabel, computeItem, formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import QuotationDiscountSidePanel from "./QuotationDiscountSidePanel";
 import QuotationExtraChargeSidePanel from "./QuotationExtraChargeSidePanel";
 
@@ -79,7 +79,6 @@ export default function QuotationItemsTable({
     const [extraChargePanel, setExtraChargePanel] = useState({ open: false, idx: -1 });
     const [typedText, setTypedText] = useState({});
     const [arrowUsed, setArrowUsed] = useState({});
-
     const handleServiceText = (idx, text) => {
         if (!text) return;
         const updated = items.map((it, i) => {
@@ -278,7 +277,7 @@ export default function QuotationItemsTable({
                 <button
                     type="button"
                     onClick={handleAddRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-sm transition cursor-pointer"
                 >
                     <Plus className="h-3.5 w-3.5" /> Add Row
                 </button>
@@ -288,20 +287,20 @@ export default function QuotationItemsTable({
                 <table className="w-full text-left text-sm text-gray-600">
                     <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="px-3 py-3 w-10 text-center">#</th>
-                            <th className="px-3 py-3">Description</th>
-                            <th className="px-3 py-3 w-28 text-right">Qty</th>
-                            <th className="px-3 py-3 w-32 text-right">Unit Price</th>
-                            <th className="px-3 py-3 w-28 text-right">Amount</th>
-                            <th className="px-3 py-3 w-32 text-right">Discount</th>
-                            <th className="px-3 py-3 w-32 text-right">Extra Charge</th>
-                            <th className="px-3 py-3 w-28 text-right">Total</th>
-                            <th className="px-3 py-3 w-32">Tax Calc</th>
-                            <th className="px-3 py-3 w-36">Tax Group</th>
-                            <th className="px-3 py-3 w-28 text-right">Tax Amt</th>
-                            <th className="px-3 py-3 w-28 text-right">Taxable Amt</th>
+                            <th className="px-1 py-3 w-10 text-center">#</th>
+                            <th className="px-1 py-3">Description</th>
+                            <th className="px-1 py-3 w-28 text-right">Qty</th>
+                            <th className="px-1 py-3 w-32 text-right">Unit Price ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-28 text-right">Amount ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-32 text-right">Discount ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-58 text-right">Extra Charge ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-28 text-right">Total ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-32">Tax Calc</th>
+                            <th className="px-1 py-3 w-36">Tax Group</th>
+                            <th className="px-1 py-3 w-28 text-right">Tax Amt ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-110 text-right">Taxable Amt ({currencySymbol})</th>
 
-                            <th className="px-3 py-3 w-32 text-right font-bold text-gray-700">Final Amt</th>
+                            <th className="px-1 py-3 w-32 text-right font-bold text-gray-700">Final Amt ({currencySymbol})</th>
                             <th className="px-3 py-3 w-10 text-center">Action</th>
                         </tr>
                     </thead>
@@ -464,7 +463,7 @@ export default function QuotationItemsTable({
                                             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer"
                                         >
                                             {TAX_CALC_OPTIONS.map((opt) => (
-                                                <option key={opt} value={opt}>{opt}</option>
+                                                <option key={opt} value={opt}>{formatTaxCalcLabel(opt)}</option>
                                             ))}
                                         </select>
                                     </td>

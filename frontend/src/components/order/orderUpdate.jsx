@@ -449,18 +449,7 @@ export default function OrderUpdate({ id }) {
                                 Customer <span className="text-red-500">*</span>
                             </label>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium truncate">
-                                {formData.customerLabel || "—"}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                Currency <span className="text-red-500">*</span>
-                            </label>
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium truncate">
-                                {currencies.find(c => String(c.curId ?? c.currencyId) === String(formData.currencyId))?.code
-                                    ? `${currencies.find(c => String(c.curId ?? c.currencyId) === String(formData.currencyId)).code}${currencies.find(c => String(c.curId ?? c.currencyId) === String(formData.currencyId)).symbol ? ` (${currencies.find(c => String(c.curId ?? c.currencyId) === String(formData.currencyId)).symbol})` : ""}`
-                                    : (formData.currencyCode || "—")}
+                                {formData.customerLabel ? `${formData.customerLabel} (${currencies.find(c => String(c.curId ?? c.currencyId) === String(formData.currencyId))?.code || formData.currencyCode || "—"})` : "—"}
                             </div>
                         </div>
 

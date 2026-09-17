@@ -147,7 +147,7 @@ export default function MultiFilePicker({
             )}
 
             {!readOnly && (
-                <div className="relative w-full border border-dashed border-blue-500 rounded-lg py-3 px-4 bg-blue-50/10 hover:bg-blue-50/40 transition-colors text-center cursor-pointer flex items-center justify-center gap-2 group">
+                <div className="relative w-full border border-dashed border-blue-500 rounded-sm py-3 px-4 bg-blue-50/10 hover:bg-blue-50/40 transition-colors text-center cursor-pointer flex items-center justify-center gap-2 group">
                     <input
                         type="file"
                         multiple={multiple}

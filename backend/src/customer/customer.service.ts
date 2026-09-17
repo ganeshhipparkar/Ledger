@@ -112,6 +112,67 @@ export class CustomerService {
     return return_data;
   }
 
+  async customerCurrenciesList(param: CustomerListDto, req?: any) {
+    let return_data: any = {};
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const queryBuilder = this.customerCurrencyEntity.createQueryBuilder('customerCurrency');
+
+      queryBuilder.leftJoinAndSelect('customerCurrency.customer', 'customer');
+      queryBuilder.leftJoinAndSelect('customerCurrency.currency', 'currency');
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [
+          authCtx.activeCompanyId,
+        ];
+        if (scopedCompanyIds.length > 0) {
+          queryBuilder.andWhere('customer.companyId IN (:...scopedCompanyIds)', {
+            scopedCompanyIds,
+          });
+        } else {
+          return {
+            success: 1,
+            message: 'Customer currencies fetched successfully',
+            total: 0,
+            data: [],
+          };
+        }
+      }
+
+      const queryString = await this.filter.makeFilterString(
+        param.filters,
+        'customer',
+        {},
+        param.condition === 'Any' ? 'Any' : 'All',
+      );
+      if (queryString && queryString !== '') {
+        queryBuilder.andWhere(queryString);
+      }
+
+      const [skip, limit] = (await this.filter.calcPages(
+        param,
+        this.customerCurrencyEntity,
+      )) as [number, number];
+
+      queryBuilder.skip(skip).take(limit);
+      queryBuilder.orderBy('customer.customerName', 'ASC');
+      queryBuilder.addOrderBy('currency.code', 'ASC');
+
+      const [data, total] = await queryBuilder.getManyAndCount();
+
+      return_data = {
+        success: 1,
+        message: 'Customer currencies fetched successfully',
+        total,
+        data,
+      };
+    } catch (err: any) {
+      return_data = { success: 0, message: err.message };
+    }
+    return return_data;
+  }
+
+
   async getCustomerDetails(id: number, req?: any) {
     const authCtx = await resolveAuthContext(req, this.ucgEntity);
     const customer = await this.customerEntity.findOne({

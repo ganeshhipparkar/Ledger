@@ -13,23 +13,19 @@ import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { BankBookEntity } from 'src/bank_book_master/entity/bank.book.entity';
 import { TermsAndConditionsEntity } from 'src/terms_conditions/entity/terms.conditions.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
-import { OrderItemEntity } from './order.item.entity';
-import { OrderDiscountEntity } from './order.discount.entity';
-import { OrderExtraChargeEntity } from './order.extra.charge.entity';
-import { OrderAttachmentsEntity } from './order.attachments';
+import { OrderEntity } from 'src/order/entity/order.entity';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
+import { InvoiceItemEntity } from './invoice.item.entity';
+import { InvoiceDiscountEntity } from './invoice.discount.entity';
+import { InvoiceExtraChargeEntity } from './invoice.extra.charge.entity';
+import { InvoiceAttachmentsEntity } from './invoice.attachments';
+import { InvoiceDueDateHistoryEntity } from './invoice.due.date.history.entity';
 
-export enum OrderStatus {
+export enum InvoiceStatus {
   DRAFT = 'DRAFT',
-  PLACED = 'PLACED',
-  DELIVERED = 'DELIVERED',
-  PARTIAL_DELIVERED = 'PARTIAL_DELIVERED',
-  CLOSED = 'CLOSED',
-}
-
-export enum OrderLifecycleStatus {
-  OPEN = 'OPEN',
-  CLOSED = 'CLOSED',
+  UNPAID = 'UNPAID',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
+  PAID = 'PAID',
 }
 
 export enum VatWithheld {
@@ -61,36 +57,18 @@ export enum DeliveryType {
   INTERNATIONAL = 'INTERNATIONAL',
 }
 
-export enum InvoiceGenerationOn {
-  DELIVERY_LEVEL = 'DELIVERY_LEVEL',
-  ORDER_LEVEL = 'ORDER_LEVEL',
+export enum InvoiceFor {
+  ORDER = 'ORDER',
+  QUOTATION = 'QUOTATION',
 }
 
-export enum InvoiceAutoApproval {
-  YES = 'YES',
-  NO = 'NO',
-}
-
-export enum PlaceOfSupply { 
-  JOHN_MARTIN_LAGOS = 'John Martin - Lagos',
-  STEVE_LAGOS = 'Steve - Lagos',
-  MRS_OIL_GAS_BANER = 'MRS Oil Gas - Baner',
-}
-
-@Entity('order')
-export class OrderEntity {
+@Entity('invoice')
+export class InvoiceEntity {
   @PrimaryGeneratedColumn()
-  orderId!: number;
+  invoiceId!: number;
 
   @Column()
-  orderCode!: string;
-
-  @Column({ type: 'int', nullable: true })
-  sourceQuotationId?: number | null;
-
-  @ManyToOne(() => QuotationEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'sourceQuotationId' })
-  sourceQuotation?: QuotationEntity | null;
+  invoiceCode!: string;
 
   @Column({ type: 'int', unsigned: true })
   currencyId!: number;
@@ -105,22 +83,22 @@ export class OrderEntity {
   @Column()
   customerId!: number;
 
-  @ManyToOne(() => CustomerEntity, (customer) => customer.orders, {
+  @ManyToOne(() => CustomerEntity, (customer) => customer.invoices, {
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'customerId' })
   customer!: CustomerEntity;
 
   @Column()
-  orderDate!: Date;
+  invoiceDate!: Date;
 
-  @Column({ type: 'datetime', nullable: true })
-  deliveryDate?: Date | null;
+  @Column()
+  deliveryDate!: Date;
 
   @Column()
   companyId!: number;
 
-  @ManyToOne(() => CompanyEntity, (company) => company.orders, {
+  @ManyToOne(() => CompanyEntity, (company) => company.invoices, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'companyId' })
@@ -137,7 +115,7 @@ export class OrderEntity {
 
   @ManyToOne(
     () => TermsAndConditionsEntity,
-    (terms) => terms.orders,
+    (terms) => terms.invoices,
     { nullable: true, onDelete: 'SET NULL' },
   )
   @JoinColumn({ name: 'termsConditionsId' })
@@ -164,10 +142,10 @@ export class OrderEntity {
   @Column('decimal', { precision: 18, scale: 4 })
   finalAmount!: number;
 
-  @Column({ type: 'number', nullable: true })
+  @Column({ type: 'int', nullable: true })
   bankBookId?: number | null;
 
-  @ManyToOne(() => BankBookEntity, (bankBook) => bankBook.orders, {
+  @ManyToOne(() => BankBookEntity, (bankBook) => bankBook.invoices, {
     nullable: true,
     onDelete: 'SET NULL',
   })
@@ -182,32 +160,25 @@ export class OrderEntity {
 
   @Column({
     type: 'enum',
-    enum: OrderStatus,
-    default: OrderStatus.DRAFT,
+    enum: InvoiceStatus,
+    default: InvoiceStatus.DRAFT,
   })
   status!: string;
 
-  @Column({
-    type: 'enum',
-    enum: OrderLifecycleStatus,
-    default: OrderLifecycleStatus.OPEN,
-  })
-  orderStatus!: string;
-
-  @Column({ type: 'number', nullable: true })
+  @Column({ type: 'int', nullable: true })
   salesPersonId?: number | null;
 
-  @ManyToOne(() => UserEntity, (user) => user.ordersAsSalesPerson, {
+  @ManyToOne(() => UserEntity, (user) => user.invoicesAsSalesPerson, {
     nullable: true,
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'salesPersonId' })
   salesPerson?: UserEntity | null;
 
-  @Column({ type: 'number', nullable: true })
+  @Column({ type: 'int', nullable: true })
   contactPersonId?: number | null;
 
-  @ManyToOne(() => UserEntity, (user) => user.ordersAsContactPerson, {
+  @ManyToOne(() => UserEntity, (user) => user.invoicesAsContactPerson, {
     nullable: true,
     onDelete: 'SET NULL',
   })
@@ -263,20 +234,22 @@ export class OrderEntity {
   })
   deliveryType!: string;
 
-  @Column({
-    type: 'enum',
-    enum: InvoiceGenerationOn,
-  })
-  invoiceGenerationOn!: string;
+  @Column({ type: 'enum', enum: InvoiceFor, nullable: true })
+  invoiceFor?: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: InvoiceAutoApproval,
-  })
-  invoiceAutoApproval!: string;
+  @Column({ type: 'int', nullable: true })
+  sourceOrderId?: number | null;
 
-  @Column({ type: 'enum', enum: PlaceOfSupply, nullable: true })
-  placeOfSupply?: string;
+  @ManyToOne(() => OrderEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sourceOrderId' })
+  sourceOrder?: OrderEntity | null;
+
+  @Column({ type: 'int', nullable: true })
+  sourceQuotationId?: number | null;
+
+  @ManyToOne(() => QuotationEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sourceQuotationId' })
+  sourceQuotation?: QuotationEntity | null;
 
   @Column({ nullable: true })
   addedBy?: number;
@@ -293,15 +266,18 @@ export class OrderEntity {
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  @OneToMany(() => OrderItemEntity, (item) => item.order)
-  orderItems?: OrderItemEntity[];
+  @OneToMany(() => InvoiceItemEntity, (item) => item.invoice)
+  invoiceItems?: InvoiceItemEntity[];
 
-  @OneToMany(() => OrderDiscountEntity, (d) => d.order)
-  discounts?: OrderDiscountEntity[];
+  @OneToMany(() => InvoiceDiscountEntity, (d) => d.invoice)
+  discounts?: InvoiceDiscountEntity[];
 
-  @OneToMany(() => OrderExtraChargeEntity, (ec) => ec.order)
-  extraCharges?: OrderExtraChargeEntity[];
+  @OneToMany(() => InvoiceExtraChargeEntity, (ec) => ec.invoice)
+  extraCharges?: InvoiceExtraChargeEntity[];
 
-  @OneToMany(() => OrderAttachmentsEntity, (attachment) => attachment.order)
-  attachments?: OrderAttachmentsEntity[];
+  @OneToMany(() => InvoiceAttachmentsEntity, (att) => att.invoice)
+  attachments?: InvoiceAttachmentsEntity[];
+
+  @OneToMany(() => InvoiceDueDateHistoryEntity, (h) => h.invoice)
+  dueDateHistory?: InvoiceDueDateHistoryEntity[];
 }

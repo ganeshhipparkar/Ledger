@@ -29,6 +29,7 @@ import { TaxGroupModule } from './tax_group/tax.group.module';
 import { PaymentTransactionModule } from './payment_transaction/payment.transaction.module';
 import { QuotationModule } from './quotation/quotation.module';
 import { OrderModule } from './order/order.module';
+import { InvoiceModule } from './invoice/invoice.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { OrderModule } from './order/order.module';
     PaymentTransactionModule,
     QuotationModule,
     OrderModule,
+    InvoiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

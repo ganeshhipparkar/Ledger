@@ -14,7 +14,7 @@ import { getQuotationTableColumns } from "./QuotationTableColumns";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
-import { MoreVertical, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -373,13 +373,12 @@ function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, 
                     <div className="flex items-center gap-1">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <span
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                                    title="Actions"
-                                >
-                                    <MoreVertical className="h-5 w-5" />
-                                </span>
+                                    <span
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                    >
+                                        Actions <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 bg-white border border-gray-200 shadow-lg rounded-xl">
 
@@ -432,13 +431,13 @@ function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, 
                                         {q.invoicePdfPath && (
                                             <>
                                                 <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0"
                                                     onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
                                                 >
-                                                    View Invoice
+                                                    <span className="w-full h-full px-4 py-2" title="View PDF">View Invoice</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0"
                                                     onClick={async (e) => {
                                                         e.stopPropagation();
                                                         try {
@@ -448,16 +447,16 @@ function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, 
                                                         }
                                                     }}
                                                 >
-                                                    Download Invoice
+                                                    <span className="w-full h-full px-4 py-2" title="Download PDF">Download Invoice</span>
                                                 </DropdownMenuItem>
                                             </>
                                         )}
                                         {can?.("quotationUpdate") && (
                                             <DropdownMenuItem
-                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0"
                                                 onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.quotationId); }}
                                             >
-                                                Regenerate PDF
+                                                <span className="w-full h-full px-4 py-2" title="Regenerate PDF">Regenerate PDF</span>
                                             </DropdownMenuItem>
                                         )}
                                     </>

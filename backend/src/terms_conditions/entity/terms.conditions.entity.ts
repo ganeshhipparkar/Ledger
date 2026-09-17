@@ -2,6 +2,7 @@ import { CompanyEntity } from "src/company/entity/company.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 
 @Entity('terms_conditions')
 export class TermsAndConditionsEntity{
@@ -32,7 +33,8 @@ export class TermsAndConditionsEntity{
     @OneToMany(() => OrderEntity, (order) => order.termsConditions)
     orders?: OrderEntity[];
 
-    
+    @OneToMany(() => InvoiceEntity, (invoice) => invoice.termsConditions)
+    invoices?: InvoiceEntity[];
 }
 
 

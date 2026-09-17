@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye, Download
+    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye, Download, Activity
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -23,6 +23,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ORDER_STATUS_COLORS } from "./OrderCard";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
+import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
+import ActivityTimeline from "@/components/activity/ActivityTimeline";
 
 const MySwal = withReactContent(Swal);
 
@@ -77,15 +79,24 @@ function fmtAmount(n, symbol) {
 
 const NAV_ITEMS = [
     { key: "summary", label: "Summary", Icon: LayoutList },
+    { key: "activity", label: "Activity", Icon: Activity },
 ];
 
 export default function OrderDetails({ id }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { can } = useContext(loginContext) || {};
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
+
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && ["summary", "activity"].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
@@ -537,18 +548,18 @@ export default function OrderDetails({ id }) {
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemDiscountTotal > 0 ? (
-                                                                <span className="text-orange-600">{Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                                <span className="text-gray-700">{Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
                                                             ) : "0.00"}
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemExtraChargeTotal > 0 ? (
-                                                                <span className="text-purple-600">{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                                <span className="text-gray-700">{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
                                                             ) : "0.00"}
                                                         </td>
                                                         <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-semibold text-gray-800">{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
-                                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${item.taxCalculation === "EXCLUSIVE" ? "bg-purple-100 text-purple-700 border border-purple-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
-                                                                {item.taxCalculation === "NA" ? "N/A" : item.taxCalculation}
+                                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold "bg-gray-100 text-gray-700 border border-gray-200" ${item.taxCalculation}`}>
+                                                                {formatTaxCalcLabel(item.taxCalculation)}
                                                             </span>
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-left text-gray-600 whitespace-nowrap">
@@ -619,6 +630,11 @@ export default function OrderDetails({ id }) {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {activeTab === "activity" && (
+                        <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
+                            <ActivityTimeline targetType="ORDER" targetId={id} />
                         </div>
                     )}
                 </div>

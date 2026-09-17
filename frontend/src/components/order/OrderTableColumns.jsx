@@ -2,7 +2,7 @@
 import { toast } from "react-toastify";
 
 
-import { MoreVertical, Eye } from "lucide-react";
+import { ChevronDown, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "./OrderCard";
@@ -124,8 +124,12 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <div className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer w-fit ml-auto">
-                                <MoreVertical className="h-4 w-4" />
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto w-fit"
+                            >
+                                Actions
+                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
                             </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">

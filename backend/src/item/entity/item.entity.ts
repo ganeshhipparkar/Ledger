@@ -9,6 +9,7 @@ import { ItemImageEntity } from "./item.image.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { QuotationItemEntity } from 'src/quotation/entity/quotation.item.entity';
 import { OrderItemEntity } from 'src/order/entity/order.item.entity';
+import { InvoiceItemEntity } from 'src/invoice/entity/invoice.item.entity';
 
 export enum Archive {
     TRUE = 'true',
@@ -186,4 +187,7 @@ export class ItemEntity {
 
     @OneToMany(() => OrderItemEntity, (oi) => oi.item)
     orderItems?: OrderItemEntity[];
+
+    @OneToMany(() => InvoiceItemEntity, (ii) => ii.item)
+    invoiceItems?: InvoiceItemEntity[];
 }

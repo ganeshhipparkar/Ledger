@@ -89,7 +89,7 @@ export default function QuotationDiscountSidePanel({
                     <h2 className="text-lg font-semibold text-gray-800">Item Discounts</h2>
                     <button
                         onClick={onClose}
-                        className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+                        className="rounded-sm p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -158,14 +158,14 @@ export default function QuotationDiscountSidePanel({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                        className="flex-1 rounded-sm border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
                     >
                         Cancel
                     </button>
                     <button
                         type="button"
                         onClick={handleSave}
-                        className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition cursor-pointer"
+                        className="flex-1 rounded-sm bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition cursor-pointer"
                     >
                         Save
                     </button>

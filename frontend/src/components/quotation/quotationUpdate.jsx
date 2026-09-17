@@ -314,37 +314,129 @@ export default function QuotationUpdate({ id }) {
             .catch(() => callback([]));
     };
 
-    const handleCurrencySelect = (curId) => {
-        const cur = currencies.find((c) => String(c.curId ?? c.id ?? c.currencyId) === String(curId));
-        const newRate = parseFloat(cur?.conversionRate) || 0;
 
-        setFormData((prev) => {
-            const currentBb = bankBooks.find((b) => String(b.bankBookId) === String(prev.bankBookId));
-            const isBbValid = currentBb && String(currentBb.currencyId) === String(curId);
-            return {
-                ...prev,
-                currencyId: String(curId),
-                currencyCode: cur?.code ?? "",
-                currencySymbol: cur?.symbol ?? "",
-                currencyConversionRate: newRate,
-                bankBookId: isBbValid ? prev.bankBookId : "",
-            };
-        });
-        if (errors.currencyId) setErrors((prev) => ({ ...prev, currencyId: null }));
-        if (errors.bankBookId) setErrors((prev) => ({ ...prev, bankBookId: null }));
 
-        setItems((prevItems) =>
-            prevItems.map((it) => {
-                if (!it.itemId) return it;
-                const basePrice = parseFloat(it.baseCurrencyPrice) || 0;
-                const newUnitPrice = newRate > 0 ? basePrice * newRate : 0;
-                return computeItem({
-                    ...it,
-                    unitPrice: parseFloat(newUnitPrice.toFixed(4)),
-                });
+    const loadCustomerOptions = (inputValue, callback) => {
+        if (!companyId || !formData.customerId) return callback([]);
+        fetch("/relayapi", {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+                endpoint: "customer-currencies-list",
+                module: "customer",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                page: 1,
+                limit: 20,
+                filters: [
+                    { key: "customerId", value: String(formData.customerId), operator: "eq" },
+                    ...(inputValue ? [{ key: "customerName", value: inputValue, operator: "like" }] : []),
+                ],
+            }),
+        })
+            .then((res) => res.json())
+            .then((payload) => {
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                const options = (data?.data?.data ?? data?.data ?? []).map((c) => ({
+                    value: `${c.customerId}_${c.curId}`,
+                    label: `${c.customer?.customerName} (${c.currency?.code})`,
+                    raw: c,
+                }));
+                // Check if current combination exists in the options
+                if (formData.customerId && formData.currencyId) {
+                    const existingValue = `${formData.customerId}_${formData.currencyId}`;
+                    if (!options.some((o) => o.value === existingValue)) {
+                        options.unshift({
+                            value: existingValue,
+                            label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel,
+                            raw: null,
+                        });
+                    }
+                }
+                callback(options);
             })
-        );
+            .catch(() => callback([]));
     };
+
+    const handleCustomerCurrencySelect = async (option) => {
+        if (!option) {
+            setFormData((prev) => ({
+                ...prev,
+                customerId: "",
+                customerLabel: "",
+                currencyId: "",
+                currencyCode: "",
+                currencySymbol: "",
+                currencyConversionRate: 0,
+                bankBookId: "",
+            }));
+            setCurrencies([]);
+            setItems((prevItems) => prevItems.map((it) => computeItem({ ...it, unitPrice: 0 })));
+            return;
+        }
+
+        const raw = option.raw;
+        if (!raw) return;
+
+        const custId = raw.customerId;
+        const custName = raw.customer?.customerName || "";
+        const curId = raw.curId;
+
+        setFormData((prev) => ({
+            ...prev,
+            customerId: custId ? String(custId) : "",
+            customerLabel: custName,
+        }));
+        if (errors.customerId) setErrors((prev) => ({ ...prev, customerId: null }));
+
+        if (!custId) return;
+
+        try {
+            const res = await fetch("/relayapi", {
+                method: "GET",
+                headers: { ...authHeaders(), endpoint: `customer-details/${custId}`, module: "customer" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+
+            const fetchedCurrencies = data?.currencies ?? [];
+            setCurrencies(fetchedCurrencies);
+
+            const cur = fetchedCurrencies.find((c) => String(c.curId ?? c.id ?? c.currencyId) === String(curId));
+            const newRate = parseFloat(cur?.conversionRate) || 0;
+
+            setFormData((prev) => {
+                const currentBb = bankBooks.find((b) => String(b.bankBookId) === String(prev.bankBookId));
+                const isBbValid = currentBb && String(currentBb.currencyId) === String(curId);
+                return {
+                    ...prev,
+                    currencyId: String(curId),
+                    currencyCode: cur?.code ?? raw.currency?.code ?? "",
+                    currencySymbol: cur?.symbol ?? raw.currency?.symbol ?? "",
+                    currencyConversionRate: newRate,
+                    bankBookId: isBbValid ? prev.bankBookId : "",
+                };
+            });
+            if (errors.currencyId) setErrors((prev) => ({ ...prev, currencyId: null }));
+            if (errors.bankBookId) setErrors((prev) => ({ ...prev, bankBookId: null }));
+
+            setItems((prevItems) =>
+                prevItems.map((it) => {
+                    if (!it.itemId) return it;
+                    const basePrice = parseFloat(it.baseCurrencyPrice) || 0;
+                    const newUnitPrice = newRate > 0 ? basePrice * newRate : 0;
+                    return computeItem({
+                        ...it,
+                        unitPrice: parseFloat(newUnitPrice.toFixed(4)),
+                    });
+                })
+            );
+        } catch {
+            setCurrencies([]);
+        }
+    };
+
 
     const handleDiscard = async () => {
         const result = await MySwal.fire({
@@ -521,46 +613,35 @@ export default function QuotationUpdate({ id }) {
                 <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Customer</label>
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
-                                {formData.customerLabel}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Currency <span className="text-red-500">*</span></label>
-                            <Select
-                                instanceId="currency-select"
-                                value={formData.currencyId ? {
-                                    value: formData.currencyId, label: currencies.map(c => ({
-                                        value: String(c.curId ?? c.currencyId),
-                                        label: c.code + (c.symbol ? ` (${c.symbol})` : "")
-                                    })).find(o => String(o.value) === String(formData.currencyId))?.label || formData.currencyId
+                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Customer <span className="text-red-500">*</span></label>
+                            <AsyncSelect
+                                instanceId="customer-select"
+                                cacheOptions
+                                defaultOptions
+                                loadOptions={loadCustomerOptions}
+                                value={formData.customerId && formData.currencyId ? {
+                                    value: `${formData.customerId}_${formData.currencyId}`,
+                                    label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                 } : null}
-                                onChange={(selected) => handleCurrencySelect(selected ? selected.value : "")}
-                                options={currencies.map(c => ({
-                                    value: String(c.curId ?? c.currencyId),
-                                    label: c.code + (c.symbol ? ` (${c.symbol})` : "")
-                                }))}
+                                onChange={handleCustomerCurrencySelect}
+                                placeholder="Search customer..."
                                 isClearable
-                                isDisabled={!formData.customerId || currencies.length === 0}
-                                placeholder={formData.customerId ? "-- Select currency --" : "Select customer first"}
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                                     control: (base) => ({
                                         ...base,
                                         borderRadius: "0.75rem",
-                                        borderColor: errors.currencyId ? "#ef4444" : "#d1d5db",
+                                        borderColor: errors.customerId ? "#ef4444" : "#d1d5db",
                                         padding: "1px",
                                         fontSize: "0.875rem",
                                         boxShadow: "none",
-                                        "&:hover": { borderColor: errors.currencyId ? "#ef4444" : "#3b82f6" },
+                                        "&:hover": { borderColor: errors.customerId ? "#ef4444" : "#3b82f6" },
                                     }),
                                 }}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                             />
-                            {errors.currencyId && <p className="text-red-500 text-xs mt-1 font-medium">{errors.currencyId}</p>}
+                            {errors.customerId && <p className="text-red-500 text-xs mt-1 font-medium">{errors.customerId}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Issue Date <span className="text-red-500">*</span></label>
@@ -794,7 +875,7 @@ export default function QuotationUpdate({ id }) {
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-4 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-center gap-4 shadow-lg">
                 <button type="button" onClick={handleDiscard}
                     className="rounded-xl border border-gray-300 px-8 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer">
                     Discard

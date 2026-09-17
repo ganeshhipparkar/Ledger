@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { MoreVertical, ChevronDown } from "lucide-react";
+import { MoreVertical, ChevronDown, LayoutList, EllipsisVertical } from "lucide-react";
 import { formatDisplayDate } from "@/lib/utils";
 import {
     DropdownMenu,
@@ -12,11 +12,11 @@ import {
 import { getInitials } from "@/lib/utils";
 
 export const ORDER_STATUS_COLORS = {
-    DRAFT: "mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-700 font-medium",
-    PLACED: "mt-2 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700 font-medium",
-    DELIVERED: "mt-2 inline-block rounded-full bg-green-100 px-3 py-1 text-sm text-green-700 font-medium",
-    PARTIAL_DELIVERED: "mt-2 inline-block rounded-full bg-teal-100 px-3 py-1 text-sm text-teal-700 font-medium",
-    CLOSED: "mt-2 inline-block rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium",
+    DRAFT: "mt-2 inline-block rounded-sm bg-amber-100 px-3 py-1 text-sm text-amber-700 font-medium",
+    PLACED: "mt-2 inline-block rounded-sm bg-blue-100 px-3 py-1 text-sm text-blue-700 font-medium",
+    DELIVERED: "mt-2 inline-block rounded-sm bg-green-100 px-3 py-1 text-sm text-green-700 font-medium",
+    PARTIAL_DELIVERED: "mt-2 inline-block rounded-sm bg-teal-100 px-3 py-1 text-sm text-teal-700 font-medium",
+    CLOSED: "mt-2 inline-block rounded-sm bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium",
 };
 
 export const ORDER_STATUS_LABELS = {
@@ -103,9 +103,9 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                         <span
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                            title="Actions"
+                            title="Navigation"
                         >
-                            <MoreVertical className="h-5 w-5" />
+                            <EllipsisVertical className="h-5 w-5" />
                         </span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
@@ -113,86 +113,20 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleView();
+                                router.push(`/order/${q.orderId}?tab=summary`);
                             }}
                         >
-                            View Details
+                            Summary
                         </DropdownMenuItem>
-                        {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
-                            <>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEdit();
-                                    }}
-                                >
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-blue-600 font-semibold hover:bg-blue-50"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSubmit();
-                                    }}
-                                >
-                                    Submit Order
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDelete();
-                                    }}
-                                >
-                                    Delete
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
-                            <>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onUpdatePrice?.(q);
-                                    }}
-                                >
-                                    Update Price
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCancel();
-                                    }}
-                                >
-                                    Cancel Order
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
-                            <>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onUpdatePrice?.(q);
-                                    }}
-                                >
-                                    Update Price
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleClose();
-                                    }}
-                                >
-                                    Close Order
-                                </DropdownMenuItem>
-                            </>
-                        )}
+                        <DropdownMenuItem
+                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/order/${q.orderId}?tab=activity`);
+                            }}
+                        >
+                            Activity
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -223,16 +157,120 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                 </div>
             </div>
 
-            <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1">
-                <span className="text-[#71717b] text-xs uppercase tracking-wide">
-                    Customer
-                </span>
-                <p
-                    className={`font-semibold mt-1 break-words ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : ""}`}
-                    onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
-                >
-                    {q.customerName || "—"}
-                </p>
+            <div className="text-sm text-gray-600 pt-3 pb-3 border-y border-gray-200 py-1 flex flex-row">
+                <div>
+                    <span className="text-[#71717b] text-xs uppercase tracking-wide">
+                        Customer
+                    </span>
+                    <p
+                        className={`font-semibold mt-1 break-words ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : ""}`}
+                        onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
+                    >
+                        {q.customerName || "—"}
+                    </p>
+                </div>
+                <div className="ml-auto">
+                    <div className="mt-4 pt-3 ">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <div
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-center justify-center gap-1.5 w-full rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                >
+                                    Actions
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-sm">
+                                <DropdownMenuItem
+                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleView();
+                                    }}
+                                >
+                                    View Details
+                                </DropdownMenuItem>
+                                {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
+                                    <>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEdit();
+                                            }}
+                                        >
+                                            Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-blue-600 font-semibold hover:bg-blue-50"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSubmit();
+                                            }}
+                                        >
+                                            Submit Order
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete();
+                                            }}
+                                        >
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
+                                    <>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onUpdatePrice?.(q);
+                                            }}
+                                        >
+                                            Update Price
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCancel();
+                                            }}
+                                        >
+                                            Cancel Order
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
+                                    <>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onUpdatePrice?.(q);
+                                            }}
+                                        >
+                                            Update Price
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleClose();
+                                            }}
+                                        >
+                                            Close Order
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
             </div>
 
             <div className="space-y-2 mt-4">
@@ -258,12 +296,12 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                     <span className="font-semibold text-gray-800">{fmtAmount(q.finalAmount, q?.currency.symbol ?? q.currencyCode)}</span>
                 </div>
             </div>
-
+            {/* 
             {primaryBtn && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                     {primaryBtn}
                 </div>
-            )}
+            )} */}
         </div>
     );
 }

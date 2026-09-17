@@ -3,6 +3,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColum
 import { CustomerCurrencyEntity } from "./customer.currency.entity";
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
+import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 import { PaymentTransactionEntity } from "src/payment_transaction/entity/payment.transaction.entity";
 
 export enum Status {
@@ -105,6 +106,9 @@ export class CustomerEntity {
 
     @OneToMany(() => OrderEntity, (order) => order.customer)
     orders?: OrderEntity[];
+
+    @OneToMany(() => InvoiceEntity, (invoice) => invoice.customer)
+    invoices?: InvoiceEntity[];
 
     @OneToMany(() => PaymentTransactionEntity, (paymentTransaction) => paymentTransaction.customer)
     paymentTransactions?: PaymentTransactionEntity[];

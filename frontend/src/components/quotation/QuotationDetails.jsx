@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList, GitBranch,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Paperclip, FileText, Eye, Download,
+    RefreshCw, Copy, ClipboardList, Paperclip, FileText, Eye, Download, Activity
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -20,6 +20,8 @@ import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
 import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
+import ActivityTimeline from "@/components/activity/ActivityTimeline";
+import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 
 const MySwal = withReactContent(Swal);
 
@@ -45,7 +47,7 @@ function StatusBadge({ status }) {
     const cls = STATUS_COLORS[status] ?? "bg-gray-100 text-gray-500 border-gray-200";
     const label = STATUS_LABELS[status] ?? (status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : "—");
     return (
-        <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${cls}`}>
+        <span className={`inline-flex items-center rounded-sm border px-3 py-0.5 text-xs font-semibold ${cls}`}>
             {label}
         </span>
     );
@@ -64,15 +66,24 @@ function fmtAmount(n, symbol) {
 const NAV_ITEMS = [
     { key: "summary", label: "Summary", Icon: LayoutList },
     { key: "versions", label: "Versions", Icon: GitBranch },
+    { key: "activity", label: "Activity", Icon: Activity },
 ];
 
 export default function QuotationDetails({ id }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { can } = useContext(loginContext) || {};
 
     const [quotation, setQuotation] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
+
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && ["summary", "versions", "activity"].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
@@ -268,7 +279,7 @@ export default function QuotationDetails({ id }) {
                                                     <ActionBtn
                                                         onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")}
                                                         icon={<Eye className="h-4 w-4" />}
-                                                        title="view"
+                                                        title="View PDF"
                                                         variant="outline"
                                                     />
                                                     <ActionBtn
@@ -281,6 +292,7 @@ export default function QuotationDetails({ id }) {
                                                             }
                                                         }}
                                                         icon={<Download className="h-4 w-4" />}
+                                                        title="Download PDF"
                                                         label=""
                                                         variant="outline"
                                                     />
@@ -290,6 +302,7 @@ export default function QuotationDetails({ id }) {
                                                 <ActionBtn
                                                     onClick={handleRegeneratePdf}
                                                     icon={<RefreshCw className="h-4 w-4" />}
+                                                    title="Regenerate PDF"
                                                     label=""
                                                     variant="outline"
                                                 />
@@ -410,18 +423,18 @@ export default function QuotationDetails({ id }) {
                                                             )}
                                                         </td>
                                                         <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-medium text-gray-800">{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol}{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-medium text-gray-800">{q?.currencySymbol} {Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
-                                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600"}`}>
-                                                                {item.taxCalculation ?? "N/A"}
+                                                            <span className={`px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600"}`}>
+                                                                {formatTaxCalcLabel(item.taxCalculation)}
                                                             </span>
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-left text-sm text-gray-600 whitespace-nowrap">{item.taxGroup ?? "—"}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">{Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">{q?.currencySymbol} {Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                     </tr>
                                                 );
                                             })}
@@ -556,6 +569,11 @@ export default function QuotationDetails({ id }) {
                             )}
                         </div>
                     )}
+                    {activeTab === "activity" && (
+                        <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
+                            <ActivityTimeline targetType="QUOTATION" targetId={id} />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -590,7 +608,7 @@ function InfoCard({ label, value, mono = false, badge }) {
     );
 }
 
-function ActionBtn({ onClick, icon, label, variant = "blue" }) {
+function ActionBtn({ onClick, icon, label, variant = "blue", title, ...rest }) {
     const VARIANTS = {
         blue: "bg-blue-600 text-white hover:bg-blue-700",
         green: "bg-green-600 text-white hover:bg-green-700",
@@ -601,7 +619,9 @@ function ActionBtn({ onClick, icon, label, variant = "blue" }) {
         <button
             type="button"
             onClick={onClick}
-            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition cursor-pointer ${VARIANTS[variant] ?? VARIANTS.outline}`}
+            title={title}
+            {...rest}
+            className={`flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-semibold transition cursor-pointer ${VARIANTS[variant] ?? VARIANTS.outline}`}
         >
             {icon} {label}
         </button>

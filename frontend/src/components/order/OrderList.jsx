@@ -15,7 +15,7 @@ import OrderUpdatePriceSidePanel from "./OrderUpdatePriceSidePanel";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
-import { MoreVertical, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -426,16 +426,15 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                     <div className="flex items-center gap-1">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <span
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                                    title="Actions"
-                                >
-                                    <MoreVertical className="h-5 w-5" />
-                                </span>
+                                    <span
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                    >
+                                        Actions <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
-                                {/* <DropdownMenuItem
+                                <DropdownMenuItem
                                     className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -443,7 +442,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                     }}
                                 >
                                     View Details
-                                </DropdownMenuItem> */}
+                                </DropdownMenuItem>
                                 {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
                                     <>
                                         <DropdownMenuItem

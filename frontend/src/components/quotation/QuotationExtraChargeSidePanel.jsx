@@ -4,11 +4,6 @@ import { useEffect, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { limitDecimals } from "@/lib/utils";
 
-/**
- * QuotationExtraChargeSidePanel
- * Manages item-level extra charge lines (quotationItemId set, quotationId null).
- * No cap validation (extra charges are unrestricted at item level).
- */
 export default function QuotationExtraChargeSidePanel({
     isOpen,
     onClose,
@@ -132,10 +127,10 @@ export default function QuotationExtraChargeSidePanel({
                 </div>
 
                 <div className="border-t px-6 py-4 flex gap-3 bg-white">
-                    <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer">
+                    <button type="button" onClick={onClose} className="flex-1 rounded-sm border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer">
                         Cancel
                     </button>
-                    <button type="button" onClick={handleSave} className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition cursor-pointer">
+                    <button type="button" onClick={handleSave} className="flex-1 rounded-sm bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition cursor-pointer">
                         Save
                     </button>
                 </div>
