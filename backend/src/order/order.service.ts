@@ -537,7 +537,7 @@ export class OrderService {
         extraCharge: this.toValidNumber(totals.extraCharge, 0) || null,
         vatWithheldAmount: this.toValidNumber(totals.vatWithheldAmount, 0),
         finalAmount: this.toValidNumber(totals.finalAmount, 0),
-        status: OrderStatus.DRAFT,
+        status: body.status === 'PLACED' ? OrderStatus.PLACED : OrderStatus.DRAFT,
         orderStatus: OrderLifecycleStatus.OPEN,
         addedBy: this.toOptionalNumber(performerId),
         addedDate: new Date(),

@@ -373,10 +373,10 @@ export default function AddOrder() {
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-            
+
             const fetchedCurrencies = data?.currencies ?? [];
             setCurrencies(fetchedCurrencies);
-            
+
             const cur = fetchedCurrencies.find((c) => String(c.curId ?? c.currencyId) === String(curId));
             const rate = parseFloat(cur?.conversionRate) || 1;
 
@@ -393,7 +393,7 @@ export default function AddOrder() {
                     bankBookLabel: isBbValid ? prev.bankBookLabel : "",
                 };
             });
-            
+
             setItems((prevItems) =>
                 prevItems.map((it) => {
                     const cost = parseFloat(it.item?.convertedCostPerUnit) || parseFloat(it.item?.costPerUnit) || 0;
@@ -673,7 +673,7 @@ export default function AddOrder() {
                             </label>
                             {lockedCustomer ? (
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium">
-                                    {formData.customerLabel}
+                                    {formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel}
                                 </div>
                             ) : (
                                 <AsyncSelect
@@ -681,9 +681,9 @@ export default function AddOrder() {
                                     cacheOptions
                                     defaultOptions
                                     loadOptions={loadCustomerOptions}
-                                    value={formData.customerId && formData.currencyId ? { 
-                                        value: `${formData.customerId}_${formData.currencyId}`, 
-                                        label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel 
+                                    value={formData.customerId && formData.currencyId ? {
+                                        value: `${formData.customerId}_${formData.currencyId}`,
+                                        label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
                                     placeholder="Search customer..."
@@ -749,6 +749,7 @@ export default function AddOrder() {
                             <input
                                 type="date"
                                 value={formData.orderDate}
+                                min={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setFormField("orderDate", e.target.value)}
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.orderDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
@@ -763,7 +764,6 @@ export default function AddOrder() {
                             <input
                                 type="date"
                                 value={formData.deliveryDate}
-                                min={formData.orderDate}
                                 onChange={(e) => setFormField("deliveryDate", e.target.value)}
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.deliveryDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
@@ -1355,7 +1355,7 @@ export default function AddOrder() {
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-4 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-center gap-4 shadow-lg">
                 <button
                     type="button"
                     onClick={handleDiscard}

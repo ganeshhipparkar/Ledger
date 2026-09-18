@@ -22,6 +22,7 @@ const MySwal = withReactContent(Swal);
 export default function CustomerUpdate({ id, onBack }) {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
 
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -219,8 +220,9 @@ export default function CustomerUpdate({ id, onBack }) {
         if (name === "postalCode" && value !== "" && !/^\d+$/.test(value)) {
             return;
         }
-        setErrors((prev) => ({ ...prev, [name]: "" }));
+
         setFormData((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
     const handleImage = (e) => {
@@ -274,6 +276,8 @@ export default function CustomerUpdate({ id, onBack }) {
         const numericId = Number(Array.isArray(id) ? id[0] : id);
         const payloadToValidate = {
             ...formData,
+            customerLogo: customerLogoFile || (preview && !removeCustomerLogo ? "existing" : null),
+            removeCustomerLogo: removeCustomerLogo ? "true" : undefined,
             customerId: numericId,
             companyId: formData.companyId ? Number(formData.companyId) : undefined,
             dialCode: formData.dialCode ? Number(formData.dialCode) : undefined,
@@ -282,14 +286,18 @@ export default function CustomerUpdate({ id, onBack }) {
         };
 
         const result = CustomerUpdateSchema.safeParse(payloadToValidate);
+        const fieldErrors = {};
+        
         if (!result.success) {
-            const fieldErrors = {};
             result.error.issues.forEach((err) => {
                 const field = err.path[0];
                 if (field && !fieldErrors[field]) {
                     fieldErrors[field] = err.message;
                 }
             });
+        }
+
+        if (Object.keys(fieldErrors).length > 0) {
             setErrors(fieldErrors);
             return;
         }
@@ -344,7 +352,13 @@ export default function CustomerUpdate({ id, onBack }) {
                 else router.push(`/customer/${numericId}`);
             } else {
                 const msg = data?.message || "Failed to update customer.";
-                setErrors({ global: msg });
+                if (msg === "This phone number is already registered for this company.") {
+                    setErrors({ phone: msg });
+                } else if (msg === "This email is already registered for this company.") {
+                    setErrors({ customerEmail: msg });
+                } else {
+                    setErrors({ global: msg });
+                }
                 toast.error(msg, { position: "top-right" });
             }
         } catch (err) {
@@ -358,6 +372,12 @@ export default function CustomerUpdate({ id, onBack }) {
     const inputClass = "w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 text-sm";
     const labelClass = "mb-2 block text-sm font-medium text-gray-700";
     const errorClass = "mt-1 text-sm text-red-500";
+
+    const maxOwnerDob = new Date();
+    const year = maxOwnerDob.getFullYear() - 15;
+    const month = String(maxOwnerDob.getMonth() + 1).padStart(2, '0');
+    const day = String(maxOwnerDob.getDate()).padStart(2, '0');
+    const maxOwnerDobString = `${year}-${month}-${day}`;
 
     if (fetching) {
         return (
@@ -387,7 +407,7 @@ export default function CustomerUpdate({ id, onBack }) {
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">Edit Customer</h1>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="space-y-6">
 
                         {/* Basic Information */}
@@ -423,19 +443,21 @@ export default function CustomerUpdate({ id, onBack }) {
                                     {errors.customerIncorporationDate && <p className={errorClass}>{errors.customerIncorporationDate}</p>}
                                 </div>
 
-                                <div>
-                                    <label className={labelClass}>Company</label>
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={activeAssignment?.companyName || "Your Company"}
-                                        className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed"
-                                    />
-                                </div>
+                                {isSuperAdmin && (
+                                    <div>
+                                        <label className={labelClass}>Company</label>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={activeAssignment?.companyName || "Your Company"}
+                                            className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed"
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Logo */}
                                 <div>
-                                    <label className={labelClass}>Customer Logo</label>
+                                    <label className={labelClass}>Customer Logo <span className="text-red-500">*</span></label>
                                     <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImage} className={inputClass} />
                                     {errors.customerLogo && <p className={errorClass}>{errors.customerLogo}</p>}
                                     {preview && (
@@ -667,7 +689,7 @@ export default function CustomerUpdate({ id, onBack }) {
 
                                 <div>
                                     <label className={labelClass}>Owner Date of Birth <span className="text-red-500">*</span></label>
-                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={maxOwnerDobString} onChange={handleChange} className={inputClass} />
                                     {errors.ownerDob && <p className={errorClass}>{errors.ownerDob}</p>}
                                 </div>
 

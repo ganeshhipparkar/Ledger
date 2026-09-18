@@ -1,5 +1,6 @@
 "use client";
 
+import FormattedNumberInput from "../ui/FormattedNumberInput";
 import { useEffect, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { limitDecimals } from "@/lib/utils";
@@ -110,8 +111,7 @@ export default function QuotationLevelAdjSidePanel({
                                 onChange={(e) => handleChange(idx, "description", e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
                             />
-                            <input
-                                type="number"
+                            <FormattedNumberInput
                                 placeholder="Amount"
                                 min="0"
                                 step="0.0001"

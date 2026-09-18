@@ -9,6 +9,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
@@ -124,6 +125,24 @@ export class CustomerContorller {
   ) {
     const result = await this.customerService.getCompanyCurrencies(
       Number(companyId),
+      req,
+    );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Get('check-customer-email')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('customerView')
+  async checkCustomerEmail(
+    @Req() req: any,
+    @Query('email') email: string,
+    @Query('companyId') companyId: string,
+    @Query('customerId') customerId?: string,
+  ) {
+    const result = await this.customerService.checkCustomerEmail(
+      email,
+      Number(companyId),
+      customerId ? Number(customerId) : undefined,
       req,
     );
     return { encrypted: encryptResponse(result) };

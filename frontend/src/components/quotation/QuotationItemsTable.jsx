@@ -1,4 +1,5 @@
 "use client";
+import FormattedNumberInput from "../ui/FormattedNumberInput";
 import Select, { components } from "react-select";
 
 const CustomOption = (props) => {
@@ -289,19 +290,18 @@ export default function QuotationItemsTable({
                         <tr>
                             <th className="px-1 py-3 w-10 text-center">#</th>
                             <th className="px-1 py-3">Description</th>
-                            <th className="px-1 py-3 w-28 text-right">Qty</th>
-                            <th className="px-1 py-3 w-32 text-right">Unit Price ({currencySymbol})</th>
-                            <th className="px-1 py-3 w-28 text-right">Amount ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-32 text-right">Qty</th>
+                            <th className="px-1 py-3 w-40 text-right">Unit Price ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-32 text-right">Amount ({currencySymbol})</th>
                             <th className="px-1 py-3 w-32 text-right">Discount ({currencySymbol})</th>
-                            <th className="px-1 py-3 w-58 text-right">Extra Charge ({currencySymbol})</th>
-                            <th className="px-1 py-3 w-28 text-right">Total ({currencySymbol})</th>
-                            <th className="px-1 py-3 w-32">Tax Calc</th>
-                            <th className="px-1 py-3 w-36">Tax Group</th>
-                            <th className="px-1 py-3 w-28 text-right">Tax Amt ({currencySymbol})</th>
-                            <th className="px-1 py-3 w-110 text-right">Taxable Amt ({currencySymbol})</th>
-
-                            <th className="px-1 py-3 w-32 text-right font-bold text-gray-700">Final Amt ({currencySymbol})</th>
-                            <th className="px-3 py-3 w-10 text-center">Action</th>
+                            <th className="px-1 py-3 w-40 text-right">Extra Charge ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-32 text-right">Total ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-40">Tax Calc</th>
+                            <th className="px-1 py-3 w-48">Tax Group</th>
+                            <th className="px-1 py-3 w-32 text-right">Tax Amt ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-40 text-right">Taxable Amt ({currencySymbol})</th>
+                            <th className="px-1 py-3 w-40 text-right font-bold text-gray-700">Final Amt ({currencySymbol})</th>
+                            <th className="px-3 py-3 w-12 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-sm">
@@ -317,7 +317,7 @@ export default function QuotationItemsTable({
                             return (
                                 <tr key={item._id} className="hover:bg-gray-50/50 transition">
                                     <td className="px-3 py-4 text-gray-500 font-medium text-center">{idx + 1}</td>
-                                    <td className="px-3 py-4 min-w-[240px]">
+                                    <td className="px-3 py-4 min-w-[350px]">
                                         <AsyncSelect
                                             instanceId={`item-select-row-${idx}`}
                                             cacheOptions
@@ -392,9 +392,8 @@ export default function QuotationItemsTable({
                                         />
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[110px]">
-                                        <input
-                                            type="number"
+                                    <td className="px-3 py-4 min-w-[160px]">
+                                        <FormattedNumberInput
                                             min="0"
                                             step={item.isDecimalAllowed ? "0.0001" : "1"}
                                             value={item.quantity}
@@ -406,9 +405,8 @@ export default function QuotationItemsTable({
                                         />
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[130px]">
-                                        <input
-                                            type="number"
+                                    <td className="px-3 py-4 min-w-[180px]">
+                                        <FormattedNumberInput
                                             min="0"
                                             step="0.0001"
                                             value={item.unitPrice}
@@ -456,7 +454,7 @@ export default function QuotationItemsTable({
                                         {fmtNum(item.totalAmount)}
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[150px]">
+                                    <td className="px-3 py-4 min-w-[200px]">
                                         <select
                                             value={item.taxCalculation}
                                             onChange={(e) => handleTaxCalcChange(idx, e.target.value)}
@@ -468,7 +466,7 @@ export default function QuotationItemsTable({
                                         </select>
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[190px]">
+                                    <td className="px-3 py-4 min-w-[240px]">
                                         <Select
                                             instanceId={`item-tax-group-select-${idx}`}
                                             value={selectedTaxValue ? {

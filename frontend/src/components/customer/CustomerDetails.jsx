@@ -82,6 +82,7 @@ export default function CustomerDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             setCustomer(data?.customerId ? data : null);
+            console.log(data, "coantg")
         } catch (err) {
             console.error(err);
             setCustomer(null);
@@ -145,7 +146,6 @@ export default function CustomerDetails({ id }) {
                     <span className="text-gray-800">Details</span>
                 </nav>
 
-                {/* Title + action buttons */}
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">
                         Details
@@ -291,7 +291,6 @@ export default function CustomerDetails({ id }) {
                                 </div>
                             </div>
 
-                            {/* Owner details & Audit card */}
                             <div className="space-y-6">
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <div className="border-b pb-5">

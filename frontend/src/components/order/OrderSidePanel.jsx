@@ -142,11 +142,11 @@ export default function OrderSidePanel({ id, onClose }) {
                 <div className="space-y-2 text-sm bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                     <div className="flex justify-between items-center text-gray-600">
                         <span>Gross Amount</span>
-                        <span className="font-medium">{Number(data.grossAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="font-medium">{Number(data.taxableAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-center text-gray-600">
                         <span>Discount</span>
-                        <span className="font-medium text-orange-600">-{Number(data.discountAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="font-medium text-orange-600">-{Number(data.discount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-center font-bold text-gray-900 border-t border-blue-200/50 pt-2 mt-2">
                         <span>Receivable</span>

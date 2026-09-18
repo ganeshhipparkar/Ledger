@@ -473,7 +473,7 @@ export const PackageUpdateSchema = z.object({
 export const CustomerFormSchema = z.object({
     customerName: z.string()
         .min(1, "Please enter Customer Name."),
-    customerLogo: z.any().optional(),
+    customerLogo: z.any().refine((val) => val !== undefined && val !== null && val !== "", { message: "Please select a Customer Logo." }),
     customerEmail: z.string()
         .min(1, "Please enter Customer Email.")
         .email("Please enter valid Email."),
@@ -517,23 +517,24 @@ export const CustomerFormSchema = z.object({
         .min(1, "Please enter Owner Date of Birth.")
         .refine((val) => {
             if (!val) return true;
-            const d = new Date(val);
-            if (isNaN(d.getTime())) return true;
             const today = new Date();
-            today.setHours(23, 59, 59, 999);
-            return d <= today;
-        }, { message: "Owner Date of Birth cannot be in the future." }),
+            const year = today.getFullYear() - 15;
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const limitDateStr = `${year}-${month}-${day}`;
+            return val <= limitDateStr;
+        }, { message: "Owner must be at least 15 years old." }),
     status: z.enum(["Active", "Inactive"], {
         errorMap: () => ({ message: "Please select a valid Status." }),
     }),
-    curIds: z.array(z.number()).optional(),
+    curIds: z.array(z.number()).min(1, "Please select at least one Currency."),
 });
 
 export const CustomerUpdateSchema = z.object({
     customerId: z.coerce.number(),
     customerName: z.string()
         .min(1, "Please enter Customer Name."),
-    customerLogo: z.any().optional(),
+    customerLogo: z.any().refine((val) => val !== undefined && val !== null && val !== "", { message: "Please select a Customer Logo." }),
     removeCustomerLogo: z.string().optional(),
     customerEmail: z.string()
         .min(1, "Please enter Customer Email.")
@@ -575,16 +576,17 @@ export const CustomerUpdateSchema = z.object({
         .min(1, "Please enter Owner Date of Birth.")
         .refine((val) => {
             if (!val) return true;
-            const d = new Date(val);
-            if (isNaN(d.getTime())) return true;
             const today = new Date();
-            today.setHours(23, 59, 59, 999);
-            return d <= today;
-        }, { message: "Owner Date of Birth cannot be in the future." }),
+            const year = today.getFullYear() - 15;
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const limitDateStr = `${year}-${month}-${day}`;
+            return val <= limitDateStr;
+        }, { message: "Owner must be at least 15 years old." }),
     status: z.enum(["Active", "Inactive"], {
         errorMap: () => ({ message: "Please select a valid Status." }),
     }),
-    curIds: z.array(z.number()).optional(),
+    curIds: z.array(z.number()).min(1, "Please select at least one Currency."),
 });
 
 export const ItemFormSchema = z.object({

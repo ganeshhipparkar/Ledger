@@ -172,6 +172,18 @@ export class PaymentTransactionService {
     };
   }
 
+  private validateExchangeDate(exchangeDate?: string): string | null {
+    if (!exchangeDate) return null;
+    const ex = new Date(exchangeDate);
+    if (isNaN(ex.getTime())) return 'Invalid exchangeDate';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    if (ex < oneMonthAgo) return 'exchangeDate cannot be more than 1 month in the past';
+    return null;
+  }
+
   async insertPaymentTransaction(
     params: PaymentTransactionDto,
     req?: any,
@@ -192,6 +204,9 @@ export class PaymentTransactionService {
           };
         }
       }
+
+      const exchangeDateError = this.validateExchangeDate(params.exchangeDate);
+      if (exchangeDateError) return { success: 0, message: exchangeDateError };
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
@@ -319,6 +334,11 @@ export class PaymentTransactionService {
               'Access denied: cannot update payment transaction of another company',
           };
         }
+      }
+
+      if (params.exchangeDate !== undefined) {
+        const exchangeDateError = this.validateExchangeDate(params.exchangeDate);
+        if (exchangeDateError) return { success: 0, message: exchangeDateError };
       }
 
       const performerId = req?.user?.isImpersonation

@@ -165,6 +165,7 @@ export default function AddCustomer() {
         if (name === "postalCode" && value !== "" && !/^\d+$/.test(value)) {
             return;
         }
+
         if (name === "companyId") {
             setFormData((prev) => ({ ...prev, [name]: value, curIds: [] }));
         } else {
@@ -218,6 +219,7 @@ export default function AddCustomer() {
 
         const payloadToValidate = {
             ...formData,
+            customerLogo: customerLogoFile,
             companyId: formData.companyId ? Number(formData.companyId) : undefined,
             dialCode: formData.dialCode ? Number(formData.dialCode) : undefined,
             postalCode: formData.postalCode ? Number(formData.postalCode) : undefined,
@@ -225,14 +227,18 @@ export default function AddCustomer() {
         };
 
         const parseRes = CustomerFormSchema.safeParse(payloadToValidate);
+        const fieldErrors = {};
+
         if (!parseRes.success) {
-            const fieldErrors = {};
             parseRes.error.issues.forEach((err) => {
                 const field = err.path[0];
                 if (field && !fieldErrors[field]) {
                     fieldErrors[field] = err.message;
                 }
             });
+        }
+
+        if (Object.keys(fieldErrors).length > 0) {
             setErrors(fieldErrors);
             return;
         }
@@ -282,7 +288,13 @@ export default function AddCustomer() {
                 router.push("/customer-list");
             } else {
                 const msg = data?.message || "Failed to create customer.";
-                setErrors({ global: msg });
+                if (msg === "This phone number is already registered for this company.") {
+                    setErrors({ phone: msg });
+                } else if (msg === "This email is already registered for this company.") {
+                    setErrors({ customerEmail: msg });
+                } else {
+                    setErrors({ global: msg });
+                }
                 toast.error(msg, { position: "top-right" });
             }
         } catch (err) {
@@ -296,6 +308,12 @@ export default function AddCustomer() {
     const inputClass = "w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 text-sm";
     const labelClass = "mb-2 block text-sm font-medium text-gray-700";
     const errorClass = "mt-1 text-sm text-red-500";
+
+    const maxOwnerDob = new Date();
+    const year = maxOwnerDob.getFullYear() - 15;
+    const month = String(maxOwnerDob.getMonth() + 1).padStart(2, '0');
+    const day = String(maxOwnerDob.getDate()).padStart(2, '0');
+    const maxOwnerDobString = `${year}-${month}-${day}`;
 
     return (
         <div className="min-h-screen w-full bg-[#f5f6f8] text-black">
@@ -314,10 +332,9 @@ export default function AddCustomer() {
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">Add Customer</h1>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="space-y-6">
 
-                        {/* Basic Information */}
                         <div className="rounded-2xl bg-white p-8 shadow-sm">
                             <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Basic Information</h2>
                             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -336,13 +353,14 @@ export default function AddCustomer() {
 
                                 <div>
                                     <label className={labelClass}>Incorporation Date <span className="text-red-500">*</span></label>
-                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    <input type="date" name="customerIncorporationDate" value={formData.customerIncorporationDate} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                    />
                                     {errors.customerIncorporationDate && <p className={errorClass}>{errors.customerIncorporationDate}</p>}
                                 </div>
 
-                                <div>
-                                    <label className={labelClass}>Company <span className="text-red-500">*</span></label>
-                                    {isSuperAdmin ? (
+                                {isSuperAdmin && (
+                                    <div>
+                                        <label className={labelClass}>Company <span className="text-red-500">*</span></label>
                                         <select
                                             name="companyId"
                                             value={formData.companyId}
@@ -357,20 +375,13 @@ export default function AddCustomer() {
                                                 </option>
                                             ))}
                                         </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={activeAssignment?.companyName || "Your Company"}
-                                            className="w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed"
-                                        />
-                                    )}
-                                    {errors.companyId && <p className={errorClass}>{errors.companyId}</p>}
-                                </div>
+                                        {errors.companyId && <p className={errorClass}>{errors.companyId}</p>}
+                                    </div>
+                                )}
 
                                 {/* Logo */}
                                 <div>
-                                    <label className={labelClass}>Customer Logo</label>
+                                    <label className={labelClass}>Customer Logo <span className="text-red-500">*</span></label>
                                     <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImage} className={inputClass} />
                                     {errors.customerLogo && <p className={errorClass}>{errors.customerLogo}</p>}
                                     {preview && (
@@ -466,7 +477,6 @@ export default function AddCustomer() {
                             </div>
                         </div>
 
-                        {/* Address */}
                         <div className="rounded-2xl bg-white p-8 shadow-sm">
                             <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Address</h2>
                             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -515,7 +525,7 @@ export default function AddCustomer() {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>City</label>
+                                    <label className={labelClass}>City <span className="text-red-500">*</span></label>
                                     <CreatableSelect
                                         name="city"
                                         instanceId="add-customer-city-select"
@@ -537,14 +547,14 @@ export default function AddCustomer() {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Address Line 1</label>
+                                    <label className={labelClass}>Address Line 1 <span className="text-red-500">*</span></label>
                                     <input type="text" name="AddressLineOne" value={formData.AddressLineOne} disabled={!formData.country || !formData.state} onChange={handleChange} placeholder="Enter Address Line 1" className={inputClass} />
                                     {errors.AddressLineOne && (<p className={errorClass}>{errors.AddressLineOne}</p>)}
 
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Postal Code</label>
+                                    <label className={labelClass}>Postal Code <span className="text-red-500">*</span></label>
                                     <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Enter Postal Code" className={inputClass} />
                                     {errors.postalCode && (<p className={errorClass}>{errors.postalCode}</p>)}
 
@@ -553,7 +563,6 @@ export default function AddCustomer() {
                             </div>
                         </div>
 
-                        {/* Owner Information */}
                         <div className="rounded-2xl bg-white p-8 shadow-sm">
                             <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Owner Information</h2>
                             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -609,14 +618,13 @@ export default function AddCustomer() {
 
                                 <div>
                                     <label className={labelClass}>Owner Date of Birth <span className="text-red-500">*</span></label>
-                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={new Date().toISOString().split("T")[0]} onChange={handleChange} className={inputClass} />
+                                    <input type="date" name="ownerDob" value={formData.ownerDob} max={maxOwnerDobString} onChange={handleChange} className={inputClass} onClick={(e) => e.target.showPicker && e.target.showPicker()} />
                                     {errors.ownerDob && <p className={errorClass}>{errors.ownerDob}</p>}
                                 </div>
 
                             </div>
                         </div>
 
-                        {/* Status */}
                         <div className="rounded-2xl bg-white p-8 shadow-sm mb-6">
                             <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Status</h2>
                             <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">

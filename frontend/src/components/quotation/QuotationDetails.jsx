@@ -18,10 +18,14 @@ import { loginContext } from "../hooks/LoginContext";
 import QuotationSummaryPanel from "./QuotationSummaryPanel";
 import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
 import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
+import { createPortal } from "react-dom";
+import UserSidePanel from "../user/UserSidePanel";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
+import { FaRegFilePdf } from "react-icons/fa";
+
 
 const MySwal = withReactContent(Swal);
 
@@ -85,6 +89,7 @@ export default function QuotationDetails({ id }) {
         }
     }, [searchParams]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
 
@@ -210,7 +215,14 @@ export default function QuotationDetails({ id }) {
                     <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/quotation-list")}>Quotations</span>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">{"Quotation"}</span>
+
                 </nav>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-1 mt-2">
+                    <h1 className="text-2xl font-semibold text-[#1f2937]">
+                        {"Quotation"}
+                    </h1>
+                </div>
+
             </div>
 
             <div className="px-6 pb-3">
@@ -301,7 +313,7 @@ export default function QuotationDetails({ id }) {
                                             {can?.("quotationUpdate") && (
                                                 <ActionBtn
                                                     onClick={handleRegeneratePdf}
-                                                    icon={<RefreshCw className="h-4 w-4" />}
+                                                    icon={<FaRegFilePdf className="h-4 w-4" />}
                                                     title="Regenerate PDF"
                                                     label=""
                                                     variant="outline"
@@ -326,7 +338,7 @@ export default function QuotationDetails({ id }) {
 
             <div className="flex flex-1 gap-4 px-6 pb-8">
                 <div className={`shrink-0 transition-all duration-200 ${sidebarExpanded ? "w-44" : "w-12"}`}>
-                    <div className="sticky top-4 rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="sticky top-4 rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
                         <button
                             type="button"
                             onClick={() => setSidebarExpanded(!sidebarExpanded)}
@@ -448,7 +460,16 @@ export default function QuotationDetails({ id }) {
                                     <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                             <ReadField label="VAT Withheld" value={q.vatWithheld ?? "NO"} />
-                                            <ReadField label="Sales Person" value={q.salesPersonName ?? "—"} />
+                                            <ReadField
+                                                label="Sales Person"
+                                                value={q.salesPersonId ? (
+                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(q.salesPersonId)}>
+                                                        {q.salesPersonName ?? "—"}
+                                                    </span>
+                                                ) : (
+                                                    q.salesPersonName ?? "—"
+                                                )}
+                                            />
                                             <ReadField label="Added By" value={q.addedByName ?? "—"} />
                                         </div>
                                     </div>
@@ -589,6 +610,10 @@ export default function QuotationDetails({ id }) {
                     id={selectedItemId}
                     onClose={() => setSelectedItemId(null)}
                 />
+            )}
+            {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
             )}
         </div>
     );

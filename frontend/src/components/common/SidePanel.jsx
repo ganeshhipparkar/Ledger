@@ -10,8 +10,8 @@ export default function SidePanel({
     loading = false,
     errorType = null,
     title = "Details",
-    avatar = null, // string URL or null
-    initials = null, // string or null
+    avatar = null,
+    initials = null,
     name = "",
     subtitle = "",
     status = "",
@@ -26,19 +26,16 @@ export default function SidePanel({
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0"
                     }`}
                 onClick={handleClose}
             />
 
-            {/* Side panel */}
             <div
                 className={`fixed right-0 top-0 z-50 h-full w-full max-w-sm bg-white shadow-2xl overflow-y-auto flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"
                     }`}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between border-b px-6 py-4 bg-white sticky top-0 z-10">
                     <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
                     <button
@@ -80,7 +77,6 @@ export default function SidePanel({
                     )
                 ) : (
                     <div className="flex-1 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-                        {/* Header Block: Avatar/Initials + name + subtitle + status */}
                         <div className="flex items-center gap-4 px-6 py-5 border-b bg-gray-50">
                             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-blue-50 border shadow-sm flex-shrink-0 relative transition-transform hover:scale-105 duration-200">
                                 {avatar ? (
@@ -112,7 +108,6 @@ export default function SidePanel({
                             </div>
                         </div>
 
-                        {/* Optional More Details Button */}
                         {onMoreDetails && (
                             <div className="px-6 py-3 border-b">
                                 <button
@@ -124,7 +119,6 @@ export default function SidePanel({
                             </div>
                         )}
 
-                        {/* Info Sections */}
                         {sections.map((section, secIdx) => (
                             <div
                                 key={secIdx}
@@ -148,7 +142,6 @@ export default function SidePanel({
                             </div>
                         ))}
 
-                        {/* Custom content if any (e.g. assigned users list) */}
                         {customContent}
                     </div>
                 )}

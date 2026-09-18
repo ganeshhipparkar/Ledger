@@ -347,10 +347,10 @@ export default function AddQuotation() {
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-            
+
             const fetchedCurrencies = data?.currencies ?? [];
             setCurrencies(fetchedCurrencies);
-            
+
             const cur = fetchedCurrencies.find((c) => String(c.curId ?? c.id ?? c.currencyId) === String(curId));
             const newRate = parseFloat(cur?.conversionRate) || 0;
 
@@ -621,7 +621,7 @@ export default function AddQuotation() {
                             </label>
                             {lockedCustomer ? (
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium">
-                                    {formData.customerLabel}
+                                    {formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel}
                                 </div>
                             ) : (
                                 <AsyncSelect
@@ -629,9 +629,9 @@ export default function AddQuotation() {
                                     cacheOptions
                                     defaultOptions
                                     loadOptions={loadCustomerOptions}
-                                    value={formData.customerId && formData.currencyId ? { 
-                                        value: `${formData.customerId}_${formData.currencyId}`, 
-                                        label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel 
+                                    value={formData.customerId && formData.currencyId ? {
+                                        value: `${formData.customerId}_${formData.currencyId}`,
+                                        label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
                                     placeholder="Search customer..."

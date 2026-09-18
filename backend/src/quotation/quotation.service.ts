@@ -500,7 +500,7 @@ export class QuotationService {
         finalAmount: this.toValidNumber(totals.finalAmount, 0),
         versionCode: body.versionCode || 'V1',
         parentQuotationId: null, 
-        status: body.status ?? 'DRAFT',
+        status: body.status === 'SUBMITTED' ? 'SUBMITTED' : 'DRAFT',
         addedBy: this.toOptionalNumber(performerId),
         addedDate: new Date(),
       });

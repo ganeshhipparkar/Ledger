@@ -494,6 +494,7 @@ export default function OrderUpdate({ id }) {
                             <input
                                 type="date"
                                 value={formData.orderDate}
+                                min={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setFormField("orderDate", e.target.value)}
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.orderDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
@@ -508,7 +509,6 @@ export default function OrderUpdate({ id }) {
                             <input
                                 type="date"
                                 value={formData.deliveryDate}
-                                min={formData.orderDate}
                                 onChange={(e) => setFormField("deliveryDate", e.target.value)}
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer ${errors.deliveryDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
@@ -1087,7 +1087,7 @@ export default function OrderUpdate({ id }) {
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-4 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-center gap-4 shadow-lg">
                 <button
                     type="button"
                     onClick={handleDiscard}

@@ -28,7 +28,7 @@ export const ORDER_STATUS_LABELS = {
 };
 
 export function OrderStatusBadge({ status }) {
-    const cls = ORDER_STATUS_COLORS[status] ?? "mt-2 inline-block rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium";
+    const cls = ORDER_STATUS_COLORS[status] ?? "mt-2 inline-block rounded-sm bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium";
     const label = ORDER_STATUS_LABELS[status] ?? status;
     return (
         <span className={cls}>
@@ -46,10 +46,8 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can, onCustomerClick, onAddedByClick }) {
+export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can, onCustomerClick, onAddedByClick, onOrderClick }) {
     const router = useRouter();
-
-    const handleView = () => router.push(`/order/${q.orderId}`);
     const handleEdit = () => router.push(`/order/${q.orderId}?edit=true`);
     const handleSubmit = () => onStatusUpdate?.(q.orderId, "SUBMIT");
     const handleCancel = () => onStatusUpdate?.(q.orderId, "CANCEL");
@@ -58,41 +56,44 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
 
     const initials = getInitials(q.orderCode ?? `OD-${q.orderId}`);
     const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
-
-    let primaryBtn = null;
-    if (isOpen) {
-        if (q.status === "DRAFT" && can?.("orderUpdate") !== false) {
-            primaryBtn = (
-                <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="w-full rounded-full border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                >
-                    Submit Order
-                </button>
-            );
-        } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
-            primaryBtn = (
-                <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="w-full rounded-full border border-red-500 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
-                >
-                    Cancel Order
-                </button>
-            );
-        } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false) {
-            primaryBtn = (
-                <button
-                    type="button"
-                    onClick={handleClose}
-                    className="w-full rounded-full border border-gray-500 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition cursor-pointer"
-                >
-                    Close Order
-                </button>
-            );
-        }
-    }
+    const hasActions = Boolean(
+        (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
+        (isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false) ||
+        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+    );
+    // if (isOpen) {
+    //     if (q.status === "DRAFT" && can?.("orderUpdate") !== false) {
+    //         primaryBtn = (
+    //             <button
+    //                 type="button"
+    //                 onClick={handleSubmit}
+    //                 className="w-full rounded-full border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+    //             >
+    //                 Submit Order
+    //             </button>
+    //         );
+    //     } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
+    //         primaryBtn = (
+    //             <button
+    //                 type="button"
+    //                 onClick={handleCancel}
+    //                 className="w-full rounded-full border border-red-500 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
+    //             >
+    //                 Cancel Order
+    //             </button>
+    //         );
+    //     } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false) {
+    //         primaryBtn = (
+    //             <button
+    //                 type="button"
+    //                 onClick={handleClose}
+    //                 className="w-full rounded-full border border-gray-500 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+    //             >
+    //                 Close Order
+    //             </button>
+    //         );
+    //     }
+    // }
 
     return (
         <div className="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition">
@@ -138,7 +139,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                 <div className="flex-1 min-w-0 pr-6">
                     <div
                         className={`font-semibold text-lg truncate ${can?.("orderView") !== false ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
-                        onClick={handleView}
+                        onClick={() => onOrderClick?.(q.orderId)}
                     >
                         {q.orderCode ?? `OD-\${q.orderId}`}
                     </div>
@@ -150,7 +151,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                         <OrderStatusBadge status={q.status} />
                         {q.orderStatus === "CLOSED" && (
                             <span className="mt-2 inline-block rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 font-medium">
-                                Lifecycle: Closed
+                                Closed
                             </span>
                         )}
                     </div>
@@ -170,106 +171,107 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                     </p>
                 </div>
                 <div className="ml-auto">
-                    <div className="mt-4 pt-3 ">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <div
-                                    type="button"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex items-center justify-center gap-1.5 w-full rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
-                                >
-                                    Actions
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-sm">
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleView();
-                                    }}
-                                >
-                                    View Details
-                                </DropdownMenuItem>
-                                {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
-                                    <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEdit();
-                                            }}
-                                        >
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-blue-600 font-semibold hover:bg-blue-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSubmit();
-                                            }}
-                                        >
-                                            Submit Order
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete();
-                                            }}
-                                        >
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
-                                    <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onUpdatePrice?.(q);
-                                            }}
-                                        >
-                                            Update Price
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCancel();
-                                            }}
-                                        >
-                                            Cancel Order
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
-                                    <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onUpdatePrice?.(q);
-                                            }}
-                                        >
-                                            Update Price
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleClose();
-                                            }}
-                                        >
-                                            Close Order
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    {hasActions && (
+                        <div className="mt-1 pt-3 ">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div
+                                        type="button"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center justify-between gap-1.5 w-34 rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                    >
+                                        {(() => {
+                                            const primaryAction = [
+                                                { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
+                                                { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Cancel Order" },
+                                                { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                            ].find(x => x.show)?.label ?? "Actions";
+                                            return <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>;
+                                        })()}
+                                        <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-sm">
+                                    {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit();
+                                                }}
+                                            >
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-600  hover:bg-blue-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSubmit();
+                                                }}
+                                            >
+                                                Submit Order
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-600 hover:bg-red-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete();
+                                                }}
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-red-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCancel();
+                                                }}
+                                            >
+                                                Cancel Order
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdatePrice?.(q);
+                                                }}
+                                            >
+                                                Update Price
+                                            </DropdownMenuItem>
+
+                                        </>
+                                    )}
+                                    {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdatePrice?.(q);
+                                                }}
+                                            >
+                                                Update Price
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleClose();
+                                                }}
+                                            >
+                                                Close Order
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    )}
                 </div>
             </div>
 

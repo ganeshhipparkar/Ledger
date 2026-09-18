@@ -285,6 +285,7 @@ export default function OrderList() {
                                     can={can}
                                     onCustomerClick={(id) => setSelectedCustomerId(id)}
                                     onAddedByClick={(id) => setSelectedUserId(id)}
+                                    onOrderClick={(id) => setSelectedOrderIdForPanel(id)}
                                     isExpanded={!!expandedRows[q.orderId]}
                                     onToggle={() => toggleRow(q.orderId)}
                                 />
@@ -374,6 +375,11 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
     const handleDelete = () => onStatusUpdate?.(q.orderId, "DELETE");
 
     const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
+    const hasActions = Boolean(
+        (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
+        (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false)) ||
+        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+    );
 
     return (
         <div className="px-6 py-6 border border-gray-200 bg-gray-50/2 rounded-xl">
@@ -411,8 +417,8 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                     <div className="flex flex-col gap-1 w-fit">
                         <OrderStatusBadge status={q.status} />
                         {q.orderStatus === "CLOSED" && (
-                            <span className="mt-1 inline-block rounded-full bg-gray-100 px-3 py-0.5 text-xs text-gray-600 font-medium">
-                                Lifecycle: Closed
+                            <span className="mt-1 inline-block rounded-full bg-gray-100 px-3 py-0.5 text-sm text-gray-600 font-medium">
+                                Closed
                             </span>
                         )}
                     </div>
@@ -424,138 +430,143 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                         <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q?.currency?.symbol ?? q?.currencyCode)}</div>
                     </div>
                     <div className="flex items-center gap-1">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                    <span
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
-                                    >
-                                        Actions <ChevronDown className="h-4 w-4 text-gray-500" />
-                                    </span>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
-                                <DropdownMenuItem
-                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleView();
-                                    }}
-                                >
-                                    View Details
-                                </DropdownMenuItem>
-                                {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
-                                    <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEdit();
-                                            }}
-                                        >
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSubmit();
-                                            }}
-                                        >
-                                            Submit Order
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete();
-                                            }}
-                                        >
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {isOpen && q.status === "PLACED" && (
-                                    <>
-                                        {q.invoicePdfPath && (
-                                            <>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
-                                                >
-                                                    View Invoice
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        try {
-                                                            await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
-                                                        } catch (err) {
-                                                            toast.error("Failed to download invoice", { position: "top-right" });
-                                                        }
-                                                    }}
-                                                >
-                                                    Download Invoice
-                                                </DropdownMenuItem>
-                                            </>
-                                        )}
-                                        {can?.("orderUpdate") !== false && (
-                                            <>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onRegeneratePdf?.(q.orderId);
-                                                    }}
-                                                >
-                                                    Regenerate PDF
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onUpdatePrice?.(q);
-                                                    }}
-                                                >
-                                                    Update Price
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleCancel();
-                                                    }}
-                                                >
-                                                    Cancel Order
-                                                </DropdownMenuItem>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                                {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
-                                    <>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onUpdatePrice?.(q);
-                                            }}
-                                        >
-                                            Update Price
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleClose();
-                                            }}
-                                        >
-                                            Close Order
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {hasActions && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    {(() => {
+                                        const primaryAction = [
+                                            { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
+                                            { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Invoice" },
+                                            { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
+                                            { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                        ].find(x => x.show)?.label ?? "Actions";
+
+                                        return (
+                                            <span
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                            >
+                                                <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>
+                                                <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                                            </span>
+                                        );
+                                    })()}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44 bg-white border border-gray-200 shadow-lg rounded-xl">
+                                    {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit();
+                                                }}
+                                            >
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSubmit();
+                                                }}
+                                            >
+                                                Submit Order
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete();
+                                                }}
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {isOpen && q.status === "PLACED" && (
+                                        <>
+                                            {q.invoicePdfPath && (
+                                                <>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
+                                                    >
+                                                        View Invoice
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                                                            } catch (err) {
+                                                                toast.error("Failed to download invoice", { position: "top-right" });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Download Invoice
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
+                                            {can?.("orderUpdate") !== false && (
+                                                <>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onRegeneratePdf?.(q.orderId);
+                                                        }}
+                                                    >
+                                                        Regenerate PDF
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onUpdatePrice?.(q);
+                                                        }}
+                                                    >
+                                                        Update Price
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCancel();
+                                                        }}
+                                                    >
+                                                        Cancel Order
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                    {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
+                                        <>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdatePrice?.(q);
+                                                }}
+                                            >
+                                                Update Price
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleClose();
+                                                }}
+                                            >
+                                                Close Order
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

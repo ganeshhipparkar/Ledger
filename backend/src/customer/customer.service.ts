@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, In, Not } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityCode } from '../activity/enums/activity-code.enum';
 import { CustomerEntity } from './entity/customer.entity';
@@ -226,6 +226,34 @@ export class CustomerService {
     return d > today;
   }
 
+  private isAtLeast15YearsOld(dateVal: any): boolean {
+    if (!dateVal) return false;
+    const today = new Date();
+    const year = today.getFullYear() - 15;
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const limitDateStr = `${year}-${month}-${day}`;
+    return String(dateVal) <= limitDateStr;
+  }
+
+  async checkCustomerEmail(email: string, companyId: number, customerId?: number, req?: any) {
+    const authCtx = await resolveAuthContext(req, this.ucgEntity);
+    if (!authCtx.isSuperAdmin) {
+      const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+      if (!scopedCompanyIds.includes(companyId)) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
+
+    const where: any = { companyId, customerEmail: email };
+    if (customerId) {
+      where.customerId = Not(customerId);
+    }
+
+    const exists = await this.customerEntity.findOne({ where, select: ['customerId'] });
+    return { success: 1, exists: !!exists };
+  }
+
   async insertCustomer(params: CustomerDto, customerLogo?: Express.Multer.File, req?: any) {
     try {
       if (!params.customerIncorporationDate || String(params.customerIncorporationDate).trim() === '') {
@@ -246,12 +274,30 @@ export class CustomerService {
           message: 'Owner date of birth is mandatory',
         };
       }
-      if (this.isFutureDate(params.ownerDob)) {
+      if (!this.isAtLeast15YearsOld(params.ownerDob)) {
         return {
           success: 0,
-          message: 'Owner date of birth cannot be in the future',
+          message: 'Owner must be at least 15 years old.',
         };
       }
+
+      if (!params.curIds || !Array.isArray(params.curIds) || params.curIds.length === 0) {
+        return { success: 0, message: "Please select at least one Currency." };
+      }
+
+      if (!customerLogo && !params.customerLogo) {
+        return { success: 0, message: "Customer Logo is mandatory." };
+      }
+
+      const existingPhone = await this.customerEntity.findOne({
+         where: { companyId: Number(params.companyId), phone: params.phone, dialCode: Number(params.dialCode) }
+      });
+      if (existingPhone) return { success: 0, message: "This phone number is already registered for this company." };
+
+      const existingEmail = await this.customerEntity.findOne({
+         where: { companyId: Number(params.companyId), customerEmail: params.customerEmail }
+      });
+      if (existingEmail) return { success: 0, message: "This email is already registered for this company." };
 
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
@@ -273,12 +319,11 @@ export class CustomerService {
         params.companyId,
         'customerCode',
       );
-
-      const performerId = req?.user?.isImpersonation
+ const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
         : (req?.user?.impersonatedBy ?? params.addedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.email
+        ? (req?.user?.email ?? '')
         : (req?.user?.impersonatorEmail ?? '');
 
       const queryParams: any = {
@@ -389,12 +434,16 @@ export class CustomerService {
             message: 'Owner date of birth cannot be empty',
           };
         }
-        if (this.isFutureDate(params.ownerDob)) {
+        if (!this.isAtLeast15YearsOld(params.ownerDob)) {
           return {
             success: 0,
-            message: 'Owner date of birth cannot be in the future',
+            message: 'Owner must be at least 15 years old.',
           };
         }
+      }
+
+      if (params.curIds !== undefined && (!Array.isArray(params.curIds) || params.curIds.length === 0)) {
+        return { success: 0, message: "Please select at least one Currency." };
       }
 
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -416,6 +465,26 @@ export class CustomerService {
           };
         }
       }
+
+      const willHaveLogo = (customerLogo || params.customerLogo) || (existingCustomer.customerLogo && params.removeCustomerLogo !== 'true');
+      if (!willHaveLogo) {
+          return { success: 0, message: "Customer Logo is mandatory." };
+      }
+
+      const checkPhone = params.phone !== undefined ? params.phone : existingCustomer.phone;
+      const checkDialCode = params.dialCode !== undefined ? params.dialCode : existingCustomer.dialCode;
+      
+      const existingPhoneUpdate = await this.customerEntity.findOne({
+         where: { companyId: Number(existingCustomer.companyId), phone: checkPhone, dialCode: Number(checkDialCode), customerId: Not(Number(params.customerId)) }
+      });
+      if (existingPhoneUpdate) return { success: 0, message: "This phone number is already registered for this company." };
+
+      const checkEmail = params.customerEmail !== undefined ? params.customerEmail : existingCustomer.customerEmail;
+      
+      const existingEmailUpdate = await this.customerEntity.findOne({
+         where: { companyId: Number(existingCustomer.companyId), customerEmail: checkEmail, customerId: Not(Number(params.customerId)) }
+      });
+      if (existingEmailUpdate) return { success: 0, message: "This email is already registered for this company." };
 
       const queryParams: any = {};
       if (params.customerName !== undefined)
@@ -455,12 +524,13 @@ export class CustomerService {
         queryParams.ownerDialCode = Number(params.ownerDialCode);
       if (params.ownerDob !== undefined) queryParams.ownerDob = params.ownerDob;
       if (params.status !== undefined) queryParams.status = params.status;
-      
+      console.log(req.user,"asghf")
+
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
         : (req?.user?.impersonatedBy ?? params.updatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.email
+        ? (req?.user?.email ?? '')
         : (req?.user?.impersonatorEmail ?? '');
 
       if (performerId) queryParams.updatedBy = Number(performerId);

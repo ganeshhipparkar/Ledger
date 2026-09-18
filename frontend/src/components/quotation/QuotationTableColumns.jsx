@@ -134,13 +134,26 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto w-fit"
-                            >
-                                Actions
-                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
-                            </div>
+                            {(() => {
+                                const primaryAction = [
+                                    { show: isLatestVersion && q.status === "DRAFT" && can?.("quotationUpdate"), label: "Edit" },
+                                    { show: isLatestVersion && q.status === "SUBMITTED" && can?.("quotationUpdate"), label: "Change Quotation" },
+                                    { show: isLatestVersion && q.status === "CONFIRMED" && can?.("orderAdd"), label: "Convert to Order" },
+                                    { show: isLatestVersion && q.status === "CONFIRMED" && !!q.invoicePdfPath, label: "View Pdf" },
+                                    { show: isLatestVersion && q.status === "CONFIRMED" && can?.("quotationUpdate"), label: "Regenerate PDF" },
+                                    { show: isLatestVersion && can?.("quotationAdd"), label: "Clone Quotation" }
+                                ].find(x => x.show)?.label ?? "Actions";
+                                
+                                return (
+                                    <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto"
+                                    >
+                                        <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>
+                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+                                    </div>
+                                );
+                            })()}
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
                             {/* <DropdownMenuItem onClick={() => window.location.href = `/quotation/${q.quotationId}`} className="cursor-pointer text-sm py-2">

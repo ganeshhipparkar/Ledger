@@ -312,6 +312,10 @@ export class OrderDto {
   @transformJsonArray(OrderDiscountInputDto)
   orderDiscounts?: OrderDiscountInputDto[];
 
+    @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
+
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

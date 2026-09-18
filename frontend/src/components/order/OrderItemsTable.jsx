@@ -1,4 +1,5 @@
 "use client";
+import FormattedNumberInput from "../ui/FormattedNumberInput";
 import Select, { components } from "react-select";
 
 const CustomOption = (props) => {
@@ -279,7 +280,7 @@ export default function OrderItemsTable({
                 <button
                     type="button"
                     onClick={handleAddRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-sm transition cursor-pointer"
                 >
                     <Plus className="h-3.5 w-3.5" /> Add Row
                 </button>
@@ -320,7 +321,7 @@ export default function OrderItemsTable({
                             return (
                                 <tr key={item._id} className="hover:bg-gray-50/50 transition">
                                     <td className="px-3 py-4 text-gray-500 font-medium text-center">{idx + 1}</td>
-                                    <td className="px-3 py-4 min-w-[280px]">
+                                    <td className="px-3 py-4 min-w-[350px]">
                                         <AsyncSelect
                                             instanceId={`item-select-row-${idx}`}
                                             cacheOptions
@@ -394,7 +395,7 @@ export default function OrderItemsTable({
                                             menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                                         />
                                     </td>
-                                    <td className="px-3 py-4 min-w-[190px]">
+                                    <td className="px-3 py-4 min-w-[240px]">
                                         <Select
                                             instanceId={`item-gl-select-${idx}`}
                                             value={item.itemGL ? {
@@ -439,8 +440,7 @@ export default function OrderItemsTable({
                                         />
                                     </td>
                                     <td className="px-3 py-4 min-w-[110px]">
-                                        <input
-                                            type="number"
+                                        <FormattedNumberInput
                                             min="0"
                                             step={item.isDecimalAllowed ? "0.0001" : "1"}
                                             value={item.quantity}
@@ -453,8 +453,7 @@ export default function OrderItemsTable({
                                     </td>
 
                                     <td className="px-3 py-4 min-w-[130px]">
-                                        <input
-                                            type="number"
+                                        <FormattedNumberInput
                                             min="0"
                                             step="0.0001"
                                             value={item.unitPrice}
@@ -514,7 +513,7 @@ export default function OrderItemsTable({
                                         </select>
                                     </td>
 
-                                    <td className="px-3 py-4 min-w-[190px]">
+                                    <td className="px-3 py-4 min-w-[240px]">
                                         <Select
                                             instanceId={`item-tax-group-select-${idx}`}
                                             value={selectedTaxValue ? {

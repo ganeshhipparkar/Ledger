@@ -120,25 +120,36 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
             cell: ({ row }) => {
                 const q = row.original;
                 const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
+                const hasActions = Boolean(
+                    (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
+                    (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false)) ||
+                    (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+                );
 
                 return (
+                    hasActions ? (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto w-fit"
-                            >
-                                Actions
-                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
-                            </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
-                            {/* 
-                            <DropdownMenuItem onClick={() => window.location.href = `/order/${q.orderId}`} className="cursor-pointer text-sm py-2">
-                                View Details
-                            </DropdownMenuItem> */}
+                            {(() => {
+                                const primaryAction = [
+                                    { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
+                                    { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Pdf" },
+                                    { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
+                                    { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                ].find(x => x.show)?.label ?? "Actions";
 
-                            {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
+                                return (
+                                    <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto"
+                                    >
+                                        <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>
+                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+                                    </div>
+                                );
+                            })()}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">                            {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
                                 <>
                                     <DropdownMenuItem onClick={() => window.location.href = `/order/${q.orderId}?edit=true`} className="cursor-pointer text-sm py-2">
                                         Edit
@@ -200,6 +211,7 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    ) : null
                 );
             },
         },

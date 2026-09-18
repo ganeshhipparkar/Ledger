@@ -1,5 +1,6 @@
 "use client";
 
+import FormattedNumberInput from "../ui/FormattedNumberInput";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -187,7 +188,7 @@ export default function OrderUpdatePriceSidePanel({
                                             {it.currentPrice != null ? String(it.currentPrice) : "0"}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <input
+                                            <FormattedNumberInput
                                                 type="number"
                                                 min="0"
                                                 step="any"
