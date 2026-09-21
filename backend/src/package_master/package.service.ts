@@ -159,10 +159,10 @@ export class PackageService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         packageCode,
@@ -189,7 +189,7 @@ export class PackageService {
         severity: 'INFO',
         parameters: {
           userEmail: performerEmail,
-          userGroup: authCtx.activeGroupName || 'N/A',
+          userGroup: authCtx.activeGroupName || 'N/A',  
           packageCode,
           packageName: params.packageName,
           companyId: params.companyId,
@@ -242,10 +242,10 @@ export class PackageService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

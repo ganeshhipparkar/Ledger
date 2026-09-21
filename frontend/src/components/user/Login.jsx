@@ -45,73 +45,43 @@ function ProfileCard({ assignment, selected, onSelect }) {
             onClick={() => onSelect(assignment)}
             style={{
                 background: selected ? colours.bg : "#fff",
-                border: `2px solid ${selected ? colours.border : "#e2e8f0"}`,
-                borderRadius: "14px",
-                padding: "20px 22px",
+                border: `1px solid ${selected ? colours.border : "#e2e8f0"}`,
+                borderRadius: "8px",
+                padding: "16px 20px",
                 textAlign: "left",
                 cursor: "pointer",
                 transition: "all 0.18s ease",
                 outline: "none",
-                boxShadow: selected
-                    ? `0 0 0 3px ${colours.border}33`
-                    : "0 1px 4px rgba(0,0,0,0.06)",
-                position: "relative",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: selected ? `0 0 0 1px ${colours.border}` : "none",
                 width: "100%",
             }}
         >
-            {selected && (
-                <span style={{
-                    position: "absolute",
-                    top: "12px",
-                    right: "14px",
-                    width: "22px",
-                    height: "22px",
-                    borderRadius: "50%",
-                    background: colours.border,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                </span>
-            )}
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                <div style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    background: `${colours.border}18`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colours.border} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="9" width="18" height="13" rx="2" />
-                        <path d="M8 9V6a4 4 0 0 1 8 0v3" />
-                    </svg>
-                </div>
-                <span style={{ fontWeight: 600, fontSize: "15px", color: "#1e293b", lineHeight: 1.3 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ fontWeight: 600, fontSize: "15px", color: "#1e293b" }}>
                     {assignment.companyName}
+                </span>
+                <span style={{ fontSize: "13px", color: "#64748b" }}>
+                    {assignment.groupName}
                 </span>
             </div>
 
-            <span style={{
-                display: "inline-block",
-                background: `${colours.badge}18`,
-                color: colours.text,
-                border: `1px solid ${colours.badge}40`,
-                borderRadius: "999px",
-                padding: "3px 12px",
-                fontSize: "12px",
-                fontWeight: 600,
-                letterSpacing: "0.02em",
+            <div style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "50%",
+                background: selected ? colours.border : "#e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
             }}>
-                {assignment.groupName}
-            </span>
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </div>
         </button>
     );
 }
@@ -203,7 +173,7 @@ export default function LoginPage() {
                 setMessage(msg);
                 return;
             }
-            console.log(data, "data ")
+
             const { userId, email, name, activeAssignments = [] } = data;
 
             if (activeAssignments.length === 0) {
@@ -234,7 +204,7 @@ export default function LoginPage() {
             const data = await callSelectProfile(userId, assignment.id);
             if (data.success === 1 && data.user?.userId) {
                 login(data);
-                toast.success(`Welcome ${data.user?.name || displayName}`, { position: "top-right" });
+                sessionStorage.setItem("welcomeToastName", data.user?.name || displayName || "");
                 window.location.href = "/";
             } else {
                 const msg = data.message || "Profile selection failed";
@@ -271,7 +241,7 @@ export default function LoginPage() {
                 {step === "credentials" && (
                     <div className="max-w-md ms-24">
                         <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-                            Log in to Sales Portal
+                            Log in to {process.env.NEXT_PUBLIC_SYSTEM_NAME ?? 'Sales Portal'}
                         </h1>
                         <p className="text-gray-500 mb-10">Enter your credentials to continue</p>
                         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -353,39 +323,17 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                {/* STEP 2: Profile selection */}
                 {step === "select-profile" && pendingAuth && (
-                    <div className="max-w-md ms-24">
-                        <button
-                            type="button"
-                            id="back-to-credentials"
-                            onClick={handleBack}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                color: "#64748b",
-                                fontSize: "14px",
-                                fontWeight: 500,
-                                background: "none",
-                                border: "none",
-                                padding: "0",
-                                cursor: "pointer",
-                                marginBottom: "24px",
-                            }}
-                        >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            Back
-                        </button>
-
-                        <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-                            Choose your profile
+                    <div className="max-w-md w-full mx-auto">
+                        <h1 className="text-xl font-normal text-gray-900 mb-2">
+                            Welcome <span className="text-blue-600 font-medium">{pendingAuth.name}</span>,
                         </h1>
-                        <p className="text-gray-500 mb-8">
-                            Hello, <strong>{pendingAuth.name}</strong>. Select the profile you'd like to use for this session.
-                        </p>
+                        <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                            Hello, <strong>{pendingAuth.name}</strong>. Select the profile you'd like to use for this session.                        </p>
+
+                        <h2 className="text-base font-semibold text-gray-900 mb-3">
+                            Select Company
+                        </h2>
 
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
                             {pendingAuth.activeAssignments.map((a) => (
@@ -393,30 +341,23 @@ export default function LoginPage() {
                                     key={a.id}
                                     assignment={a}
                                     selected={selectedAssignment?.id === a.id}
-                                    onSelect={setSelectedAssignment}
+                                    onSelect={async (a) => {
+                                        if (proceedLoading) return;
+                                        setSelectedAssignment(a);
+                                        setProceedLoading(true);
+                                        await doSelectProfile(pendingAuth.userId, a, pendingAuth.name);
+                                        setProceedLoading(false);
+                                    }}
                                 />
                             ))}
                         </div>
 
                         <button
-                            id="proceed-with-profile"
                             type="button"
-                            disabled={!selectedAssignment || proceedLoading}
-                            onClick={handleProceed}
-                            style={{
-                                width: "100%",
-                                padding: "13px",
-                                borderRadius: "10px",
-                                border: "none",
-                                fontWeight: 600,
-                                fontSize: "15px",
-                                cursor: selectedAssignment && !proceedLoading ? "pointer" : "not-allowed",
-                                background: selectedAssignment && !proceedLoading ? "#2563eb" : "#cbd5e1",
-                                color: "#fff",
-                                transition: "background 0.18s ease",
-                            }}
+                            onClick={handleBack}
+                            className="w-full py-3 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 transition"
                         >
-                            {proceedLoading ? "Loading…" : "Proceed with profile"}
+                            Log Out
                         </button>
 
                         {message && (
@@ -426,13 +367,21 @@ export default function LoginPage() {
                 )}
             </div>
 
-            {/* Right panel */}
             <div className="bg-blue-200 flex justify-center items-center h-screen">
-                <img
-                    src={process.env.NEXT_PUBLIC_LOGO_RIGHT}
-                    className="max-h-full max-w-full object-contain"
-                    alt="Login Illustration"
-                />
+                {step === "credentials" && (
+                    <img
+                        src={process.env.NEXT_PUBLIC_LOGO_RIGHT}
+                        className="max-h-full max-w-full object-contain"
+                        alt="Login Illustration"
+                    />
+                )}
+                {step === "select-profile" && pendingAuth && (
+                    <img
+                        src={process.env.NEXT_PUBLIC_SELECT_PROFILE_LOGO}
+                        className="max-h-full max-w-full object-contain"
+                        alt="Login Illustration"
+                    />
+                )}
             </div>
         </div>
     );

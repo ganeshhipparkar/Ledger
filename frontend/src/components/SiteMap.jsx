@@ -5,6 +5,7 @@ import Header from "./Header";
 import { useContext, useEffect, useState } from "react";
 import { loginContext } from "./hooks/LoginContext";
 import { isSuperAdmin } from "@/app/lib/auth";
+import { toast } from "react-toastify";
 
 export default function SiteMap() {
     const router = useRouter();
@@ -15,6 +16,14 @@ export default function SiteMap() {
         const activeUser = impersonating || isLogin;
         setSuperAdmin(isSuperAdmin(activeUser));
     }, [isLogin, impersonating, permissions]);
+
+    useEffect(() => {
+        const name = sessionStorage.getItem("welcomeToastName");
+        if (name !== null) {
+            toast.success(`Welcome ${name}`, { position: "top-right" });
+            sessionStorage.removeItem("welcomeToastName");
+        }
+    }, []);
 
     if (!authReady) {
         return (
@@ -93,7 +102,7 @@ export default function SiteMap() {
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: permissions.includes("paymentTransactionList") || superAdmin },
                 { label: "Quotation", redirectTo: "/quotation-list", show: permissions.includes("quotationList") || superAdmin },
                 { label: "Order", redirectTo: "/order-list", show: permissions.includes("orderList") || superAdmin },
-
+                { label: "Invoice", redirectTo: "/invoice-list", show: permissions.includes("invoiceList") || superAdmin },
             ],
         },
     ];

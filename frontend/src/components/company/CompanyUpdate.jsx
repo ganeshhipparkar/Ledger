@@ -419,12 +419,12 @@ export default function CompanyUpdate({ id, onBack }) {
                                     {errors.website && <p className={errorClass}>{errors.website}</p>}
                                 </div>
 
-                                <div>
+                                {/* <div>
                                     <label className={labelClass}>Parent Company</label>
                                     {(() => {
                                         const invalidIds = new Set();
                                         invalidIds.add(Number(id));
-                                        const queue = [Number(id)];
+                                        const queue = [Numbler(id)];
                                         while (queue.length > 0) {
                                             const curr = queue.shift();
                                             for (const comp of parentCompanies) {
@@ -473,7 +473,7 @@ export default function CompanyUpdate({ id, onBack }) {
                                             />
                                         );
                                     })()}
-                                </div>
+                                </div> */}
 
                                 <div>
                                     <label className={labelClass}>Company Logo</label>

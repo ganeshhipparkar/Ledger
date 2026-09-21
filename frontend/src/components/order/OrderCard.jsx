@@ -49,6 +49,7 @@ function fmtAmount(n, symbol) {
 export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can, onCustomerClick, onAddedByClick, onOrderClick }) {
     const router = useRouter();
     const handleEdit = () => router.push(`/order/${q.orderId}?edit=true`);
+    const handleClone = () => router.push(`/add-order?cloneFrom=${q.orderId}`);
     const handleSubmit = () => onStatusUpdate?.(q.orderId, "SUBMIT");
     const handleCancel = () => onStatusUpdate?.(q.orderId, "CANCEL");
     const handleClose = () => onStatusUpdate?.(q.orderId, "CLOSE");
@@ -184,7 +185,8 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                             const primaryAction = [
                                                 { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
                                                 { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Cancel Order" },
-                                                { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                                { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                                { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
                                             ].find(x => x.show)?.label ?? "Actions";
                                             return <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>;
                                         })()}
@@ -267,6 +269,17 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                                 Close Order
                                             </DropdownMenuItem>
                                         </>
+                                    )}
+                                    {isOpen && can?.("orderAdd") && (
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleClone();
+                                            }}
+                                        >
+                                            Clone Order
+                                        </DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>

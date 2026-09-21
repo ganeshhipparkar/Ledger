@@ -12,18 +12,18 @@ export function getUserInfo() {
 
 export function isSuperAdmin(userInfo) {
     if (!userInfo) return false;
-    const groupName = userInfo?.primaryProfile?.groupName || userInfo?.groupName;
-    if (!groupName) return false;
-    const groups = Array.isArray(groupName) ? groupName : [groupName];
-    return groups.includes("superAdmin");
+    const groupCode = userInfo?.primaryProfile?.groupCode || userInfo?.groupCode;
+    if (!groupCode) return false;
+    const codes = Array.isArray(groupCode) ? groupCode : [groupCode];
+    return codes.includes("admin");
 }
 
 export function isCompanyAdmin(userInfo) {
     if (!userInfo) return false;
-    const groupName = userInfo?.primaryProfile?.groupName || userInfo?.groupName;
-    if (!groupName) return false;
-    const groups = Array.isArray(groupName) ? groupName : [groupName];
-    return groups.includes("companyAdmin");
+    const groupCode = userInfo?.primaryProfile?.groupCode || userInfo?.groupCode;
+    if (!groupCode) return false;
+    const codes = Array.isArray(groupCode) ? groupCode : [groupCode];
+    return codes.includes("CA");
 }
 
 export function canUpdateUsers(userInfo) {

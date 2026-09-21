@@ -35,7 +35,8 @@ function statusBadge(status) {
 
 export default function ItemCategoryDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [category, setCategory] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEditPanel, setShowEditPanel] = useState(false);
@@ -221,7 +222,8 @@ export default function ItemCategoryDetails({ id }) {
                                             {category.type || "-"}
                                         </p>
                                     </div>
-                                    <div className="grid grid-cols-2">
+                                    {isSuperAdmin && (
+<div className="grid grid-cols-2">
                                         <p className="text-gray-500">Company</p>
                                         <div className="font-medium text-gray-800">
                                             <LinkedCompanyCell
@@ -230,6 +232,7 @@ export default function ItemCategoryDetails({ id }) {
                                             />
                                         </div>
                                     </div>
+)}
                                 </div>
                             </div>
 

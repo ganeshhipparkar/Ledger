@@ -26,10 +26,10 @@ export default function RouteGuard({ permission, isSuperAdminOnly = false, child
 
         // superAdmin-only pages
         if (isSuperAdminOnly) {
-            const primaryGroup =
-                isLogin?.primaryProfile?.groupName || isLogin?.groupName || "";
-            const groups = Array.isArray(primaryGroup) ? primaryGroup : [primaryGroup];
-            if (!groups.includes("superAdmin")) {
+            const primaryCode =
+                isLogin?.primaryProfile?.groupCode || isLogin?.groupCode || "";
+            const codes = Array.isArray(primaryCode) ? primaryCode : [primaryCode];
+            if (!codes.includes("admin")) {
                 router.replace("/forbidden");
                 setAuthState("denied");
                 return;

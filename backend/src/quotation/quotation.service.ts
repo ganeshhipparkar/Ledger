@@ -102,10 +102,10 @@ export class QuotationService {
   private resolvePerformer(req: any, fallbackId?: number) {
     const performerId: number | undefined = req?.user?.isImpersonation
       ? req?.user?.userId
-      : (req?.user?.impersonatedBy ?? fallbackId);
+      : (req?.user?.userId ?? fallbackId);
     const performerEmail: string = req?.user?.isImpersonation
       ? (req?.user?.email ?? '')
-      : (req?.user?.impersonatorEmail ?? '');
+      : (req?.user?.email ?? req?.user?.impersonatorEmail);
     return { performerId, performerEmail };
   }
 
@@ -399,8 +399,16 @@ export class QuotationService {
       addedByName: v.addedBy ? userMap.get(v.addedBy) || null : null,
     }));
 
+    const allTaxGroups = await this.taxGroupRepo.find({ where: { companyId: Number(quotation.companyId) } });
+    const taxGroupMap = new Map(allTaxGroups.map(tg => [tg.taxCode, tg.taxId]));
+    const quotationItems = quotation.quotationItems?.map(item => ({
+      ...item,
+      taxId: item.taxGroup ? (taxGroupMap.get(item.taxGroup) ?? null) : null,
+    })) || [];
+
     return {
       ...quotation,
+      quotationItems,
       customerName: quotation.customer?.customerName ?? null,
       currencyCode: quotation.currency?.code ?? null,
       currencySymbol: quotation.currency?.symbol ?? null,

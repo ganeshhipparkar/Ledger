@@ -43,7 +43,20 @@ export const termsConditionsFormConfig = {
                     defaultValue: "",
                     readOnly: false,
                     hidden: false,
-                }
+                },
+                {
+                    name: "status",
+                    label: "Status",
+                    type: "select",
+                    options: [
+                        { label: "Active", value: "Active" },
+                        { label: "Inactive", value: "Inactive" },
+                    ],
+                    required: true,
+                    defaultValue: "Active",
+                    readOnly: false,
+                    hidden: false,
+                },
             ],
         },
         "termsConditions-update": {
@@ -86,6 +99,19 @@ export const termsConditionsFormConfig = {
                     placeholder: "Terms and conditions content...",
                     required: true,
                     defaultValue: "",
+                    readOnly: false,
+                    hidden: false,
+                },
+                {
+                    name: "status",
+                    label: "Status",
+                    type: "select",
+                    options: [
+                        { label: "Active", value: "Active" },
+                        { label: "Inactive", value: "Inactive" },
+                    ],
+                    required: true,
+                    defaultValue: "Active",
                     readOnly: false,
                     hidden: false,
                 }

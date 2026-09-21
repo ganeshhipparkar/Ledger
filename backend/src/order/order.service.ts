@@ -106,10 +106,10 @@ export class OrderService {
   private resolvePerformer(req: any, fallbackId?: number) {
     const performerId: number | undefined = req?.user?.isImpersonation
       ? req?.user?.userId
-      : (req?.user?.impersonatedBy ?? fallbackId);
+      : (req?.user?.userId ?? fallbackId);
     const performerEmail: string = req?.user?.isImpersonation
       ? (req?.user?.email ?? '')
-      : (req?.user?.impersonatorEmail ?? '');
+      : (req?.user?.email ?? req?.user?.impersonatorEmail);
     return { performerId, performerEmail };
   }
 
@@ -416,8 +416,16 @@ export class OrderService {
       ? await this.userEntity.findOne({ where: { userId: order.updatedBy } })
       : null;
 
+    const allTaxGroups = await this.taxGroupRepo.find({ where: { companyId: Number(order.companyId) } });
+    const taxGroupMap = new Map(allTaxGroups.map(tg => [tg.taxCode, tg.taxId]));
+    const orderItems = order.orderItems?.map(item => ({
+      ...item,
+      taxId: item.taxGroup ? (taxGroupMap.get(item.taxGroup) ?? null) : null,
+    })) || [];
+
     return {
       ...order,
+      orderItems,
       termsConditionsFileUrl: order.termsConditionsFile ?? null,
       customerName: order.customer?.customerName ?? null,
       currencyCode: order.currency?.code ?? null,

@@ -225,10 +225,10 @@ export class ItemService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const srcCurrency = await this.currencyEntity.findOne({
         where: { curId: Number(params.sourceCurrencyId) },
@@ -398,10 +398,10 @@ export class ItemService {
       }
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

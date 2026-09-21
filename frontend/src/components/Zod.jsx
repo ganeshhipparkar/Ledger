@@ -473,7 +473,24 @@ export const PackageUpdateSchema = z.object({
 export const CustomerFormSchema = z.object({
     customerName: z.string()
         .min(1, "Please enter Customer Name."),
-    customerLogo: z.any().refine((val) => val !== undefined && val !== null && val !== "", { message: "Please select a Customer Logo." }),
+    customerLogo: z
+        .any()
+        .refine(
+            (file) =>
+                file !== undefined &&
+                file !== null &&
+                file !== "" &&
+                file instanceof File,
+            { message: "Please select a Customer Logo." }
+        )
+        .refine(
+            (file) => ["image/jpeg", "image/jpg"].includes(file.type),
+            { message: "Only JPG/JPEG images are allowed." }
+        )
+        .refine(
+            (file) => file.size <= 1 * 1024 * 1024,
+            { message: "Customer Logo must be under 1 MB." }
+        ),
     customerEmail: z.string()
         .min(1, "Please enter Customer Email.")
         .email("Please enter valid Email."),
@@ -640,6 +657,7 @@ export const TermsConditionsFormSchema = z.object({
     title: z.string().min(1, "Please enter Title."),
     content: z.string().min(1, "Please enter Content.").max(10000, "Content cannot exceed 10000 characters."),
     companyId: z.coerce.number("Please select a Company.").min(1, "Please select a Company."),
+    status: z.string().optional(),
 });
 
 export const TermsConditionsUpdateSchema = z.object({
@@ -647,6 +665,7 @@ export const TermsConditionsUpdateSchema = z.object({
     title: z.string().min(1, "Please enter Title."),
     content: z.string().min(1, "Please enter Content.").max(10000, "Content cannot exceed 10000 characters."),
     companyId: z.coerce.number().optional(),
+    status: z.string().optional(),
 });
 
 export const TaxGroupFormSchema = z.object({

@@ -156,11 +156,11 @@ export class UomService {
       );
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.addedBy);
+        ? req?.user?.userId
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         uomCode,
@@ -243,11 +243,11 @@ export class UomService {
       if (params.status) queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
-        ? req?.user?.impersonatedBy
-        : (req?.user?.userId ?? params.updatedBy);
+        ? req?.user?.userId
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? req?.user?.impersonatorEmail
-        : (req?.user?.email ?? '');
+        ? req?.user?.email
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

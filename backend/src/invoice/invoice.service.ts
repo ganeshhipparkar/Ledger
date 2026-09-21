@@ -255,24 +255,23 @@ export class InvoiceService {
     invoiceDate?: string,
     deliveryDate?: string,
   ): string | null {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
     if (invoiceDate) {
       const inv = new Date(invoiceDate);
       if (isNaN(inv.getTime())) return 'Invalid invoiceDate';
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const oneMonthAgo = new Date(today);
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       if (inv < oneMonthAgo) return 'invoiceDate cannot be more than 1 month in the past';
-
-      if (deliveryDate) {
-        const del = new Date(deliveryDate);
-        if (isNaN(del.getTime())) return 'Invalid deliveryDate';
-        const minDelivery = new Date(inv);
-        minDelivery.setDate(minDelivery.getDate() + 15);
-        if (del < minDelivery)
-          return 'deliveryDate must be at least 15 calendar days after invoiceDate';
-      }
     }
+
+    if (deliveryDate) {
+      const del = new Date(deliveryDate);
+      if (isNaN(del.getTime())) return 'Invalid deliveryDate (exchangeDate)';
+      if (del < oneMonthAgo) return 'exchangeDate cannot be more than 1 month in the past';
+    }
+
     return null;
   }
 
@@ -733,29 +732,25 @@ export class InvoiceService {
       }
 
       if (existing.status !== InvoiceStatus.DRAFT) {
-        const isContentUpdate =
-          body.invoiceItems !== undefined ||
-          body.invoiceDate !== undefined ||
-          body.deliveryDate !== undefined ||
+        // These 9 fields are permanently locked after submit.
+        // The 7 approved editable fields (invoiceItems, invoiceDate, remarks,
+        // termsConditionsText, businessTerms, paymentType, discountApplicable)
+        // are intentionally NOT included here and pass through for all statuses.
+        const isLockedFieldUpdate =
           body.bankBookId !== undefined ||
           body.salesPersonId !== undefined ||
           body.contactPersonId !== undefined ||
-          body.remarks !== undefined ||
-          body.termsConditionsId !== undefined ||
           body.vatWithheld !== undefined ||
-          body.businessTerms !== undefined ||
-          body.paymentType !== undefined ||
           body.deliveryTerms !== undefined ||
-          body.discountApplicable !== undefined ||
           body.shippingState !== undefined ||
           body.billingState !== undefined ||
           body.deliveryState !== undefined ||
           body.deliveryType !== undefined;
 
-        if (isContentUpdate) {
+        if (isLockedFieldUpdate) {
           return {
             success: 0,
-            message: 'Only draft invoices can be fully edited.',
+            message: 'This field cannot be changed after the invoice has been submitted.',
           };
         }
       }

@@ -79,7 +79,7 @@ export class UserController {
     // }
   @Put('user-admin-reset-pass')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('superAdmin')
+  @Roles('admin')
   async adminResetPassword(@Body() body: adminResetPass) {
     return await this.userService.adminResetPassword(body);
   }
@@ -91,7 +91,6 @@ export class UserController {
   }
 
   @Put('user-update')
-  @Roles('superAdmin', 'companyAdmin', 'warehouseAdmin')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('userUpdate')
   @UseInterceptors(FileInterceptor('userFile', multerConfig))
@@ -146,10 +145,8 @@ export class UserController {
   }
 
   @Post('user-list')
-  @UseGuards(AuthGuard('jwt'), PermissionsGuard, RolesGuard)
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('userList')
-  @Roles('superAdmin', 'companyAdmin', 'warehouseAdmin')
-  @CompanyScoped()
   @UseInterceptors(FileInterceptor('userFile', multerConfig))
   async getUsers(@Body() body: getUserListDto, @Req() req) {
     const result = await this.userService.getUsers(body, req);
@@ -159,8 +156,7 @@ export class UserController {
   }
 
   @Get('user-details/:id')
-  @UseGuards(AuthGuard('jwt'), PermissionsGuard, RolesGuard)
-  @Roles('superAdmin', 'companyAdmin', 'warehouseAdmin')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('userView')
   async getUser(
     @Param('id') id: string,
@@ -222,7 +218,7 @@ export class UserController {
 
   @Post('user-login-as')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('superAdmin')
+  @Roles('admin')
   async loginAs(@Body() body: { targetUserId: number }, @Req() req, @Res({ passthrough: true }) response: any) {
     const result = await this.userService.loginAs(
       Number(body.targetUserId),

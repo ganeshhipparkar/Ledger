@@ -24,7 +24,7 @@ export default function BankFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = bankFormConfig.contexts[context];
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {
@@ -302,11 +302,11 @@ export default function BankFormSidePanel({
                                     </div>
 
                                     {/* Company Select */}
-                                    <div>
-                                        <label className={labelClass}>
-                                            Company <span className="text-red-500">*</span>
-                                        </label>
-                                        {isSuperAdmin && config.mode === "add" ? (
+                                    {isSuperAdmin && config.mode === "add" && (
+                                        <div>
+                                            <label className={labelClass}>
+                                                Company <span className="text-red-500">*</span>
+                                            </label>
                                             <select
                                                 name="companyId"
                                                 value={formData.companyId}
@@ -321,22 +321,9 @@ export default function BankFormSidePanel({
                                                     </option>
                                                 ))}
                                             </select>
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                value={
-                                                    companies.find(
-                                                        (c) => String(c.companyId) === String(formData.companyId)
-                                                    )?.companyName ||
-                                                    activeAssignment?.companyName ||
-                                                    "Assigned Company"
-                                                }
-                                                disabled
-                                                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 cursor-not-allowed"
-                                            />
-                                        )}
-                                        {errors.companyId && <p className={errorClass}>{errors.companyId}</p>}
-                                    </div>
+                                            {errors.companyId && <p className={errorClass}>{errors.companyId}</p>}
+                                        </div>
+                                    )}
 
                                     {/* Remarks */}
                                     <div>

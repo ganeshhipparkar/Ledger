@@ -24,7 +24,7 @@ export default function TaxGroupFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = taxGroupFormConfig.contexts[context];
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {

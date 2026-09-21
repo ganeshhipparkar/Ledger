@@ -6,7 +6,9 @@ import {
   IsString,
   ValidateNested,
   MaxLength,
+  IsEnum
 } from 'class-validator';
+import { Status } from '../entity/terms.conditions.entity';
 
 export class filterDto {
   @IsString()
@@ -56,6 +58,10 @@ export class TermsAndConditionsDto {
   @IsNotEmpty()
   @Transform(({ value }) => Number(value))
   companyId!: number;
+
+  @IsOptional()
+  @IsEnum(Status)
+  status?: string;
 }
 
 export class TermsAndConditionsUpdateDto {
@@ -72,4 +78,8 @@ export class TermsAndConditionsUpdateDto {
   @IsString()
   @MaxLength(10000)
   content?: string;
+
+  @IsOptional()
+  @IsEnum(Status)
+  status?: string;
 }

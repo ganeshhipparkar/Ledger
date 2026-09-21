@@ -14,7 +14,8 @@ import {
 } from "../ui/dropdown-menu";
 
 export default function ItemListRow({ item, onPreview, onEdit, router }) {
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext);
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [isOpen, setIsOpen] = useState(false);
     const [imageModalOpen, setImageModalOpen] = useState(false);
 
@@ -79,7 +80,8 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                     </div>
 
                     <div className="flex items-start justify-between gap-2">
-                        <div>
+                        {isSuperAdmin && (
+<div>
                             <div className="text-sm text-gray-500 mb-1">Company</div>
                             <div className="text-base text-[#3563e9] font-medium">
                                 <LinkedCompanyCell
@@ -88,6 +90,7 @@ export default function ItemListRow({ item, onPreview, onEdit, router }) {
                                 />
                             </div>
                         </div>
+)}
                         <div className="flex items-center gap-1">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

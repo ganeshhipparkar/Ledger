@@ -1,4 +1,22 @@
 "use client";
+import { formatDisplayDate } from "@/lib/utils";
+
+
+function StatusBadge({ status }) {
+    if (!status) return <span className="text-gray-400 text-sm">-</span>;
+    const formatted = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const cls =
+        formatted === "Active"
+            ? "bg-green-100 text-green-700"
+            : formatted === "Inactive"
+                ? "bg-red-100 text-red-700"
+                : "bg-sky-100 text-sky-700";
+    return (
+        <span className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${cls}`}>
+            {formatted}
+        </span>
+    );
+}
 import { Button } from "@/components/ui/button";
 import { useContext } from "react";
 import { loginContext } from "@/components/hooks/LoginContext";
@@ -42,7 +60,7 @@ function sortableHeader(label) {
     return SortableHeaderComponent;
 }
 
-export const getTaxGroupColumns = (onPreview, onEdit) => [
+export const getTaxGroupColumns = (onPreview, onEdit, isSuperAdmin, onPreviewUser) => [
     {
         accessorKey: "taxName",
         header: sortableHeader("Tax Name"),
@@ -69,7 +87,7 @@ export const getTaxGroupColumns = (onPreview, onEdit) => [
         ),
         filterFn: "includesString",
     },
-    {
+    ...(isSuperAdmin ? [    {
         accessorKey: "companyName",
         header: sortableHeader("Company"),
         cell: ({ row }) => (
@@ -78,6 +96,35 @@ export const getTaxGroupColumns = (onPreview, onEdit) => [
                 companyName={row.original.companyName || row.original.company?.companyName}
             />
         ),
+        filterFn: "includesString",
+    }] : []),
+    
+    {
+        accessorKey: "addedByName",
+        header: sortableHeader("Added By"),
+        cell: ({ row }) => (
+            <span
+                className={row.original.addedByName ? "text-blue-600 cursor-pointer hover:underline" : "text-gray-700 text-sm"}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (row.original.addedBy && onPreviewUser) onPreviewUser(row.original.addedBy);
+                }}
+            >
+                {row.original.addedByName || "-"}
+            </span>
+        ),
+        filterFn: "includesString",
+    },
+    {
+        accessorKey: "addedDate",
+        header: sortableHeader("Added Date"),
+        cell: ({ row }) => <span className="text-gray-700 text-sm">{formatDisplayDate(row.getValue("addedDate") || row.original.createdDate) || "-"}</span>,
+        filterFn: "includesString",
+    },
+    {
+        accessorKey: "status",
+        header: sortableHeader("Status"),
+        cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
         filterFn: "includesString",
     },
     {

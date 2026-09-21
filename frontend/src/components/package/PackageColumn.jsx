@@ -1,4 +1,5 @@
 "use client";
+import { formatDisplayDate } from "@/lib/utils";
 
 import { useContext } from "react";
 import { ArrowUpDown, Eye, MoreVertical, Pencil, ExternalLink } from "lucide-react";
@@ -58,7 +59,7 @@ function PackageNameCell({ row, onPreview }) {
     );
 }
 
-export const getPackageColumns = (onPreview, onEdit, router) => [
+export const getPackageColumns = (onPreview, onEdit, router, isSuperAdmin, onPreviewUser) => [
     {
         accessorKey: "packageName",
         header: sortableHeader("Package Name"),
@@ -76,7 +77,7 @@ export const getPackageColumns = (onPreview, onEdit, router) => [
         filterFn: "includesString",
     },
 
-    {
+    ...(isSuperAdmin ? [    {
         accessorKey: "companyName",
         header: sortableHeader("Company"),
         cell: ({ row }) => (
@@ -86,11 +87,34 @@ export const getPackageColumns = (onPreview, onEdit, router) => [
             />
         ),
         filterFn: "includesString",
-    },
+    }] : []),
     {
         accessorKey: "status",
         header: sortableHeader("Status"),
         cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+        filterFn: "includesString",
+    },
+    
+    {
+        accessorKey: "addedByName",
+        header: sortableHeader("Added By"),
+        cell: ({ row }) => (
+            <span
+                className={row.original.addedByName ? "text-blue-600 cursor-pointer hover:underline" : "text-gray-700 text-sm"}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (row.original.addedBy && onPreviewUser) onPreviewUser(row.original.addedBy);
+                }}
+            >
+                {row.original.addedByName || "-"}
+            </span>
+        ),
+        filterFn: "includesString",
+    },
+    {
+        accessorKey: "addedDate",
+        header: sortableHeader("Added Date"),
+        cell: ({ row }) => <span className="text-gray-700 text-sm">{formatDisplayDate(row.getValue("addedDate") || row.original.createdDate) || "-"}</span>,
         filterFn: "includesString",
     },
     {

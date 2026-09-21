@@ -4,6 +4,11 @@ import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { OrderEntity } from 'src/order/entity/order.entity';
 import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 
+export enum Status {
+    ACTIVE = "Active",
+    INACTIVE = "Inactive"
+}
+
 @Entity('terms_conditions')
 export class TermsAndConditionsEntity{
     @PrimaryGeneratedColumn()
@@ -35,8 +40,24 @@ export class TermsAndConditionsEntity{
 
     @OneToMany(() => InvoiceEntity, (invoice) => invoice.termsConditions)
     invoices?: InvoiceEntity[];
+
+    @Column({ nullable: true })
+    addedBy?: number;
+
+    @Column({ nullable: true })
+    addedDate?: Date;
+
+    @Column({ nullable: true })
+    updatedBy?: number;
+
+    @Column({ nullable: true })
+    updatedDate?: Date;
+
+    @Column({
+        type: 'enum',
+        enum: Status,
+        default: Status.ACTIVE,
+        nullable: true,
+    })
+    status?: string;
 }
-
-
-
-

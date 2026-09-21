@@ -20,8 +20,10 @@ import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
 import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import UserSidePanel from "../user/UserSidePanel";
+import CustomerSidePanel from "../customer/CustomerSidePanel";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
+import { taxGroupSidePanelConfig } from "../taxGroup/configs/taxGroupSidePanel.config";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import { FaRegFilePdf } from "react-icons/fa";
@@ -90,6 +92,8 @@ export default function QuotationDetails({ id }) {
     }, [searchParams]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
+    const [selectedCustomerPanelId, setSelectedCustomerPanelId] = useState(null);
+    const [selectedTaxGroupPanelId, setSelectedTaxGroupPanelId] = useState(null);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
 
@@ -233,7 +237,13 @@ export default function QuotationDetails({ id }) {
                             <InfoCard label="Quotation No." value={q.quotationCode || "-"} mono />
                             <InfoCard
                                 label="Customer"
-                                value={q.customerName ?? "—"}
+                                value={q.customerId ? (
+                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
+                                        {q.customerName ?? "—"}
+                                    </span>
+                                ) : (
+                                    q.customerName ?? "—"
+                                )}
                                 badge={q.currencyCode}
                             />
                             <InfoCard label="Issue Date" value={fmtDate(q.issueDate)} />
@@ -444,7 +454,15 @@ export default function QuotationDetails({ id }) {
                                                                 {formatTaxCalcLabel(item.taxCalculation)}
                                                             </span>
                                                         </td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-left text-sm text-gray-600 whitespace-nowrap">{item.taxGroup ?? "—"}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-left text-sm text-gray-600 whitespace-nowrap">
+                                                            {item.taxId ? (
+                                                                <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedTaxGroupPanelId(item.taxId)}>
+                                                                    {item.taxGroup ?? "—"}
+                                                                </span>
+                                                            ) : (
+                                                                item.taxGroup ?? "—"
+                                                            )}
+                                                        </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">{q?.currencySymbol} {Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                     </tr>
@@ -611,8 +629,19 @@ export default function QuotationDetails({ id }) {
                     onClose={() => setSelectedItemId(null)}
                 />
             )}
+            {selectedTaxGroupPanelId && (
+                <DetailsSidePanel
+                    config={taxGroupSidePanelConfig}
+                    id={selectedTaxGroupPanelId}
+                    onClose={() => setSelectedTaxGroupPanelId(null)}
+                />
+            )}
             {selectedUserPanelId && typeof document !== "undefined" && createPortal(
                 <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
+            )}
+            {selectedCustomerPanelId && typeof document !== "undefined" && createPortal(
+                <CustomerSidePanel customerId={selectedCustomerPanelId} onClose={() => setSelectedCustomerPanelId(null)} />,
                 document.body
             )}
         </div>

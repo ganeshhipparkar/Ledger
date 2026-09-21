@@ -6,6 +6,7 @@ export const itemSidePanelConfig = {
     nameKey: "itemName",
     subtitleKey: "itemCode",
     statusKey: "status",
+    imageKey: "primaryImage",
     initialsPrefix: "IT",
     detailsRoute: "/item/{id}",
 
@@ -13,6 +14,7 @@ export const itemSidePanelConfig = {
         {
             title: "Item Info",
             fields: [
+                // { label: "Image", type: "image", key: "primaryImage" },
                 { label: "Item Code", type: "text", key: "itemCode" },
                 { label: "Item Name", type: "text", key: "itemName" },
                 { label: "Short Name", type: "text", key: "shortName" },
@@ -35,18 +37,12 @@ export const itemSidePanelConfig = {
                 {
                     label: "Item UoM",
                     type: "text",
-                    key: "uomName"
+                    key: "itemUomName"
                 },
                 { label: "Status", type: "text", key: "status" },
             ],
         },
-        {
-            title: "Pricing",
-            fields: [
-                { label: "Purchase Price", type: "text", key: "purchasePrice" },
-                { label: "Cost Per Unit", type: "text", key: "costPerUnit" },
-            ]
-        },
+
 
     ],
 };

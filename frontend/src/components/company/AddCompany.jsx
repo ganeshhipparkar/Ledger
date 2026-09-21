@@ -324,7 +324,7 @@ export default function AddCompany() {
                                     {errors.website && <p className={errorClass}>{errors.website}</p>}
                                 </div>
 
-                                <div>
+                                {/* <div>
                                     <label className={labelClass}>Parent Company</label>
                                     <Select
                                         name="parentCompanyId"
@@ -355,7 +355,7 @@ export default function AddCompany() {
                                         }}
                                         isSearchable
                                     />
-                                </div>
+                                </div> */}
 
                                 {/* Logo */}
                                 <div>

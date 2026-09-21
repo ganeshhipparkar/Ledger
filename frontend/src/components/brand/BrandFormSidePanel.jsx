@@ -24,7 +24,7 @@ export default function BrandFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = brandFormConfig.contexts[context] || brandFormConfig.contexts["brand-add"];
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {
@@ -306,13 +306,13 @@ export default function BrandFormSidePanel({
 
                                 {config.fields.map((field) => {
                                     if (field.type === "company-select") {
+                                        if (!isSuperAdmin) return null;
                                         return (
                                             <div key={field.name}>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                                     {field.label} {field.required && <span className="text-red-500">*</span>}
                                                 </label>
-                                                {isSuperAdmin ? (
-                                                    <select
+                                                <select
                                                         name={field.name}
                                                         value={formData[field.name]}
                                                         onChange={handleChange}
@@ -327,14 +327,6 @@ export default function BrandFormSidePanel({
                                                             </option>
                                                         ))}
                                                     </select>
-                                                ) : (
-                                                    <input
-                                                        type="text"
-                                                        readOnly
-                                                        value={activeAssignment?.companyName || "Your Company"}
-                                                        className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3.5 py-2.5 text-sm text-gray-500 outline-none cursor-not-allowed"
-                                                    />
-                                                )}
                                                 {errors[field.name] && (
                                                     <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}

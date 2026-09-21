@@ -86,6 +86,7 @@ export default function LoginContext({ children }) {
                             primaryProfile: adminPrimary ? {
                                 companyName: adminPrimary.companyName,
                                 groupName: adminPrimary.groupName,
+                                groupCode: adminPrimary.groupCode,
                                 is_parent: adminPrimary.is_parent,
                             } : null,
                             assignments: adminData.assignments || [],
@@ -112,6 +113,7 @@ export default function LoginContext({ children }) {
                             primaryProfile: targetPrimary ? {
                                 companyName: targetPrimary.companyName,
                                 groupName: targetPrimary.groupName,
+                                groupCode: targetPrimary.groupCode,
                                 is_parent: targetPrimary.is_parent,
                             } : null,
                             assignments: data.assignments || [],
@@ -145,6 +147,7 @@ export default function LoginContext({ children }) {
                             primaryProfile: primary ? {
                                 companyName: primary.companyName,
                                 groupName: primary.groupName,
+                                groupCode: primary.groupCode,
                                 is_parent: primary.is_parent,
                             } : null,
                             assignments: data.assignments || [],
@@ -384,12 +387,12 @@ export default function LoginContext({ children }) {
     }
 
     function can(permission) {
-        if (displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin") return true;
+        if (displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin") return true;
         return permissions.includes(permission);
     }
 
     function canAny(...perms) {
-        if (displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin") return true;
+        if (displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin") return true;
         return perms.some((p) => permissions.includes(p));
     }
 

@@ -34,7 +34,8 @@ export default function AddOrder() {
     const { activeAssignment } = useContext(loginContext) || {};
 
     const quotationId = searchParams.get("quotationId");
-    const sourceId = quotationId;
+    const cloneFromId = searchParams.get("cloneFrom");
+    const sourceId = quotationId || cloneFromId;
 
     const companyId = activeAssignment?.companyId;
 
@@ -237,14 +238,160 @@ export default function AddOrder() {
         }
     };
 
+    const loadOrderIntoForm = async (id, isFromUrl = false) => {
+        setPrefillState("loading");
+        try {
+            let res = await fetch("/relayapi", {
+                method: "GET",
+                headers: { ...authHeaders(), endpoint: `order-details/${id}`, module: "order" },
+            });
+            let payload = await res.json();
+            let data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+
+            if (!data?.orderId) {
+                if (isFromUrl) {
+                    setPrefillState("denied");
+                } else {
+                    toast.error("Could not load order details.");
+                    setPrefillState("ok");
+                }
+                return;
+            }
+
+            const rate = parseFloat(data.currencyConversionRate) || 1;
+
+            if (data.customerId) {
+                const custRes = await fetch("/relayapi", {
+                    method: "GET",
+                    headers: { ...authHeaders(), endpoint: `customer-details/${data.customerId}`, module: "customer" },
+                });
+                const custPayload = await custRes.json();
+                const custData = custPayload.encrypted ? decryptResponse(custPayload.encrypted) : custPayload;
+                setCurrencies(custData?.currencies ?? []);
+            }
+
+            setFormData({
+                sourceQuotationId: "", sourceQuotationLabel: "",
+                customerId: String(data.customerId ?? ""), customerLabel: data.customerName ?? "",
+                currencyId: String(data.currencyId ?? ""), currencyCode: data.currencyCode ?? "", currencySymbol: data.currencySymbol ?? "", currencyConversionRate: rate,
+                contactPersonId: String(data.contactPersonId ?? ""), contactPersonLabel: data.contactPersonName ?? "",
+                orderDate: formatDateForInput(data.orderDate), deliveryDate: formatDateForInput(data.deliveryDate),
+                businessTerms: data.businessTerms ?? "", paymentType: data.paymentType ?? "",
+                deliveryTerms: data.deliveryTerms ?? "",
+                discountApplicable: data.discountApplicable ?? "",
+                shippingState: data.shippingState ?? "", billingState: data.billingState ?? "", deliveryState: data.deliveryState ?? "",
+                deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceAutoApproval ?? "NO",
+                bankBookId: String(data.bankBookId ?? ""), bankBookLabel: data.bankBookName ?? "",
+                placeOfSupply: data.placeOfSupply ?? "", vatWithheld: data.vatWithheld ?? "NO",
+                salesPersonId: String(data.salesPersonId ?? ""), salesPersonLabel: data.salesPersonName ?? "",
+                remarks: data.remarks ?? "", termsConditionsId: data.termsConditionsId ?? null, termsConditionsText: data.termsConditionsText ?? "",
+            });
+
+            const rawItems = data.orderItems || data.items || [];
+            if (rawItems.length) {
+                setItems(
+                    rawItems.map((it) => {
+                        const unitPriceVal = parseFloat(it.unitPrice) || 0;
+                        const basePrice =
+                            parseFloat(it.baseCurrencyPrice) ||
+                            parseFloat(it.item?.convertedCostPerUnit) ||
+                            (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) ||
+                            (unitPriceVal / rate) ||
+                            0;
+                        const realItemId = String(it.itemId ?? it.item?.itemId ?? it.id ?? "");
+                        const labelStr = getItemLabel(it);
+
+                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation || "N/A");
+                        const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
+                        const loadedTaxable = parseFloat(it.taxableAmount) || 0;
+                        const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
+                        const derivedTaxRate = parseFloat(it.taxRate) || (isTaxableLoad && loadedTaxable > 0 ? (loadedTaxAmt / loadedTaxable) * 100 : 0);
+
+                        return computeItem({
+                            _id: generateRowId(),
+                            itemId: realItemId,
+                            itemLabel: labelStr,
+                            description: it.description || "",
+                            itemGL: it.itemGL ?? "",
+                            isDecimalAllowed:
+                                it.isDecimalAllowed !== undefined
+                                    ? (it.isDecimalAllowed !== false && String(it.isDecimalAllowed) !== "false")
+                                    : (it.item?.isDecimalAllowed !== undefined
+                                        ? (it.item.isDecimalAllowed !== false && String(it.item.isDecimalAllowed) !== "false")
+                                        : true),
+                            baseCurrencyPrice: basePrice,
+                            quantity: it.quantity ?? 1,
+                            unitPrice: unitPriceVal,
+                            taxCalculation: loadedTaxCalc,
+                            taxGroup: it.taxGroup || "",
+                            taxGroupId: it.taxGroupId || "",
+                            taxRate: derivedTaxRate,
+                            taxAmount: loadedTaxAmt,
+                            taxableAmount: loadedTaxable,
+                            discounts: (it.discounts || []).map((d) => ({
+                                id: d.orderDiscountId || d.id,
+                                description: d.discountDescription || d.description || "",
+                                amount: parseFloat(d.discountPrice ?? d.amount) || 0,
+                                discountDescription: d.discountDescription || d.description || "",
+                                discountPrice: parseFloat(d.discountPrice ?? d.amount) || 0,
+                            })),
+                            extraCharges: (it.extraCharges || []).map((ec) => ({
+                                id: ec.orderExtraChargeId || ec.id,
+                                description: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                                amount: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                                extraChargesDescription: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                                extraChargesPrice: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                            })),
+                        });
+                    })
+                );
+            }
+
+            const rawHeaderDisc = data.discounts || data.orderDiscounts || [];
+            setOrderDiscounts(
+                rawHeaderDisc.map((d) => ({
+                    id: d.orderDiscountId || d.id,
+                    description: d.discountDescription || d.description || "",
+                    amount: parseFloat(d.discountPrice ?? d.amount) || 0,
+                    discountDescription: d.discountDescription || d.description || "",
+                    discountPrice: parseFloat(d.discountPrice ?? d.amount) || 0,
+                }))
+            );
+
+            const rawHeaderEC = data.extraCharges || data.orderExtraCharges || [];
+            setOrderExtraCharges(
+                rawHeaderEC.map((ec) => ({
+                    id: ec.orderExtraChargeId || ec.id,
+                    description: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                    amount: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                    extraChargesDescription: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                    extraChargesPrice: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                }))
+            );
+
+            setLockedCustomer(true);
+            setPrefillState("ok");
+        } catch {
+            if (isFromUrl) {
+                setPrefillState("denied");
+            } else {
+                toast.error("Failed to load order.");
+                setPrefillState("ok");
+            }
+        }
+    };
+
     useEffect(() => {
-        const idToLoad = sourceId || quotationId;
-        if (!idToLoad) {
+        if (!quotationId && !cloneFromId) {
             setPrefillState("ok");
             return;
         }
-        loadQuotationIntoForm(idToLoad, true);
-    }, [quotationId, sourceId]);
+        if (cloneFromId) {
+            loadOrderIntoForm(cloneFromId, true);
+        } else if (quotationId) {
+            loadQuotationIntoForm(quotationId, true);
+        }
+    }, [quotationId, cloneFromId]);
 
     const loadContactPersonOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);

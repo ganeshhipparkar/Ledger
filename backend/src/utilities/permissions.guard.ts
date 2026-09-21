@@ -32,7 +32,6 @@ export class PermissionsGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
 
-    // Always resolve auth context so req.isSuperAdmin and req.scopedCompanyIds are set
     const authCtx = await resolveAuthContext(req, this.ucgRepo);
 
     if (authCtx.isSuperAdmin) return true;

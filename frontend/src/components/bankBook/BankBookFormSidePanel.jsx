@@ -24,7 +24,7 @@ export default function BankBookFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = bankBookFormConfig.contexts[context] || bankBookFormConfig.contexts["bank-book-add"];
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {
@@ -363,13 +363,13 @@ export default function BankBookFormSidePanel({
                                     if (field.hidden) return null;
 
                                     if (field.type === "company-select") {
+                                        if (!isSuperAdmin) return null;
                                         return (
-                                            <div key={field.name} className="space-y-1">
-                                                <label className="block text-sm font-medium text-gray-700">
+                                            <div key={field.name}>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                                     {field.label} {field.required && <span className="text-red-500">*</span>}
                                                 </label>
-                                                {isSuperAdmin ? (
-                                                    <select
+                                                <select
                                                         name={field.name}
                                                         value={formData[field.name]}
                                                         onChange={handleChange}
@@ -384,18 +384,6 @@ export default function BankBookFormSidePanel({
                                                             </option>
                                                         ))}
                                                     </select>
-                                                ) : (
-                                                    <input
-                                                        type="text"
-                                                        readOnly
-                                                        value={
-                                                            displayUser?.assignments?.find(
-                                                                (a) => Number(a.companyId) === Number(formData[field.name])
-                                                            )?.companyName || "Active Company"
-                                                        }
-                                                        className="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600 cursor-not-allowed"
-                                                    />
-                                                )}
                                                 {errors[field.name] && (
                                                     <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}

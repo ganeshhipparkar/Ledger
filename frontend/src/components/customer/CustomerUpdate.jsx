@@ -22,7 +22,7 @@ const MySwal = withReactContent(Swal);
 export default function CustomerUpdate({ id, onBack }) {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);

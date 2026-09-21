@@ -1,4 +1,5 @@
 "use client";
+import { formatDisplayDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useContext } from "react";
 import { loginContext } from "@/components/hooks/LoginContext";
@@ -85,7 +86,7 @@ function sortableHeader(label) {
     return SortableHeaderComponent;
 }
 
-export const getItemCategoryColumns = (onPreview, onEdit) => [
+export const getItemCategoryColumns = (onPreview, onEdit, isSuperAdmin, onPreviewUser) => [
     {
         accessorKey: "itemCategoryName",
         header: sortableHeader("Category Name"),
@@ -108,7 +109,7 @@ export const getItemCategoryColumns = (onPreview, onEdit) => [
         cell: ({ row }) => <ParentCategoryCell row={row} onPreview={onPreview} />,
         filterFn: "includesString",
     },
-    {
+    ...(isSuperAdmin ? [    {
         accessorKey: "companyName",
         header: sortableHeader("Company"),
         cell: ({ row }) => (
@@ -118,7 +119,7 @@ export const getItemCategoryColumns = (onPreview, onEdit) => [
             />
         ),
         filterFn: "includesString",
-    },
+    }] : []),
     {
         accessorKey: "type",
         header: () => <span className="font-semibold text-gray-600 text-sm">Type</span>,
@@ -131,6 +132,29 @@ export const getItemCategoryColumns = (onPreview, onEdit) => [
         accessorKey: "status",
         header: sortableHeader("Status"),
         cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+        filterFn: "includesString",
+    },
+    
+    {
+        accessorKey: "addedByName",
+        header: sortableHeader("Added By"),
+        cell: ({ row }) => (
+            <span
+                className={row.original.addedByName ? "text-blue-600 cursor-pointer hover:underline" : "text-gray-700 text-sm"}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (row.original.addedBy && onPreviewUser) onPreviewUser(row.original.addedBy);
+                }}
+            >
+                {row.original.addedByName || "-"}
+            </span>
+        ),
+        filterFn: "includesString",
+    },
+    {
+        accessorKey: "addedDate",
+        header: sortableHeader("Added Date"),
+        cell: ({ row }) => <span className="text-gray-700 text-sm">{formatDisplayDate(row.getValue("addedDate") || row.original.createdDate) || "-"}</span>,
         filterFn: "includesString",
     },
     {

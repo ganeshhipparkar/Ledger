@@ -33,7 +33,8 @@ function formatDate(dateString) {
 
 export default function PaymentTransactionDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [transaction, setTransaction] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
@@ -228,7 +229,8 @@ export default function PaymentTransactionDetails({ id }) {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-2">
+                                            {isSuperAdmin && (
+<div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Company</p>
                                                 <div className="font-medium text-gray-800">
                                                     <LinkedCompanyCell
@@ -237,6 +239,7 @@ export default function PaymentTransactionDetails({ id }) {
                                                     />
                                                 </div>
                                             </div>
+)}
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Currency</p>
                                                 <p className="font-medium text-gray-800">

@@ -1,4 +1,5 @@
 "use client";
+import UserSidePanel from "../user/UserSidePanel";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ export default function TaxGroupList() {
     const [currentFilters, setCurrentFilters] = useState({});
 
     const [viewId, setViewId] = useState(null);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
 
     const [formPanelOpen, setFormPanelOpen] = useState(false);
     const [formContext, setFormContext] = useState("taxGroup-add");
@@ -115,6 +117,11 @@ export default function TaxGroupList() {
         setFormPanelOpen(true);
     };
 
+    const handlePreviewUser = (userId) => {
+        if (can && can("userView")) {
+            setSelectedUserPanelId(userId);
+        }
+    };
     const openEdit = (id) => {
         setEditId(id);
         setFormContext("taxGroup-update");
@@ -147,7 +154,11 @@ export default function TaxGroupList() {
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
                             <Loader label="Loading tax groups..." />
-                        </div>
+                        {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
+            )}
+            </div>
                     )}
 
                     {error && (

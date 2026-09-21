@@ -73,6 +73,17 @@ export function limitDecimals(val, maxDec) {
   }
   return str;
 }
+export function limitPriceDecimals(val, maxDec) {
+  if (val === null || val === undefined || val === "") return val;
+  const envMaxDec = parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10);
+  const resolvedMaxDec = maxDec ?? (Number.isFinite(envMaxDec) && envMaxDec >= 0 ? envMaxDec : 4);
+  const str = String(val);
+  const parts = str.split(".");
+  if (parts.length > 1 && parts[1].length > resolvedMaxDec) {
+    return `${parts[0]}.${parts[1].slice(0, resolvedMaxDec)}`;
+  }
+  return str;
+}
 
 export function formatDisplayDate(dateString) {
   if (!dateString) return "—";
@@ -100,22 +111,22 @@ export function formatDisplayDate(dateString) {
 
 
 export async function downloadFile(path, filename) {
-    try {
-        const response = await fetch(`http://localhost:4000${path}`, {
-            headers: { ...authHeaders() },
-        });
-        if (!response.ok) throw new Error("Failed to fetch file");
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
+  try {
+    const response = await fetch(`http://localhost:4000${path}`, {
+      headers: { ...authHeaders() },
+    });
+    if (!response.ok) throw new Error("Failed to fetch file");
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
 
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-        throw err;
-    }
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    throw err;
+  }
 }

@@ -33,7 +33,7 @@ export class RolesGuard implements CanActivate {
 
     // Check required roles
     if (requiredRoles.length) {
-      const hasRole = requiredRoles.includes(authCtx.activeGroupName ?? '');
+      const hasRole = requiredRoles.includes(authCtx.activeGroupCode ?? '');
       if (!hasRole) throw new ForbiddenException('Access denied');
     }
 

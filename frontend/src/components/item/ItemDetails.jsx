@@ -40,7 +40,8 @@ export default function ItemDetails({ id }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isEditQuery = searchParams.get("edit") === "true";
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -194,12 +195,14 @@ export default function ItemDetails({ id }) {
                                             <p className="text-gray-500">Primitive Quantity</p>
                                             <p className="font-medium text-gray-800">{item.primitiveQuantity ?? "-"}</p>
                                         </div>
-                                        <div className="grid grid-cols-2">
+                                        {isSuperAdmin && (
+<div className="grid grid-cols-2">
                                             <p className="text-gray-500">Company</p>
                                             <div className="font-medium text-gray-800">
                                                 <LinkedCompanyCell companyId={item.companyId} companyName={item.companyName || item.company?.companyName} />
                                             </div>
                                         </div>
+)}
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Archive</p>
                                             <p className="font-medium text-gray-800">{item.archive === "true" ? "Yes" : "No"}</p>

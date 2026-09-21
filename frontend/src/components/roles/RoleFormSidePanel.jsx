@@ -1,12 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useState, useContext, useMemo } from "react";
 import { toast } from "react-toastify";
-import { authHeaders } from "@/app/lib/auth";
+import { authHeaders, isSuperAdmin } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { GroupFormSchema } from "@/components/Zod";
+import { loginContext } from "@/components/hooks/LoginContext";
+import PermissionMatrix, { ALL_PERMS } from "@/components/capabilities/PermissionMatrix";
 
 export default function RoleFormSidePanel({ isOpen, onClose, onSuccess }) {
+    const { isLogin } = useContext(loginContext);
+    const superAdmin = useMemo(() => isSuperAdmin(isLogin), [isLogin]);
+
     const [formData, setFormData] = useState({ groupName: "", groupCode: "", status: "active" });
+    const [checked, setChecked] = useState(() => Object.fromEntries(ALL_PERMS.map((p) => [p, false])));
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
@@ -18,6 +24,7 @@ export default function RoleFormSidePanel({ isOpen, onClose, onSuccess }) {
 
     const resetForm = () => {
         setFormData({ groupName: "", groupCode: "", status: "active" });
+        setChecked(Object.fromEntries(ALL_PERMS.map((p) => [p, false])));
         setErrors({});
     };
 
@@ -58,7 +65,38 @@ export default function RoleFormSidePanel({ isOpen, onClose, onSuccess }) {
             const data = resJson?.encrypted ? decryptResponse(resJson.encrypted) : resJson;
 
             if (data?.settings?.success === 1 || data?.status?.success === 1 || response.ok) {
-                toast.success("Role created successfully", { position: "top-right" });
+                const newGroupId = data?.settings?.id;
+                if (!newGroupId) {
+                    toast.success("Role created successfully, but unable to assign permissions automatically.", { position: "top-right" });
+                    resetForm();
+                    onSuccess?.();
+                    onClose();
+                    return;
+                }
+
+                const selectedPerms = Object.keys(checked).filter((k) => checked[k]);
+                
+                // Second call to save permissions
+                const permResponse = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        "Content-Type": "application/json",
+                        endpoint: "group-permissions-save",
+                        module: "group",
+                    },
+                    body: JSON.stringify({ groupId: newGroupId, permissions: selectedPerms }),
+                });
+
+                const permResJson = await permResponse.json();
+                const permData = permResJson?.encrypted ? decryptResponse(permResJson.encrypted) : permResJson;
+
+                if (permData?.success === 1 || permResponse.ok) {
+                    toast.success("Role created and permissions saved successfully", { position: "top-right" });
+                } else {
+                    toast.warning("Role created, but failed to save some permissions.", { position: "top-right" });
+                }
+                
                 resetForm();
                 onSuccess?.();
                 onClose();
@@ -153,6 +191,15 @@ export default function RoleFormSidePanel({ isOpen, onClose, onSuccess }) {
                                 <option value="inactive">Inactive</option>
                             </select>
                             {errors.status && <p className={errorClass}>{errors.status}</p>}
+                        </div>
+
+                        <div>
+                            <label className={`${labelClass} mt-4`}>
+                                Permissions <span className="text-red-500">*</span>
+                            </label>
+                            <div className="overflow-x-auto border border-gray-200 rounded-xl mt-2">
+                                <PermissionMatrix superAdmin={superAdmin} checked={checked} setChecked={setChecked} />
+                            </div>
                         </div>
                     </div>
                 </form>

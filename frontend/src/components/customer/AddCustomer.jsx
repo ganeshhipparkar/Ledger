@@ -21,10 +21,10 @@ export default function AddCustomer() {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
-    const [customerCountryCode, setCustomerCountryCode] = useState("in");
-    const [ownerCountryCode, setOwnerCountryCode] = useState("in");
+    const [customerCountryCode, setCustomerCountryCode] = useState(process.env.NEXT_PUBLIC_CUSTOMER_DIALCODE ?? "in");
+    const [ownerCountryCode, setOwnerCountryCode] = useState(process.env.NEXT_PUBLIC_OWNER_DIALCODE ?? "in");
 
     const [formData, setFormData] = useState({
         customerName: "",
@@ -340,13 +340,13 @@ export default function AddCustomer() {
                             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
                                 <div>
-                                    <label className={labelClass}>Customer Name <span className="text-red-500">*</span></label>
+                                    <label className={labelClass}>Company Name <span className="text-red-500">*</span></label>
                                     <input type="text" name="customerName" value={formData.customerName} onChange={handleChange} placeholder="Enter customer name" className={inputClass} />
                                     {errors.customerName && <p className={errorClass}>{errors.customerName}</p>}
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Email <span className="text-red-500">*</span></label>
+                                    <label className={labelClass}>Company Email <span className="text-red-500">*</span></label>
                                     <input type="email" name="customerEmail" value={formData.customerEmail} onChange={handleChange} placeholder="customer@email.com" className={inputClass} />
                                     {errors.customerEmail && <p className={errorClass}>{errors.customerEmail}</p>}
                                 </div>
@@ -381,7 +381,7 @@ export default function AddCustomer() {
 
                                 {/* Logo */}
                                 <div>
-                                    <label className={labelClass}>Customer Logo <span className="text-red-500">*</span></label>
+                                    <label className={labelClass}>Company Logo <span className="text-red-500">*</span></label>
                                     <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImage} className={inputClass} />
                                     {errors.customerLogo && <p className={errorClass}>{errors.customerLogo}</p>}
                                     {preview && (
@@ -440,7 +440,6 @@ export default function AddCustomer() {
                             </div>
                         </div>
 
-                        {/* Contact Information */}
                         <div className="rounded-2xl bg-white p-8 shadow-sm">
                             <h2 className="mb-6 text-lg font-semibold text-gray-700 border-b pb-3">Contact Information</h2>
                             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

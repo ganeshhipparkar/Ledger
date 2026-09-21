@@ -66,7 +66,7 @@ function ItemNameCell({ row, onPreview }) {
     );
 }
 
-export const getItemColumns = (onPreview, onEdit, router) => [
+export const getItemColumns = (onPreview, onEdit, router, isSuperAdmin) => [
     {
         accessorKey: "itemName",
         header: sortableHeader("Item Name"),
@@ -101,7 +101,7 @@ export const getItemColumns = (onPreview, onEdit, router) => [
         ),
         filterFn: "includesString",
     },
-    {
+    ...(isSuperAdmin ? [    {
         accessorKey: "companyName",
         header: sortableHeader("Company"),
         cell: ({ row }) => (
@@ -111,7 +111,7 @@ export const getItemColumns = (onPreview, onEdit, router) => [
             />
         ),
         filterFn: "includesString",
-    },
+    }] : []),
     {
         accessorKey: "status",
         header: sortableHeader("Status"),

@@ -8,6 +8,7 @@ export interface AuthContext {
   activeCompanyId: number;
   activeGroupId: number;
   activeGroupName: string | null;
+  activeGroupCode: string | null;
   scopedCompanyIds: number[];
 }
 
@@ -21,6 +22,7 @@ export async function resolveAuthContext(
       activeCompanyId: req.activeCompanyId,
       activeGroupId: req.activeGroupId,
       activeGroupName: req.activeGroupName,
+      activeGroupCode: req.activeGroupCode || null,
       scopedCompanyIds: req.scopedCompanyIds || [],
     };
   }
@@ -58,7 +60,7 @@ export async function resolveAuthContext(
     throw new ForbiddenException('No profile assigned');
   }
 
-  const isSuperAdmin = ucg.group?.groupName === 'superAdmin';
+  const isSuperAdmin = ucg.group?.groupCode === 'admin';
   let scopedCompanyIds: number[] = [];
 
   if (!isSuperAdmin) {
@@ -79,6 +81,7 @@ export async function resolveAuthContext(
     activeCompanyId: ucg.companyId,
     activeGroupId: ucg.groupId,
     activeGroupName: ucg.group?.groupName || null,
+    activeGroupCode: ucg.group?.groupCode || null,
     scopedCompanyIds,
   };
 
@@ -87,8 +90,9 @@ export async function resolveAuthContext(
     req.activeCompanyId = context.activeCompanyId;
     req.activeGroupId = context.activeGroupId;
     req.activeGroupName = context.activeGroupName;
+    req.activeGroupCode = context.activeGroupCode;
     req.scopedCompanyIds = context.scopedCompanyIds;
-    req.userRoles = [ucg.group?.groupName].filter(Boolean);
+    req.userRoles = [ucg.group?.groupCode].filter(Boolean);
     req.activeProfileResolved = true;
   }
 

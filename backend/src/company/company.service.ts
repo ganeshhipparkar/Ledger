@@ -124,8 +124,8 @@ export class CompanyService {
         }
       }
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.addedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation ? req?.user?.userId : (req?.user?.userId ?? params.addedBy);
+      const performerEmail = req?.user?.isImpersonation ? req?.user?.email : (req?.user?.email ?? req?.user?.impersonatorEmail);
       const performerUcg = performerId
         ? await this.ucgEntity.findOne({
             where: { userId: Number(performerId) },
@@ -410,8 +410,8 @@ export class CompanyService {
       }
 
 
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : (req?.user?.userId ?? params.updatedBy);
-      const performerEmail = req?.user?.isImpersonation ? req?.user?.impersonatorEmail : (req?.user?.email ?? '');
+      const performerId = req?.user?.isImpersonation ? req?.user?.userId : (req?.user?.userId ?? params.updatedBy);
+      const performerEmail = req?.user?.isImpersonation ? req?.user?.email : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.COMPANY_UPDATE,

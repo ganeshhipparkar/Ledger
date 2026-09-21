@@ -89,7 +89,7 @@ export class GroupController {
 
   @Get('permissions-all')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('superAdmin')
+  @Roles('admin')
   async getAllPermissions() {
     const result = await this.groupService.getAllPermissions();
     return { encrypted: encryptResponse(result) };
@@ -97,7 +97,7 @@ export class GroupController {
 
   @Get('group-permissions/:groupId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('superAdmin')
+  @Roles('admin')
   async getGroupPermissions(@Param('groupId') groupId: string) {
     const result = await this.groupService.getGroupPermissions(Number(groupId));
     return { encrypted: encryptResponse(result) };
@@ -105,7 +105,7 @@ export class GroupController {
 
   @Post('group-permissions-save')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('superAdmin')
+  @Roles('admin')
   async saveGroupPermissions(
     @Req() req: any,
     @Body() body: { groupId: number; permissions: string[] },

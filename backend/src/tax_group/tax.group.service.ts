@@ -171,10 +171,10 @@ export class TaxGroupService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? params.addedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         taxName: params.taxName,

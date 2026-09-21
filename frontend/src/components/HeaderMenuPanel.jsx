@@ -75,6 +75,7 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: activePermissions.includes("paymentTransactionList") || isSuper },
                 { label: "Quotation", redirectTo: "/quotation-list", show: activePermissions.includes("quotationList") || isSuper },
                 { label: "Order", redirectTo: "/order-list", show: activePermissions.includes("orderList") || isSuper },
+                { label: "Invoice", redirectTo: "/invoice-list", show: activePermissions.includes("invoiceList") || isSuper },
             ]
         }
     ];

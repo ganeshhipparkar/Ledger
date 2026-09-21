@@ -14,7 +14,8 @@ import {
 } from "../ui/dropdown-menu";
 
 export default function ItemGridCard({ item, onPreview, onEdit, router }) {
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext);
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [imageModalOpen, setImageModalOpen] = useState(false);
 
     return (
@@ -124,13 +125,15 @@ export default function ItemGridCard({ item, onPreview, onEdit, router }) {
                         <span className="font-medium">Brand:</span>{" "}
                         {item.brandName || "-"}
                     </div>
-                    <div className="text-sm text-gray-600">
-                        <span className="font-medium">Company:</span>{" "}
-                        <LinkedCompanyCell
-                            companyId={item.companyId}
-                            companyName={item.companyName || item.company?.companyName}
-                        />
-                    </div>
+                    {isSuperAdmin && (
+                        <div className="text-sm text-gray-600">
+                            <span className="font-medium">Company:</span>{" "}
+                            <LinkedCompanyCell
+                                companyId={item.companyId}
+                                companyName={item.companyName || item.company?.companyName}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 

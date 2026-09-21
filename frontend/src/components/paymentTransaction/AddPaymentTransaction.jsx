@@ -25,7 +25,7 @@ export default function AddPaymentTransaction() {
     const router = useRouter();
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = paymentTransactionFormConfig.contexts["payment-transaction-add"];
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const minDate = getMinDateOneMonthAgo();
 

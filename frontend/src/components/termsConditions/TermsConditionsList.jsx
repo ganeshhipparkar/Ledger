@@ -1,4 +1,5 @@
 "use client";
+import UserSidePanel from "../user/UserSidePanel";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ export default function TermsConditionsList() {
     const [currentFilters, setCurrentFilters] = useState({});
 
     const [viewId, setViewId] = useState(null);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
 
     const [formPanelOpen, setFormPanelOpen] = useState(false);
     const [formContext, setFormContext] = useState("termsConditions-add");
@@ -115,6 +117,11 @@ export default function TermsConditionsList() {
         setFormPanelOpen(true);
     };
 
+    const handlePreviewUser = (userId) => {
+        if (can && can("userView")) {
+            setSelectedUserPanelId(userId);
+        }
+    };
     const openEdit = (id) => {
         setEditId(id);
         setFormContext("termsConditions-update");
@@ -146,6 +153,10 @@ export default function TermsConditionsList() {
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
                             <Loader label="Loading terms & conditions..." />
+                            {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                                document.body
+                            )}
                         </div>
                     )}
 
@@ -177,7 +188,6 @@ export default function TermsConditionsList() {
                 </div>
             </div>
 
-            {/* Pagination footer */}
             <div className="w-full flex items-center justify-between bg-white border-t border-gray-200 px-6 py-3 z-30">
                 <div className="text-sm font-medium text-gray-800">
                     {totalRecords > 0

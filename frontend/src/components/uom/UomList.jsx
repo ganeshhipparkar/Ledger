@@ -1,4 +1,5 @@
 "use client";
+import UserSidePanel from "../user/UserSidePanel";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ export default function UomList() {
     const [currentFilters, setCurrentFilters] = useState({});
 
     const [viewId, setViewId] = useState(null);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
 
     const [formPanelOpen, setFormPanelOpen] = useState(false);
     const [formContext, setFormContext] = useState("uom-add");
@@ -114,6 +116,11 @@ export default function UomList() {
         setFormPanelOpen(true);
     };
 
+    const handlePreviewUser = (userId) => {
+        if (can && can("userView")) {
+            setSelectedUserPanelId(userId);
+        }
+    };
     const openEdit = (id) => {
         setEditId(id);
         setFormContext("uom-update");
@@ -145,7 +152,11 @@ export default function UomList() {
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
                             <Loader label="Loading UOMs..." />
-                        </div>
+                        {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
+            )}
+            </div>
                     )}
 
                     {error && (

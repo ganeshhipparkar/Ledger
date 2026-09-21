@@ -12,7 +12,7 @@ import { getInitials, formatDisplayDate } from "@/lib/utils";
 import { CustomerStatusBadge } from "./CustomerColumn";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
 
-export default function CustomerCard({ customer: c, can, onCustomerClick, onEdit }) {
+export default function CustomerCard({ customer: c, can, onCustomerClick, onEdit, isSuperAdmin }) {
     const router = useRouter();
 
     const handleView = () => {
@@ -108,12 +108,14 @@ export default function CustomerCard({ customer: c, can, onCustomerClick, onEdit
                     <span className="text-gray-500">Code</span>
                     <span className="font-mono font-medium text-gray-800">{c.customerCode || "—"}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
+                {isSuperAdmin && (
+<div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">Company</span>
                     <div className="font-medium text-gray-800 text-right">
                         <LinkedCompanyCell companyId={c.companyId} companyName={c.companyName || c.company?.companyName} />
                     </div>
                 </div>
+)}
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">Email</span>
                     <span className="font-medium text-gray-800 truncate pl-4" title={c.customerEmail}>{c.customerEmail || "—"}</span>

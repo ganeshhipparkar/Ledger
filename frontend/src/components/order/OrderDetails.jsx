@@ -20,9 +20,14 @@ import OrderUpdatePriceSidePanel from "./OrderUpdatePriceSidePanel";
 import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
 import { getImageUrl, formatDisplayDate, downloadFile } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { createPortal } from "react-dom";
+import UserSidePanel from "../user/UserSidePanel";
+import BankBookSidePanel from "../bankBook/BankBookSidePanel";
+import CustomerSidePanel from "../customer/CustomerSidePanel";
 import { ORDER_STATUS_COLORS } from "./OrderCard";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
+import { taxGroupSidePanelConfig } from "../taxGroup/configs/taxGroupSidePanel.config";
 import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 
@@ -98,6 +103,10 @@ export default function OrderDetails({ id }) {
         }
     }, [searchParams]);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
+    const [selectedBankBookPanelId, setSelectedBankBookPanelId] = useState(null);
+    const [selectedCustomerPanelId, setSelectedCustomerPanelId] = useState(null);
+    const [selectedTaxGroupPanelId, setSelectedTaxGroupPanelId] = useState(null);
 
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
@@ -404,7 +413,13 @@ export default function OrderDetails({ id }) {
                             <InfoCard label="Order No." value={q.orderCode ?? `#${id}`} mono />
                             <InfoCard
                                 label="Customer"
-                                value={q.customerName ?? "—"}
+                                value={q.customerId ? (
+                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
+                                        {q.customerName ?? "—"}
+                                    </span>
+                                ) : (
+                                    q.customerName ?? "—"
+                                )}
                                 badge={q.currencyCode}
                             />
                             <InfoCard label="Order Date" value={fmtDate(q.orderDate)} />
@@ -472,20 +487,9 @@ export default function OrderDetails({ id }) {
                                     <DetailField label="Delivery Type" value={q.deliveryType} />
                                     <DetailField label="Invoice Generation On" value={q.invoiceGenerationOn} />
                                     <DetailField label="Invoice Auto Approval" value={q.invoiceAutoApproval} />
-                                    <DetailField label="Sales Person" value={q.salesPersonName} />
                                     <DetailField label="Added By" value={q.addedByName} />
-                                    <DetailField label="Bank Book" value={q.bankBookName} />
                                     <DetailField label="Place Of Supply" value={q.placeOfSupply} />
-                                    <DetailField label="VAT Withheld" value={q.vatWithheld} />
                                 </div>
-                                {q.remarks && (
-                                    <div className="pt-2 border-t border-gray-100">
-                                        <span className="text-xs font-medium text-gray-500">Remarks</span>
-                                        <p className="text-sm text-gray-800 font-medium break-all mt-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                            {q.remarks}
-                                        </p>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
@@ -544,17 +548,17 @@ export default function OrderDetails({ id }) {
                                                         </td>
                                                         <td className="min-w-[100px] px-4 py-3.5 text-left text-gray-700 whitespace-nowrap">{ITEM_GL_LABELS[item.itemGL] || item.itemGL || "0"}</td>
                                                         <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{Number((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemDiscountTotal > 0 ? (
-                                                                <span className="text-gray-700">{Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
-                                                            ) : "0.00"}
+                                                                <span className="text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                            ) : `${q?.currencySymbol} 0.00`}
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemExtraChargeTotal > 0 ? (
-                                                                <span className="text-gray-700">{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
-                                                            ) : "0.00"}
+                                                                <span className="text-gray-700">{q?.currencySymbol}{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                            ) : `${q?.currencySymbol} 0.00`}
                                                         </td>
                                                         <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-semibold text-gray-800">{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                         <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
@@ -563,10 +567,16 @@ export default function OrderDetails({ id }) {
                                                             </span>
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-left text-gray-600 whitespace-nowrap">
-                                                            {item.taxGroup ? `${item.taxGroup} (${Number(item.taxRate ?? 0)}%)` : "—"}
+                                                            {item.taxId ? (
+                                                                <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedTaxGroupPanelId(item.taxId)}>
+                                                                    {item.taxGroup ? `${item.taxGroup} (${Number(item.taxRate ?? 0)}%)` : "—"}
+                                                                </span>
+                                                            ) : (
+                                                                item.taxGroup ? `${item.taxGroup} (${Number(item.taxRate ?? 0)}%)` : "—"
+                                                            )}
                                                         </td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{item.taxAmount > 0 ? Number(item.taxAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : "0.00"}</td>
-                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900 bg-gray-50/50">{Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700"> {item.taxAmount > 0 ? `${q?.currencySymbol + " " + Number(item.taxAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : "0.00"}</td>
+                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900 bg-gray-50/50">{q?.currencySymbol + " " + Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                                                     </tr>
                                                 );
                                             })}
@@ -577,6 +587,43 @@ export default function OrderDetails({ id }) {
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
                                 <div className="lg:col-span-7 space-y-6">
+                                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                            <DetailField
+                                                label="Bank Book"
+                                                value={q.bankBookId ? (
+                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedBankBookPanelId(q.bankBookId)}>
+                                                        {q.bankBookName ?? "—"}
+                                                    </span>
+                                                ) : (
+                                                    q.bankBookName ?? "—"
+                                                )}
+                                            />
+                                            <DetailField label="VAT Withheld" value={q.vatWithheld ?? "NO"} />
+                                            <DetailField
+                                                label="Sales Person"
+                                                value={q.salesPersonId ? (
+                                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedUserPanelId(q.salesPersonId)}>
+                                                        {q.salesPersonName ?? "—"}
+                                                    </span>
+                                                ) : (
+                                                    q.salesPersonName ?? "—"
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <span className="text-gray-400">☰</span> Remarks
+                                        </h4>
+                                        {q.remarks ? (
+                                            <p className="text-sm text-gray-600 whitespace-pre-line">{q.remarks}</p>
+                                        ) : (
+                                            <div className="py-6 text-center text-gray-400 text-sm">No Remarks found.</div>
+                                        )}
+                                    </div>
+
                                     {(q.termsConditionsText || q.termsConditionsFile || q.termsConditionsFileUrl) && (
                                         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden p-6">
                                             <h3 className="text-base font-semibold text-gray-800 mb-4">Terms & Conditions</h3>
@@ -609,13 +656,8 @@ export default function OrderDetails({ id }) {
                                 </div>
 
                                 <div className="lg:col-span-5">
-                                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden sticky top-4">
-                                        <div className="bg-gray-50/80 px-5 py-4 border-b border-gray-100">
-                                            <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                                                <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
-                                                Order Summary
-                                            </h3>
-                                        </div>
+                                    <div className="rounded-2xl overflow-hidden sticky top-4">
+
                                         <OrderSummaryPanel
                                             readOnly
                                             items={[]}
@@ -659,6 +701,25 @@ export default function OrderDetails({ id }) {
                     id={selectedItemId}
                     onClose={() => setSelectedItemId(null)}
                 />
+            )}
+            {selectedTaxGroupPanelId && (
+                <DetailsSidePanel
+                    config={taxGroupSidePanelConfig}
+                    id={selectedTaxGroupPanelId}
+                    onClose={() => setSelectedTaxGroupPanelId(null)}
+                />
+            )}
+            {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
+            )}
+            {selectedBankBookPanelId && typeof document !== "undefined" && createPortal(
+                <BankBookSidePanel bankBookId={selectedBankBookPanelId} onClose={() => setSelectedBankBookPanelId(null)} />,
+                document.body
+            )}
+            {selectedCustomerPanelId && typeof document !== "undefined" && createPortal(
+                <CustomerSidePanel customerId={selectedCustomerPanelId} onClose={() => setSelectedCustomerPanelId(null)} />,
+                document.body
             )}
         </div>
     );

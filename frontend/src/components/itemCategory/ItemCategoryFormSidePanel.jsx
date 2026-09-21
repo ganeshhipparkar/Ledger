@@ -24,7 +24,7 @@ export default function ItemCategoryFormSidePanel({
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = itemCategoryFormConfig.contexts[context];
 
-    const isSuperAdmin = displayUser?.primaryProfile?.groupName === "superAdmin" || activeAssignment?.groupName === "superAdmin";
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const buildInitial = () =>
         config.fields.reduce((acc, f) => {
@@ -406,23 +406,7 @@ export default function ItemCategoryFormSidePanel({
                 );
             }
 
-            const lockedName = activeAssignment?.companyName || "Your Company";
-            return (
-                <div key={field.name}>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                        {field.label}<span className="ml-0.5 text-red-500">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        value={lockedName}
-                        readOnly
-                        className={inputCls + " bg-gray-50 text-gray-500 cursor-not-allowed"}
-                    />
-                    {errors[field.name] && (
-                        <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
-                    )}
-                </div>
-            );
+            return null;
         }
 
         return (

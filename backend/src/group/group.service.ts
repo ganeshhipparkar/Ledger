@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityCode } from '../activity/enums/activity-code.enum';
 import { FileTransfer } from 'src/utilities/file.transfer';
@@ -54,6 +54,26 @@ export class GroupService {
   async insertGroup(params: any, req?: any) {
     const queryParams: any = {};
     try {
+      // Block reserved group codes (system groups with addedBy IS NULL)
+      if (params.groupCode) {
+        const systemGroups = await this.groupEntity.find({
+          where: { addedBy: IsNull() },
+          select: ['groupCode'],
+        });
+        const reservedCodes = systemGroups.map((g) => g.groupCode);
+        if (reservedCodes.includes(params.groupCode.trim())) {
+          return { success: 0, message: 'This group code is reserved and cannot be used.' };
+        }
+
+        // Explicit groupCode uniqueness pre-check for clean error message
+        const existingCode = await this.groupEntity.findOne({
+          where: { groupCode: params.groupCode.trim() },
+        });
+        if (existingCode) {
+          return { success: 0, message: 'This group code is already in use.' };
+        }
+      }
+
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       if (params.groupName) queryParams.groupName = params.groupName;
       if (params.groupCode) queryParams.groupCode = params.groupCode;
@@ -65,10 +85,10 @@ export class GroupService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.userId ?? req?.user?.impersonatorEmail);
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.GROUP_CREATE,
@@ -173,6 +193,15 @@ export class GroupService {
         }
       }
 
+      if (existingGroup.groupCode === 'admin') {
+        if (params.groupName && params.groupName !== existingGroup.groupName) {
+          return { success: 0, message: 'Cannot rename the superAdmin group' };
+        }
+        if (params.groupCode && params.groupCode !== existingGroup.groupCode) {
+          return { success: 0, message: 'Cannot change groupCode of the superAdmin group' };
+        }
+      }
+
       if (params.groupCode && params.groupCode !== existingGroup.groupCode) {
         return { success: 0, message: 'groupCode cannot be changed' };
       }
@@ -189,10 +218,10 @@ export class GroupService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.GROUP_UPDATE,
@@ -244,8 +273,8 @@ export class GroupService {
         this.groupEntity,
       )) as [number, number];
       queryBuilder.skip(skip).take(limit);
-      queryBuilder.andWhere('group.groupName != :name', {
-        name: 'superAdmin',
+      queryBuilder.andWhere('group.groupCode != :code', {
+        code: 'admin',
       });
 
       if (!authCtx.isSuperAdmin) {
@@ -286,7 +315,7 @@ export class GroupService {
       
       queryBuilder.select(['group.groupId', 'group.groupName', 'group.status']);
       queryBuilder.where('group.status = :status', { status: 'active' });
-      queryBuilder.andWhere('group.groupName != :name', { name: 'superAdmin' });
+      queryBuilder.andWhere('group.groupCode != :code', { code: 'admin' });
 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [

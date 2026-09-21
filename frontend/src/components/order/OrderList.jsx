@@ -369,6 +369,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
 
     const handleView = () => router.push(`/order/${q.orderId}`);
     const handleEdit = () => router.push(`/order/${q.orderId}?edit=true`);
+    const handleClone = () => router.push(`/add-order?cloneFrom=${q.orderId}`);
     const handleSubmit = () => onStatusUpdate?.(q.orderId, "SUBMIT");
     const handleCancel = () => onStatusUpdate?.(q.orderId, "CANCEL");
     const handleClose = () => onStatusUpdate?.(q.orderId, "CLOSE");
@@ -438,7 +439,8 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                             { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
                                             { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Invoice" },
                                             { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
-                                            { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                            { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                            { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
                                         ].find(x => x.show)?.label ?? "Actions";
 
                                         return (
@@ -563,6 +565,17 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                                 Close Order
                                             </DropdownMenuItem>
                                         </>
+                                    )}
+                                    {isOpen && can?.("orderAdd") && (
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleClone();
+                                            }}
+                                        >
+                                            Clone Order
+                                        </DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>

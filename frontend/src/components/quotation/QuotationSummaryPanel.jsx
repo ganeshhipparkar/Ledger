@@ -84,12 +84,11 @@ export default function QuotationSummaryPanel({
                     <Paperclip className="h-4 w-4 text-gray-500" />
                     <h3 className="text-base font-semibold text-gray-800">Summary</h3>
                 </div>
-
-                <Row label="Gross Amount" value={fmt(totals.grossAmount ?? grossAmount)} />
-                <div className="flex justify-between text-xs text-gray-400 py-1 px-0">
-                    <span>Details</span>
+                <div className="flex justify-between text-xs text-gray-400 py-1 px-0 ">
                     <span>{currencyCode}{currencySymbol ? ` (${currencySymbol})` : ""}</span>
                 </div>
+                <Row label="Gross Amount" value={fmt(totals.grossAmount ?? grossAmount)} />
+
                 <Row label="Non Taxable Amount" value={fmt(totals.nonTaxableAmount ?? (grossAmount - taxableAmount))} />
                 <Row label="Taxable Amount" value={fmt(totals.taxableAmount ?? taxableAmount)} />
                 <Row label="Tax Amount" value={fmt(totals.taxAmount ?? taxAmount)} />

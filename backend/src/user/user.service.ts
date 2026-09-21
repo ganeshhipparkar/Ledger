@@ -240,7 +240,7 @@ export class UserService {
         where: { userId: creatorId },
         order: { is_parent: 'ASC' },
         relations: { group: true },
-        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true, groupCode: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -426,7 +426,7 @@ export class UserService {
         where: { userId: actorId },
         order: { is_parent: 'ASC' },
         relations: { group: true },
-        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true, groupCode: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -485,7 +485,7 @@ export class UserService {
         .leftJoin('ucg.company', 'company')
         .addSelect(['company.companyName', 'company.status'])
         .leftJoin('ucg.group', 'group')
-        .addSelect(['group.groupName', 'group.status'])
+        .addSelect(['group.groupName', 'group.groupCode', 'group.status'])
         .where('user.email = :login OR user.name = :login', {
           login: loginValue,
         })
@@ -521,6 +521,7 @@ export class UserService {
           companyName: ucg.company?.companyName ?? null,
           groupId: ucg.groupId,
           groupName: ucg.group?.groupName ?? null,
+          groupCode: ucg.group?.groupCode ?? null,
           is_parent: ucg.is_parent,
         }));
 
@@ -553,7 +554,7 @@ export class UserService {
         select: {
           id: true, userId: true, companyId: true, groupId: true, is_parent: true,
           company: { companyName: true, status: true },
-          group: { groupName: true, status: true },
+          group: { groupName: true, groupCode: true, status: true },
         },
       });
 
@@ -583,7 +584,7 @@ export class UserService {
         .leftJoin('ucg.company', 'company')
         .addSelect(['company.companyName'])
         .leftJoin('ucg.group', 'group')
-        .addSelect(['group.groupName'])
+        .addSelect(['group.groupName', 'group.groupCode'])
         .where('user.userId = :userId', { userId: body.userId })
         .getOne();
 
@@ -615,6 +616,7 @@ export class UserService {
         companyName: ucg.company?.companyName ?? null,
         groupId: ucg.groupId,
         groupName: ucg.group?.groupName ?? null,
+        groupCode: ucg.group?.groupCode ?? null,
         is_parent: ucg.is_parent,
       }));
 
@@ -624,6 +626,7 @@ export class UserService {
         companyName: assignment.company?.companyName ?? null,
         groupId: assignment.groupId,
         groupName: assignment.group?.groupName ?? null,
+        groupCode: assignment.group?.groupCode ?? null,
         is_parent: assignment.is_parent,
       };
 
@@ -691,7 +694,6 @@ export class UserService {
       const userId = Number(authUser.userId);
       const email = authUser.email;
 
-      // Validate companyId is assigned to this user, fallback to primary profile otherwise
       let companyId = body?.companyId ? Number(body.companyId) : undefined;
       if (companyId) {
         const hasAssignment = await this.ucgEntity.findOne({
@@ -706,7 +708,7 @@ export class UserService {
         where: { userId },
         order: { is_parent: 'ASC' },
         relations: { group: true },
-        select: { id: true, userId: true, companyId: true, is_parent: true, group: { groupName: true } },
+        select: { id: true, userId: true, companyId: true, is_parent: true, group: { groupName: true, groupCode: true } },
       });
       if (!companyId) {
         companyId = primaryForLogout?.companyId;
@@ -796,7 +798,7 @@ export class UserService {
             .leftJoin('ucg.company', 'company')
             .addSelect(['company.companyId', 'company.companyName'])
             .leftJoin('ucg.group', 'group')
-            .addSelect(['group.groupId', 'group.groupName'])
+            .addSelect(['group.groupId', 'group.groupName', 'group.groupCode'])
             .orderBy('user.name', 'ASC')
             .getMany()
         : [];
@@ -832,6 +834,7 @@ export class UserService {
                   companyName: primary.company?.companyName,
                   groupId: primary.groupId,
                   groupName: primary.group?.groupName,
+                  groupCode: primary.group?.groupCode ?? null,
                   is_parent: primary.is_parent,
                 },
               ]
@@ -867,7 +870,7 @@ export class UserService {
           userCompanyGroups: {
             id: true, companyId: true, groupId: true, is_parent: true,
             company: { companyName: true },
-            group: { groupName: true },
+            group: { groupName: true, groupCode: true },
           },
         },
       });
@@ -926,6 +929,7 @@ export class UserService {
         companyName: ucg.company?.companyName ?? null,
         groupId: ucg.groupId,
         groupName: ucg.group?.groupName ?? null,
+        groupCode: ucg.group?.groupCode ?? null,
         is_parent: ucg.is_parent,
       });
 
@@ -970,6 +974,7 @@ export class UserService {
           ? {
               companyName: primary.company?.companyName ?? null,
               groupName: primary.group?.groupName ?? null,
+              groupCode: primary.group?.groupCode ?? null,
               is_parent: primary.is_parent,
             }
           : null,
@@ -1264,12 +1269,12 @@ export class UserService {
         relations: { userCompanyGroups: { group: true } },
         select: {
           userId: true, email: true,
-          userCompanyGroups: { id: true, is_parent: true, group: { groupName: true } },
+          userCompanyGroups: { id: true, is_parent: true, group: { groupName: true, groupCode: true } },
         },
       });
 
       const isSuperAdmin = requester?.userCompanyGroups?.some(
-        (ucg) => ucg.group?.groupName === 'superAdmin',
+        (ucg) => ucg.group?.groupCode === 'admin',
       );
       if (!isSuperAdmin) {
         return { success: 0, message: 'Only superAdmin can use login as' };
@@ -1416,7 +1421,7 @@ export class UserService {
 
   async stopImpersonating(targetUserId: number, req: any) {
     try {
-      const performerId = req?.user?.isImpersonation ? req?.user?.impersonatedBy : req?.user?.userId;
+      const performerId = req?.user?.isImpersonation ? req?.user?.userId : req?.user?.userId ?? req?.user?.impersonatedBy;
       const requester = await this.userEntity.findOne({
         where: { userId: performerId },
       });
@@ -1430,7 +1435,7 @@ export class UserService {
         select: {
           id: true, userId: true, companyId: true, is_parent: true,
           company: { companyId: true },
-          group: { groupName: true },
+          group: { groupName: true, groupCode: true },
         },
       });
 
@@ -1438,7 +1443,7 @@ export class UserService {
         where: { userId: performerId },
         order: { is_parent: 'ASC' },
         relations: { group: true },
-        select: { id: true, userId: true, is_parent: true, group: { groupName: true } },
+        select: { id: true, userId: true, is_parent: true, group: { groupName: true, groupCode: true } },
       });
 
       this.eventEmitter.emit('activity.log', {
@@ -1498,7 +1503,7 @@ export class UserService {
         select: {
           id: true, userId: true, companyId: true, groupId: true, is_parent: true,
           company: { companyName: true },
-          group: { groupName: true },
+          group: { groupName: true, groupCode: true },
         },
       });
 
@@ -1515,7 +1520,7 @@ export class UserService {
             select: {
               id: true, userId: true, companyId: true, groupId: true, is_parent: true,
               company: { companyName: true },
-              group: { groupName: true },
+              group: { groupName: true, groupCode: true },
             },
           })
         : null;
@@ -1528,7 +1533,7 @@ export class UserService {
           select: {
             id: true, userId: true, companyId: true, groupId: true, is_parent: true,
             company: { companyName: true },
-            group: { groupName: true },
+            group: { groupName: true, groupCode: true },
           },
         });
       }

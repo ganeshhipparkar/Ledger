@@ -44,14 +44,93 @@ function statusBadge(status) {
     return "inline-block rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700";
 }
 
+function fmtAmount(amount, symbol) {
+    if (amount == null) return "-";
+    const val = Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return symbol ? `${symbol} ${val}` : val;
+}
+
+function EmbeddedTable({ endpoint, module, customerId, columns, renderRow, emptyMessage }) {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint,
+                        module,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        filters: [{ key: "customerId", value: customerId, operator: "eq" }],
+                        limit: 100,
+                        page: 1
+                    }),
+                });
+                const payload = await res.json();
+                const json = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                setData(json.data || []);
+            } catch (err) {
+                console.error(err);
+                setData([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (customerId) fetchData();
+    }, [customerId, endpoint, module]);
+
+    if (loading) {
+        return (
+            <div className="rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center py-10">
+                <Loader label="Loading..." />
+            </div>
+        );
+    }
+
+    if (!data.length) {
+        return (
+            <div className="rounded-2xl bg-white p-6 shadow-sm text-center text-gray-500 py-10">
+                {emptyMessage}
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden border border-gray-100">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                        <tr>
+                            {columns.map((c, i) => (
+                                <th key={i} className="px-6 py-4">{c}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                        {data.map(renderRow)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 export default function CustomerDetails({ id }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEdit, setShowEdit] = useState(false);
     const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
+    const [activeTab, setActiveTab] = useState("summary");
 
     useEffect(() => {
         if (searchParams && searchParams.get("edit") === "true") {
@@ -195,16 +274,29 @@ export default function CustomerDetails({ id }) {
                                 </p>
                             </div>
                             <div className="mt-6 space-y-3">
-                                <button className="w-full rounded-xl px-4 py-3 text-left font-medium transition bg-gray-600 text-white">
-                                    Summary
-                                </button>
+                                {[
+                                    { key: "summary", label: "Summary" },
+                                    { key: "orders", label: "Orders" },
+                                    { key: "quotations", label: "Quotations" },
+                                    { key: "payments", label: "Payments" },
+                                    { key: "invoices", label: "Invoices" },
+                                ].map(({ key, label }) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setActiveTab(key)}
+                                        className={`w-full rounded-xl px-4 py-3 text-left font-medium transition ${activeTab === key ? "bg-gray-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
 
                     {/* Right column */}
                     <div className="col-span-12 lg:col-span-9 space-y-6">
-                        <div className="grid gap-6 lg:grid-cols-2">
+                        {activeTab === "summary" && (
+                            <div className="grid gap-6 lg:grid-cols-2">
                             {/* Details card */}
                             <div className="rounded-2xl bg-white p-6 shadow-sm">
                                 <div className="flex items-center gap-4 border-b pb-5">
@@ -236,7 +328,8 @@ export default function CustomerDetails({ id }) {
                                             {customer.phone ? `${customer.dialCode ? `+${customer.dialCode} ` : ""}${customer.phone}` : "-"}
                                         </div>
                                     </div>
-                                    <div>
+                                    {isSuperAdmin && (
+<div>
                                         <div className="text-sm text-gray-500">Company</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
                                             <LinkedCompanyCell
@@ -245,6 +338,7 @@ export default function CustomerDetails({ id }) {
                                             />
                                         </div>
                                     </div>
+)}
                                     <div>
                                         <div className="text-sm text-gray-500">Incorporation Date</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
@@ -379,6 +473,83 @@ export default function CustomerDetails({ id }) {
                                 </div>
                             </div>
                         </div>
+                        )}
+                        {activeTab === "orders" && (
+                            <EmbeddedTable
+                                endpoint="order-list"
+                                module="order"
+                                customerId={customer.customerId}
+                                emptyMessage="No orders found for this customer."
+                                columns={["Order Code", "Order Date", "Final Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/order/${q.orderId}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.orderCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.orderDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
+                        {activeTab === "quotations" && (
+                            <EmbeddedTable
+                                endpoint="quotation-list"
+                                module="quotation"
+                                customerId={customer.customerId}
+                                emptyMessage="No quotations found for this customer."
+                                columns={["Quotation Code", "Quotation Date", "Final Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/quotation/${q.quotationId}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.quotationCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.quotationDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
+                        {activeTab === "payments" && (
+                            <EmbeddedTable
+                                endpoint="payment-transaction-list"
+                                module="paymentTransaction"
+                                customerId={customer.customerId}
+                                emptyMessage="No payment transactions found for this customer."
+                                columns={["Payment Code", "Payment Date", "Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/payment-transaction/${q.paymentTransactionId}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.paymentCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.paymentDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.transactionAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
+                        {activeTab === "invoices" && (
+                            <EmbeddedTable
+                                endpoint="invoice-list"
+                                module="invoice"
+                                customerId={customer.customerId}
+                                emptyMessage="No invoices found for this customer."
+                                columns={["Invoice Code", "Invoice Date", "Final Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/invoice/${q.invoiceId}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.invoiceCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.invoiceDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

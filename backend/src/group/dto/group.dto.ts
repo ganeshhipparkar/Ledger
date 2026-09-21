@@ -11,6 +11,7 @@ import {
   Length,
   Min,
   ValidateNested,
+  Matches,
 } from 'class-validator';
 import { EntitySchemaOptions } from 'typeorm';
 
@@ -30,6 +31,7 @@ export class GroupDto {
 
   @IsString()
   @Length(2, 20)
+  @Matches(/^[A-Za-z0-9_]+$/, { message: 'groupCode can only contain letters, numbers, and underscores' })
   groupCode!: string;
 
   @IsString()
@@ -57,6 +59,7 @@ export class GroupUpdateDto {
   @IsOptional()
   @IsString()
   @Length(2, 20)
+  @Matches(/^[A-Za-z0-9_]+$/, { message: 'groupCode can only contain letters, numbers, and underscores' })
   groupCode!: string;
 
   @IsOptional()

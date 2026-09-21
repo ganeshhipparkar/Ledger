@@ -135,7 +135,8 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                     { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
                                     { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Pdf" },
                                     { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
-                                    { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" }
+                                    { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                    { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
                                 ].find(x => x.show)?.label ?? "Actions";
 
                                 return (
@@ -208,6 +209,11 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                         Close Order
                                     </DropdownMenuItem>
                                 </>
+                            )}
+                            {isOpen && can?.("orderAdd") && (
+                                <DropdownMenuItem onClick={() => window.location.href = `/add-order?cloneFrom=${q.orderId}`} className="cursor-pointer text-sm py-2">
+                                    Clone Order
+                                </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>

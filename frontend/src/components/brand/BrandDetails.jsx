@@ -35,7 +35,8 @@ function statusBadge(status) {
 
 export default function BrandDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [brand, setBrand] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEditPanel, setShowEditPanel] = useState(false);
@@ -196,7 +197,8 @@ export default function BrandDetails({ id }) {
                                             {brand.brandCode || "-"}
                                         </div>
                                     </div>
-                                     <div>
+                                     {isSuperAdmin && (
+<div>
                                          <div className="text-sm text-gray-500">Company</div>
                                          <div className="text-[#101010] font-bold text-[#374151] mt-1">
                                              <LinkedCompanyCell
@@ -205,6 +207,7 @@ export default function BrandDetails({ id }) {
                                              />
                                          </div>
                                      </div>
+)}
                                     <div>
                                         <div className="text-sm text-gray-500">Manufacturer</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">

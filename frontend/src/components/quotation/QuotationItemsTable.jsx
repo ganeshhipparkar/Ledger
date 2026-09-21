@@ -395,7 +395,7 @@ export default function QuotationItemsTable({
                                     <td className="px-3 py-4 min-w-[160px]">
                                         <FormattedNumberInput
                                             min="0"
-                                            step={item.isDecimalAllowed ? "0.0001" : "1"}
+                                            step={item.isDecimalAllowed ? "0.01" : "1"}
                                             value={item.quantity}
                                             onChange={(e) => handleFieldChange(idx, "quantity", e.target.value)}
                                             className={`no-spinner w-full rounded-lg border px-2 py-1.5 text-sm text-right outline-none focus:ring-1 ${(submitAttempted && (item.itemId || item.description) && (String(item.quantity).trim() === "" || itemErrors?.[idx]?.quantity))

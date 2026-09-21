@@ -4,13 +4,27 @@ import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getImageUrl } from "@/lib/utils";
 import LinkedCompanyCell from "./common/LinkedCompanyCell";
+import ImagePreviewModal from "@/components/ui/ImagePreviewModal";
 import SidePanel from "./common/SidePanel";
 import { loginContext } from "./hooks/LoginContext";
 
-function renderField(field, data, can, onLinkedRecordClick) {
+function renderField(field, data, can, onLinkedRecordClick, onImagePreview) {
     switch (field.type) {
+        case "image": {
+            const url = data[field.key];
+            if (!url) return "-";
+            return (
+                <img
+                    src={getImageUrl(url)}
+                    alt={field.label}
+                    className="h-16 w-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-90"
+                    onClick={() => onImagePreview?.(getImageUrl(url))}
+                />
+            );
+        }
+
         case "text":
             return data[field.key] ?? "-";
 
@@ -111,12 +125,14 @@ function renderField(field, data, can, onLinkedRecordClick) {
 
 export default function DetailsSidePanel({ config, id, onClose }) {
     const router = useRouter();
-    const { can } = useContext(loginContext) || {};
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const [currentId, setCurrentId] = useState(id);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [errorType, setErrorType] = useState(null);
+    const [imagePreview, setImagePreview] = useState({ open: false, url: "" });
 
     useEffect(() => {
         if (id) setCurrentId(id);
@@ -147,7 +163,6 @@ export default function DetailsSidePanel({ config, id, onClose }) {
             const result = payload.encrypted
                 ? decryptResponse(payload.encrypted)
                 : payload;
-            console.log(result, "resulet")
             if (result?.[config.idKey]) {
                 setData(result);
             } else {
@@ -169,9 +184,9 @@ export default function DetailsSidePanel({ config, id, onClose }) {
     const sections = data
         ? config.sections.map((section) => ({
             title: section.title,
-            rows: section.fields.map((field) => ({
+            rows: section.fields.filter((field) => !(field.type === "linked-company" && !isSuperAdmin)).map((field) => ({
                 label: field.label,
-                value: renderField(field, data, can, handleLinkedRecordClick),
+                value: renderField(field, data, can, handleLinkedRecordClick, (url) => setImagePreview({ open: true, url })),
             })),
         }))
         : [];
@@ -185,13 +200,14 @@ export default function DetailsSidePanel({ config, id, onClose }) {
         : null;
 
     return (
-        <SidePanel
-            onClose={onClose}
-            loading={loading}
-            errorType={errorType}
-            title={config.title}
-            avatar={null}
-            initials={initials}
+        <>
+            <SidePanel
+                onClose={onClose}
+                loading={loading}
+                errorType={errorType}
+                title={config.title}
+                avatar={config.imageKey && data?.[config.imageKey] ? getImageUrl(data[config.imageKey]) : null}
+                initials={initials}
             name={data?.[config.nameKey] || ""}
             subtitle={subtitleValue}
             status={config.statusKey ? data?.[config.statusKey] || "" : ""}
@@ -203,8 +219,14 @@ export default function DetailsSidePanel({ config, id, onClose }) {
                     }
                     : null
             }
-            moreDetailsId={currentId}
-            sections={sections}
-        />
+                moreDetailsId={currentId}
+                sections={sections}
+            />
+            <ImagePreviewModal
+                open={imagePreview.open}
+                imageUrl={imagePreview.url}
+                onClose={() => setImagePreview({ open: false, url: "" })}
+            />
+        </>
     );
 }

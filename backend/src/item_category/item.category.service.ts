@@ -144,6 +144,7 @@ export class ItemCategoryService {
         ...cat,
         parentCategoryName: cat.parentCategory?.itemCategoryName ?? null,
         companyName: cat.company?.companyName ?? null,
+        addedByName: (cat as any).addedByUser?.name ?? null,
       }));
 
       return_data = {
@@ -232,10 +233,10 @@ export class ItemCategoryService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         itemCategoryCode,
@@ -332,10 +333,10 @@ export class ItemCategoryService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

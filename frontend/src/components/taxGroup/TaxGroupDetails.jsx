@@ -13,7 +13,8 @@ import TaxGroupFormSidePanel from "./TaxGroupFormSidePanel";
 
 export default function TaxGroupDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEditPanel, setShowEditPanel] = useState(false);
@@ -180,7 +181,8 @@ export default function TaxGroupDetails({ id }) {
                                         </div>
                                     </div>
 
-                                    <div>
+                                    {isSuperAdmin && (
+<div>
                                         <div className="text-sm text-gray-500">Company</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
                                             <LinkedCompanyCell
@@ -189,6 +191,7 @@ export default function TaxGroupDetails({ id }) {
                                             />
                                         </div>
                                     </div>
+)}
                                     <div>
                                         <div className="text-sm text-gray-500">Added By</div>
                                         <div className="text-[#101010] font-medium text-gray-800 mt-1">

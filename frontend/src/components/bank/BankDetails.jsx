@@ -35,7 +35,8 @@ function statusBadge(status) {
 
 export default function BankDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [bank, setBank] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEditPanel, setShowEditPanel] = useState(false);
@@ -195,7 +196,8 @@ export default function BankDetails({ id }) {
                                             {bank.bankCode || "-"}
                                         </div>
                                     </div>
-                                    <div>
+                                    {isSuperAdmin && (
+<div>
                                         <div className="text-sm text-gray-500">Company</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
                                             <LinkedCompanyCell
@@ -204,6 +206,7 @@ export default function BankDetails({ id }) {
                                             />
                                         </div>
                                     </div>
+)}
                                     <div>
                                         <div className="text-sm text-gray-500">Remarks</div>
                                         <div className="text-[#101010] font-semibold text-gray-800 mt-1">

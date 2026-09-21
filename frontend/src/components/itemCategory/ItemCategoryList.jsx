@@ -1,4 +1,5 @@
 "use client";
+import UserSidePanel from "../user/UserSidePanel";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ export default function ItemCategoryList() {
 
     // View (read-only) side panel
     const [viewId, setViewId] = useState(null);
+    const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
 
     // Add/Edit form side panel
     const [formPanelOpen, setFormPanelOpen] = useState(false);
@@ -116,6 +118,11 @@ export default function ItemCategoryList() {
         setFormPanelOpen(true);
     };
 
+    const handlePreviewUser = (userId) => {
+        if (can && can("userView")) {
+            setSelectedUserPanelId(userId);
+        }
+    };
     const openEdit = (id) => {
         setEditId(id);
         setFormContext("item-category-update");
@@ -148,7 +155,11 @@ export default function ItemCategoryList() {
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
                             <Loader label="Loading item categories..." />
-                        </div>
+                        {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                document.body
+            )}
+            </div>
                     )}
 
                     {error && (

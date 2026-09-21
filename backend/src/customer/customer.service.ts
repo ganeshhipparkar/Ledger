@@ -321,10 +321,10 @@ export class CustomerService {
       );
  const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? (req?.user?.email ?? '')
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         customerCode,
@@ -528,10 +528,10 @@ export class CustomerService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
-        ? (req?.user?.email ?? '')
-        : (req?.user?.impersonatorEmail ?? '');
+        ? req?.user?.email
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();

@@ -64,7 +64,7 @@ function sortableHeader(label) {
     return SortableHeaderComponent;
 }
 
-export const getCustomerColumns = (onPreview, onEdit, router) => [
+export const getCustomerColumns = (onPreview, onEdit, router, isSuperAdmin) => [
     {
         accessorKey: "customerName",
         header: sortableHeader("Customer Name"),
@@ -81,7 +81,7 @@ export const getCustomerColumns = (onPreview, onEdit, router) => [
         ),
         filterFn: "includesString",
     },
-    {
+    ...(isSuperAdmin ? [    {
         accessorKey: "companyName",
         header: sortableHeader("Company"),
         cell: ({ row }) => (
@@ -91,7 +91,7 @@ export const getCustomerColumns = (onPreview, onEdit, router) => [
             />
         ),
         filterFn: "includesString",
-    },
+    }] : []),
     {
         accessorKey: "customerEmail",
         header: sortableHeader("Email"),

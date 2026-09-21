@@ -210,10 +210,10 @@ export class PaymentTransactionService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.addedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const baseAmount = Number(
         (
@@ -343,10 +343,10 @@ export class PaymentTransactionService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? params.updatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {};
       if (params.customerId !== undefined)
@@ -500,10 +500,10 @@ export class PaymentTransactionService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? req?.user?.userId);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? req?.user?.email ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       existing.status = PaymentTransactionStatus.APPROVED;
       existing.statusRemarks = dto.remarks.trim();
@@ -570,10 +570,10 @@ export class PaymentTransactionService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy ?? req?.user?.userId);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? req?.user?.email ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       existing.status = PaymentTransactionStatus.CANCELLED;
       existing.statusRemarks = dto.remarks.trim();

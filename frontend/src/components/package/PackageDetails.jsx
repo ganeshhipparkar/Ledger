@@ -35,7 +35,8 @@ function statusBadge(status) {
 
 export default function PackageDetails({ id }) {
     const router = useRouter();
-    const { can } = useContext(loginContext);
+    const { can, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
     const [pkg, setPkg] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showEditPanel, setShowEditPanel] = useState(false);
@@ -195,7 +196,8 @@ export default function PackageDetails({ id }) {
                                             {pkg.packageCode || "-"}
                                         </div>
                                     </div>
-                                    <div>
+                                    {isSuperAdmin && (
+<div>
                                         <div className="text-sm text-gray-500">Company</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
                                             <LinkedCompanyCell
@@ -204,6 +206,7 @@ export default function PackageDetails({ id }) {
                                             />
                                         </div>
                                     </div>
+)}
                                     <div className="sm:col-span-2">
                                         <div className="text-sm text-gray-500">Description</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">

@@ -24,7 +24,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-function CustomerListRow({ customer: c, can, onCustomerClick, expandedRows, toggleRow }) {
+function CustomerListRow({ customer: c, can, onCustomerClick, expandedRows, toggleRow, isSuperAdmin }) {
     const handleView = () => {
         if (can?.("customerView")) {
             onCustomerClick?.(c.customerId);
@@ -107,7 +107,8 @@ function CustomerListRow({ customer: c, can, onCustomerClick, expandedRows, togg
 
 export default function CustomerList() {
     const router = useRouter();
-    const { can, viewModes, setViewModeForPage } = useContext(loginContext);
+    const { can, viewModes, setViewModeForPage, displayUser, activeAssignment } = useContext(loginContext) || {};
+    const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
 
     const activeView = viewModes?.["customer-list"] || "table";
     const setViewMode = (mode) => setViewModeForPage("customer-list", mode);
@@ -271,7 +272,7 @@ export default function CustomerList() {
                                             <div className="py-20 text-center text-gray-500 font-medium">No customers found.</div>
                                         ) : (
                                             customers.map((c) => (
-                                                <CustomerListRow
+                                                <CustomerListRow isSuperAdmin={isSuperAdmin}
                                                     key={c.customerId}
                                                     customer={c}
                                                     can={can}
@@ -291,7 +292,7 @@ export default function CustomerList() {
                                             <div className="col-span-full py-20 text-center text-gray-500 font-medium">No customers found.</div>
                                         ) : (
                                             customers.map((c) => (
-                                                <CustomerCard
+                                                <CustomerCard isSuperAdmin={isSuperAdmin}
                                                     key={c.customerId}
                                                     customer={c}
                                                     can={can}

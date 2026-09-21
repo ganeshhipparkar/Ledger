@@ -156,17 +156,20 @@ export class TermsAndConditionsService {
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
         code,
         title: params.title,
         content: params.content,
         companyId: Number(params.companyId),
+        status: params.status || 'Active',
       };
+      if (performerId) queryParams.addedBy = Number(performerId);
+      queryParams.addedDate = new Date();
 
       const result = await this.termsConditionsRepository.insert(queryParams);
       const insertId = result?.raw?.insertId;
@@ -231,13 +234,18 @@ export class TermsAndConditionsService {
         queryParams.title = params.title;
       if (params.content !== undefined)
         queryParams.content = params.content;
+      if (params.status !== undefined)
+        queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId
-        : (req?.user?.impersonatedBy);
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
       const performerEmail = req?.user?.isImpersonation
         ? req?.user?.email
-        : (req?.user?.impersonatorEmail ?? '');
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
+      
+      if (performerId) queryParams.updatedBy = Number(performerId);
+      queryParams.updatedDate = new Date();
 
       await this.termsConditionsRepository.update(
         { termsConditionsId: Number(params.termsConditionsId) },
