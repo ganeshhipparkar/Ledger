@@ -22,12 +22,20 @@ export default function PaymentTransactionStatusSidePanel({
     const timerRef = useRef(null);
 
     const isApprove = action === "approve";
+    const isCancelApproved = action === "cancel-approved";
+    const isCancel = action === "cancel" || isCancelApproved;
+
     const title = isApprove
         ? "Approve Payment Transaction"
-        : "Cancel Payment Transaction";
+        : isCancelApproved
+            ? "Cancel Approved Payment"
+            : "Cancel Payment Transaction";
+
     const endpoint = isApprove
         ? "payment-transaction-approve"
-        : "payment-transaction-cancel";
+        : isCancelApproved
+            ? "payment-transaction-cancel-approved"
+            : "payment-transaction-cancel";
 
     useEffect(() => {
         setMounted(true);
@@ -80,7 +88,9 @@ export default function PaymentTransactionStatusSidePanel({
                 toast.success(
                     isApprove
                         ? "Payment transaction approved successfully"
-                        : "Payment transaction cancelled successfully",
+                        : isCancelApproved
+                            ? "Payment cancelled. Affected invoices have been reverted."
+                            : "Payment transaction cancelled successfully",
                     { position: "top-right" }
                 );
                 onSuccess?.();
@@ -140,13 +150,14 @@ export default function PaymentTransactionStatusSidePanel({
                                 placeholder={
                                     isApprove
                                         ? "Enter approval remarks..."
-                                        : "Enter reason for cancellation..."
+                                        : "Enter cancellation remarks..."
                                 }
                                 className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm text-gray-800 outline-none transition ${error
                                     ? "border-red-500 focus:border-red-500"
                                     : "border-gray-300 focus:border-blue-500"
                                     }`}
                             />
+
                             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
                         </div>
 
@@ -170,7 +181,9 @@ export default function PaymentTransactionStatusSidePanel({
                                     ? "Processing..."
                                     : isApprove
                                         ? "Approve"
-                                        : "Cancel Transaction"}
+                                        : isCancelApproved
+                                            ? "Cancel Payment"
+                                            : "Cancel Transaction"}
                             </button>
                         </div>
                     </form>

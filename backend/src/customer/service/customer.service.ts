@@ -7,9 +7,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In, Not } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
-import { CustomerEntity } from './entity/customer.entity';
-import { CustomerCurrencyEntity } from './entity/customer.currency.entity';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
+import { CustomerEntity } from '../entity/customer.entity';
+import { CustomerCurrencyEntity } from '../entity/customer.currency.entity';
 import { CompanyCurrencyEntity } from 'src/packages/entity/company.currency.entity';
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
@@ -22,7 +22,7 @@ import {
   CustomerListDto,
   CustomerDto,
   CustomerUpdateDto,
-} from './dto/customer.dto';
+} from '../dto/customer.dto';
 
 @Injectable()
 export class CustomerService {
@@ -129,6 +129,8 @@ export class CustomerService {
           queryBuilder.andWhere('customer.companyId IN (:...scopedCompanyIds)', {
             scopedCompanyIds,
           });
+          queryBuilder.andWhere('customer.status=:isActive',{isActive:"Active"})
+          queryBuilder.andWhere('currency.status=:isActive',{isActive:"Active"})
         } else {
           return {
             success: 1,

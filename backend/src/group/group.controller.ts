@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
-import { GroupService } from './group.service';
+import { GroupService } from './service/group.service';
 import {
   getGroupListDto,
   GroupDto,

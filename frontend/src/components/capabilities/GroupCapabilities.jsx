@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState, useContext, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -184,9 +185,9 @@ export default function GroupCapabilities({ id }) {
 
             <div className="px-6 py-6">
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={() => router.push("/roles")}>Roles</span>
+                    <Link href="/roles" className="cursor-pointer hover:text-blue-600 hover:underline">Roles</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">{group?.groupName}</span>
                 </nav>
@@ -230,7 +231,7 @@ export default function GroupCapabilities({ id }) {
                         </div>
 
                         <div className="flex items-start gap-6">
-                            <label className={`${labelClass} mt-1`}>Select Modules <span className="text-red-500">*</span></label>
+                            <label className={`${labelClass} mt-1`}>Select Modules</label>
                             <div className="flex-1 overflow-x-auto">
                                 <PermissionMatrix superAdmin={superAdmin} checked={checked} setChecked={setChecked} />
                             </div>

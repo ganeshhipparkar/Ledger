@@ -484,7 +484,6 @@ export class InvoiceUpdateDueDateDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsDateString()
   newDueDate!: string;
 
   @IsOptional()
@@ -495,4 +494,26 @@ export class InvoiceUpdateDueDateDto {
   @IsInt()
   @Transform(({ value }) => Number(value))
   updatedBy?: number;
+}
+
+export class VaultAllocationDto {
+  @IsInt()
+  @IsNotEmpty()
+  paymentTransactionId!: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  amount!: number;
+}
+
+export class VaultPaymentBodyDto {
+  @IsOptional()
+  @IsEnum(['AUTOMATIC', 'MANUAL'])
+  mode?: 'AUTOMATIC' | 'MANUAL';
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VaultAllocationDto)
+  allocations?: VaultAllocationDto[];
 }

@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { BankBookService } from './bank.book.service';
+import { BankBookService } from './service/bank.book.service';
 import {
   bankBookListDto,
   BankBookDto,

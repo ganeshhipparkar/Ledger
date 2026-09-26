@@ -60,22 +60,22 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
         cell: ({ row }) => <PaymentTransactionNameCell row={row} onPreview={onPreview} />,
         filterFn: "includesString",
     },
-    {
-        accessorKey: "narration",
-        header: sortableHeader("Narration"),
-        cell: ({ row }) => (
-            <span className="text-gray-800 text-sm font-medium">
-                {row.original.narration || row.original.customer?.customerName || "-"}
-            </span>
-        ), filterFn: "includesString",
-    },
+    // {
+    //     accessorKey: "narration",    
+    //     header: sortableHeader("Narration"),
+    //     cell: ({ row }) => (
+    //         <span className="text-gray-800 text-sm font-medium">
+    //             {row.original.narration || row.original.customer?.customerName || "-"}
+    //         </span>
+    //     ), filterFn: "includesString",
+    // },
     {
         accessorKey: "customerName",
         header: sortableHeader("Customer Name"),
         cell: ({ row }) => (
-            <LinkedCustomerCell 
-                customerId={row.original.customerId} 
-                customerName={row.original.customerName || row.original.customer?.customerName} 
+            <LinkedCustomerCell
+                customerId={row.original.customerId}
+                customerName={row.original.customerName || row.original.customer?.customerName}
             />
         ),
         filterFn: "includesString",
@@ -84,9 +84,9 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
         accessorKey: "bankBookName",
         header: sortableHeader("Bank Account"),
         cell: ({ row }) => (
-            <LinkedBankBookCell 
-                bankBookId={row.original.bankBookId} 
-                bankBookName={row.original.bankBookName || row.original.bankBook?.bankBookName} 
+            <LinkedBankBookCell
+                bankBookId={row.original.bankBookId}
+                bankBookName={row.original.bankBookName || row.original.bankBook?.bankBookName}
             />
         ),
         filterFn: "includesString",
@@ -177,6 +177,7 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
             const { can } = useContext(loginContext);
             const item = row.original;
             const isPending = (item.status || "Pending") === "Pending";
+            const isApproved = item.status === "Approved";
 
             return (
                 <div className="flex items-center gap-2">
@@ -228,7 +229,20 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
-                    {!can("paymentTransactionUpdate") || !isPending && (
+
+                    {can("paymentTransactionUpdate") && isApproved && (
+                        <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold  border rounded-lg hover:bg-red-100 transition cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onAction) onAction(item.paymentTransactionId, "cancel-approved");
+                            }}
+                        >
+                            Cancel Payment
+                        </button>
+                    )}
+
+                    {!can("paymentTransactionUpdate") || (!isPending && !isApproved) && (
                         <span>-</span>
                     )}
 

@@ -18,7 +18,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { CustomerService } from './customer.service';
+import { CustomerService } from './service/customer.service';
 import {
   CustomerListDto,
   CustomerDto,

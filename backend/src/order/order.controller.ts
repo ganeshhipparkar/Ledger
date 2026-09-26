@@ -122,6 +122,14 @@ export class OrderController {
     return { encrypted: encryptResponse(result) };
   }
 
+  @Put('order-mark-delivered/:id')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('orderUpdate')
+  async markAsDelivered(@Req() req: any, @Param('id') id: string) {
+    const result = await this.orderService.markAsDelivered(Number(id), req);
+    return { encrypted: encryptResponse(result) };
+  }
+
   @Put('order-close/:id')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('orderUpdate')

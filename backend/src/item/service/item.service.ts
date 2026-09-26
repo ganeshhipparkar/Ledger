@@ -9,7 +9,7 @@ import { Repository, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
 import { Filter } from 'src/utilities/filter';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
@@ -18,9 +18,9 @@ import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { generateBarcodeImage } from 'src/utilities/barcode.util';
 import { FileTransfer } from 'src/utilities/file.transfer';
-import { ItemEntity } from './entity/item.entity';
-import { ItemImageEntity } from './entity/item.image.entity';
-import { ItemDto, ItemListDto, ItemUpdateDto } from './dto/item.dto';
+import { ItemEntity } from '../entity/item.entity';
+import { ItemImageEntity } from '../entity/item.image.entity';
+import { ItemDto, ItemListDto, ItemUpdateDto } from '../dto/item.dto';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 
 @Injectable()

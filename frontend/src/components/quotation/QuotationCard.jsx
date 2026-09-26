@@ -53,6 +53,8 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
     const handleEdit = () => router.push(`/quotation/${q.quotationId}?edit=true`);
     const handleClone = () => router.push(`/add-quotation?cloneFrom=${q.quotationId}`);
     const handleChange = () => router.push(`/add-quotation?changeFrom=${q.quotationId}`);
+    const handleConvertToOrder = () => router.push(`/add-order?quotationId=${q.quotationId}`);
+    const handleConvertToInvoice = () => router.push(`/add-invoice?fromQuotation=${q.quotationId}`);
     const handleConfirm = () => onStatusUpdate?.(q.quotationId, "CONFIRMED");
     const handleSubmit = () => onStatusUpdate?.(q.quotationId, "SUBMITTED");
 
@@ -204,17 +206,45 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
                                             </DropdownMenuItem>
                                         </>
                                     )}
-                                    {can?.("quotationAdd") && (
-                                        <DropdownMenuItem
-                                            className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleClone();
-                                            }}
-                                        >
-                                            Clone Quotation
-                                        </DropdownMenuItem>
+                                    {q.status === "CONFIRMED" && (
+                                        <>
+
+                                            {can?.("quotationAdd") && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleClone();
+                                                    }}
+                                                >
+                                                    Clone Quotation
+                                                </DropdownMenuItem>
+                                            )}
+                                            {can?.("orderAdd") && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleConvertToOrder();
+                                                    }}
+                                                >
+                                                    Convert to Order
+                                                </DropdownMenuItem>
+                                            )}
+                                            {can?.("invoiceAdd") && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleConvertToInvoice();
+                                                    }}
+                                                >
+                                                    Convert to Invoice
+                                                </DropdownMenuItem>
+                                            )}
+                                        </>
                                     )}
+
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

@@ -26,6 +26,7 @@ import {
   PaymentTransactionUpdateDto,
   PaymentTransactionStatusDto,
 } from './dto/payment.transaction.dto';
+import { VaultService } from 'src/vault/vault.service';
 
 @Injectable()
 export class PaymentTransactionService {
@@ -52,6 +53,9 @@ export class PaymentTransactionService {
 
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
+
+  @Inject()
+  private readonly vaultService!: VaultService;
 
   async paymentTransactionList(param: PaymentTransactionListDto, req?: any) {
     let return_data: any = {};
@@ -510,7 +514,39 @@ export class PaymentTransactionService {
       existing.updatedBy = performerId ? Number(performerId) : undefined;
       existing.updatedDate = new Date();
 
-      await this.paymentTransactionRepo.save(existing);
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        await queryRunner.manager.save(existing);
+        
+        await this.vaultService.credit(
+          existing.customerId,
+          existing.currencyId,
+          existing.companyId,
+          existing.paymentTransactionId,
+          Number(existing.transactionAmount),
+          queryRunner
+        );
+
+        if ((process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase() === 'AUTOMATIC') {
+          await this.vaultService.payOutstandingInvoices(
+            existing.customerId,
+            existing.currencyId,
+            existing.companyId,
+            (process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO',
+            queryRunner,
+          );
+        }
+
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
 
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.PAYMENT_TRANSACTION_APPROVE,
@@ -605,6 +641,104 @@ export class PaymentTransactionService {
       return {
         success: 1,
         message: 'Payment transaction cancelled successfully',
+      };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+  async cancelApprovedPaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+      const existing = await this.paymentTransactionRepo.findOne({
+        where: { paymentTransactionId: dto.paymentTransactionId },
+      });
+      if (!existing) {
+        throw new NotFoundException('Payment transaction not found');
+      }
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(existing.companyId)) {
+          throw new ForbiddenException('Access denied to this payment transaction');
+        }
+      }
+
+      if (existing.status !== PaymentTransactionStatus.APPROVED) {
+        throw new BadRequestException(
+          `Payment transaction must be Approved to cancel it (current status: ${existing.status})`,
+        );
+      }
+
+      if (!dto.remarks || dto.remarks.trim() === '') {
+        throw new BadRequestException('Remarks are required for cancellation');
+      }
+
+      const performerId = req?.user?.isImpersonation
+        ? req?.user?.userId
+        : (req?.user?.userId ?? req?.user?.impersonatedBy);
+      const performerEmail = req?.user?.isImpersonation
+        ? req?.user?.email
+        : (req?.user?.email ?? req?.user?.impersonatorEmail);
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        existing.status = PaymentTransactionStatus.CANCELLED;
+        existing.statusRemarks = dto.remarks.trim();
+        existing.updatedBy = performerId ? Number(performerId) : undefined;
+        existing.updatedDate = new Date();
+        await queryRunner.manager.save(existing);
+
+        const { customerId, currencyId, companyId } =
+          await this.vaultService.reverseCredit(
+            existing.paymentTransactionId,
+            queryRunner,
+          );
+
+        if ((process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase() === 'AUTOMATIC') {
+          await this.vaultService.payOutstandingInvoices(
+            customerId,
+            currencyId,
+            companyId,
+            ((process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO'),
+            queryRunner,
+          );
+        }
+
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+
+      this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.PAYMENT_TRANSACTION_CANCEL_APPROVED,
+        userId: performerId,
+        companyId: existing.companyId,
+        actorType: 'USER',
+        targetType: 'PAYMENT_TRANSACTION',
+        targetId: String(dto.paymentTransactionId),
+        executionStatus: 'SUCCESS',
+        severity: 'WARN',
+        parameters: {
+          userEmail: performerEmail,
+          userGroup: authCtx.activeGroupName || 'N/A',
+          companyId: existing.companyId,
+          paymentTransactionId: dto.paymentTransactionId,
+          remarks: dto.remarks,
+          impersonated: !!req?.user?.isImpersonation,
+        },
+        metadata: {},
+      });
+
+      return {
+        success: 1,
+        message: 'Approved payment transaction cancelled and vault reversed successfully',
       };
     } catch (err: any) {
       return { success: 0, message: err.message };

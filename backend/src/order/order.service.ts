@@ -267,8 +267,6 @@ export class OrderService {
     return null;
   }
 
-  // ─── Status / lifecycle gate ─────────────────────────────────────────────
-  // Returns an error message if the action is not permitted, or null if OK.
 
   private assertOrderActionable(
     order: OrderEntity,
@@ -1083,12 +1081,6 @@ export class OrderService {
 
       await this.orderRepo.update({ orderId }, { status: OrderStatus.PLACED });
 
-      this.orderPdfService
-        .generateAndStoreInvoicePdf(orderId)
-        .catch((err: Error) =>
-          console.error(`[PDF] Failed to generate invoice for order ${orderId}:`, err.message),
-        );
-
       const { performerId, performerEmail } = this.resolvePerformer(req);
       this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.ORDER_UPDATE,
@@ -1139,7 +1131,6 @@ export class OrderService {
       );
       if (error) return { success: 0, message: error };
 
-      // Cancel only flips orderStatus to CLOSED — does not touch the delivery status
       await this.orderRepo.update({ orderId }, { orderStatus: OrderLifecycleStatus.CLOSED });
 
       const { performerId, performerEmail } = this.resolvePerformer(req);
@@ -1162,6 +1153,66 @@ export class OrderService {
       });
 
       return { success: 1, message: 'Order cancelled successfully' };
+    } catch (err: any) {
+      return { success: 0, message: err.message };
+    }
+  }
+
+
+  async markAsDelivered(orderId: number, req?: any) {
+    try {
+      const authCtx = await resolveAuthContext(req, this.ucgEntity);
+
+      const order = await this.orderRepo.findOne({ where: { orderId } });
+      if (!order) return { success: 0, message: 'Order not found' };
+
+      if (!authCtx.isSuperAdmin) {
+        const scopedCompanyIds =
+          req?.scopedCompanyIds || [authCtx.activeCompanyId];
+        if (!scopedCompanyIds.includes(Number(order.companyId))) {
+          return {
+            success: 0,
+            message: 'Access denied: order belongs to another company',
+          };
+        }
+      }
+
+      const error = this.assertOrderActionable(
+        order,
+        [OrderStatus.PLACED],
+        'marked as delivered',
+      );
+      if (error) return { success: 0, message: error };
+
+      await this.orderRepo.update({ orderId }, { status: OrderStatus.DELIVERED });
+
+      this.orderPdfService
+        .generateAndStoreInvoicePdf(orderId)
+        .catch((err: Error) =>
+          console.error(`[PDF] Failed to generate invoice for order ${orderId}:`, err.message),
+        );
+
+      const { performerId, performerEmail } = this.resolvePerformer(req);
+      this.eventEmitter.emit('activity.log', {
+        activityCode: ActivityCode.ORDER_UPDATE,
+        userId: performerId,
+        companyId: order.companyId,
+        actorType: 'USER',
+        targetType: 'ORDER',
+        targetId: String(orderId),
+        executionStatus: 'SUCCESS',
+        severity: 'INFO',
+        parameters: {
+          userEmail: performerEmail,
+          userGroup: authCtx.activeGroupName || 'N/A',
+          orderCode: order.orderCode,
+          action: 'markAsDelivered',
+          impersonated: !!req?.user?.isImpersonation,
+        },
+        metadata: {},
+      });
+
+      return { success: 1, message: 'Order marked as delivered successfully' };
     } catch (err: any) {
       return { success: 0, message: err.message };
     }

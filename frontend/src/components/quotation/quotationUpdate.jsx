@@ -1,5 +1,7 @@
 "use client";
+import Link from "next/link";
 import Select from "react-select";
+import { limitDecimals } from "@/lib/utils";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -231,7 +233,7 @@ export default function QuotationUpdate({ id }) {
                             description: it.description ?? "",
                             isDecimalAllowed: true,
                             baseCurrencyPrice: basePrice,
-                            quantity: it.quantity,
+                            quantity: limitDecimals(String(it.quantity ?? "")),
                             unitPrice: unitPriceVal,
                             taxCalculation: loadedTaxCalc,
                             taxGroup: it.taxGroup ?? "",
@@ -298,6 +300,8 @@ export default function QuotationUpdate({ id }) {
                 filters: [
                     { key: "companyId", value: String(companyId), operator: "eq" },
                     ...(inputValue ? [{ key: "name", value: inputValue, operator: "like" }] : []),
+                    { key: "status", value: "Active", operator: "equal" }
+
                 ],
             }),
         })
@@ -343,7 +347,6 @@ export default function QuotationUpdate({ id }) {
                     label: `${c.customer?.customerName} (${c.currency?.code})`,
                     raw: c,
                 }));
-                // Check if current combination exists in the options
                 if (formData.customerId && formData.currencyId) {
                     const existingValue = `${formData.customerId}_${formData.currencyId}`;
                     if (!options.some((o) => o.value === existingValue)) {
@@ -599,14 +602,19 @@ export default function QuotationUpdate({ id }) {
 
             <div className="px-6 pt-4">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/quotation-list")}>Quotations</span>
+                    <Link href="/quotation-list" className="cursor-pointer hover:text-blue-600">Quotations</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push(`/quotation/${id}`)}>Quotation</span>
+                    <Link href="/quotation/${id}" className="cursor-pointer hover:text-blue-600">Quotation</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Edit</span>
                 </nav>
+            </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 px-6 pt-4">
+                <h1 className="text-2xl font-semibold text-[#1f2937]">
+                    {"Quotation"}
+                </h1>
             </div>
 
             <div className="flex-1 px-6 py-4 pb-24 space-y-5">

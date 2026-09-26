@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../Header";
@@ -104,9 +105,9 @@ export default function CompanyDetails({ id }) {
 
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 pb-20">
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/company-list")}>Companies</span>
+                    <Link href="/company-list" className="cursor-pointer hover:text-blue-600 hover:underline">Companies</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Details</span>
                 </nav>
@@ -201,12 +202,9 @@ export default function CompanyDetails({ id }) {
                                             <div className="font-medium text-gray-800">
                                                 {company.parentCompanyId && company.parentCompanyName ? (
                                                     can("companyView") ? (
-                                                        <span
-                                                            className="text-blue-600 cursor-pointer hover:underline"
-                                                            onClick={(e) => gotoPages(e, `/company/${company.parentCompanyId}`)}
-                                                        >
+                                                        <Link href="/company/${company.parentCompanyId}" className="text-blue-600 cursor-pointer hover:underline">
                                                             {company.parentCompanyName}
-                                                        </span>
+                                                        </Link>
                                                     ) : (
                                                         <span>{company.parentCompanyName}</span>
                                                     )

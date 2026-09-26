@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserController } from './user.controller';
-import { UserService } from './user.service';
+import { UserService } from './services/user.service';
 
 import { UserEntity } from 'src/user/entity/user.entity';
 import { FileTransfer } from 'src/utilities/file.transfer';

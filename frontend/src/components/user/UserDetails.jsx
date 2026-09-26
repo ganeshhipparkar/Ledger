@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import EditUserPage from "./userUpdate";
@@ -256,9 +257,9 @@ export default function UserDetailsPage({ id }) {
             <div className="p-6">
                 {/* Breadcrumb */}
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500" aria-label="Breadcrumb">
-                    <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
+                    <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/users")}>Users</span>
+                    <Link href="/users" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Users</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Details</span>
                 </nav>

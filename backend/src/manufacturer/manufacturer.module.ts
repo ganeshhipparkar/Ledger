@@ -7,7 +7,7 @@ import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { ManufacturerContorller } from "./manufacturer.controller";
-import { ManufacturerService } from "./manufacturer.service";
+import { ManufacturerService } from "./service/manufacturer.service";
 import { ManufacturerEntity } from "./entity/manufacturer.entity";
 
 @Module({

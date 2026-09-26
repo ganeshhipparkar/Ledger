@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -181,7 +182,7 @@ export default function QuotationList() {
             />
             <div className="px-6 pt-4 pb-2">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800" >Quotations</span>
 
@@ -451,7 +452,7 @@ function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, 
                                                 Clone Quotation
                                             </DropdownMenuItem>
                                         )}
-                                        {q.invoicePdfPath && (
+                                        {/* {q.invoicePdfPath && (
                                             <>
                                                 <DropdownMenuItem
                                                     className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0"
@@ -473,15 +474,15 @@ function QuotationListRow({ quotation: q, onStatusUpdate, onRegeneratePdf, can, 
                                                     <span className="w-full h-full px-4 py-2" title="Download PDF">Download Pdf</span>
                                                 </DropdownMenuItem>
                                             </>
-                                        )}
-                                        {can?.("quotationUpdate") && (
+                                        )} */}
+                                        {/* {can?.("quotationUpdate") && (
                                             <DropdownMenuItem
                                                 className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0"
                                                 onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.quotationId); }}
                                             >
                                                 <span className="w-full h-full px-4 py-2" title="Regenerate PDF">Regenerate PDF</span>
                                             </DropdownMenuItem>
-                                        )}
+                                        )} */}
                                     </>
                                 )}
 

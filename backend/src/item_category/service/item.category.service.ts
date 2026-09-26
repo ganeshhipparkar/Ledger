@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
 import { ItemCategoryEntity } from 'src/item_category/entity/item-category.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
@@ -18,7 +18,7 @@ import {
   categoryListDto,
   ItemCategoryDto,
   ItemCategoryUpdateDto,
-} from './dto/item.category.dto';
+} from '../dto/item.category.dto';
 
 @Injectable()
 export class ItemCategoryService {

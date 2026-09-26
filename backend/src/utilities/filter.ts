@@ -80,8 +80,7 @@ export class Filter {
     try {
       let whereStr = '';
       let symbol = '';
-      // Resolve alias for the key if provided in aliasMap
-      const resolvedAlias = aliasMap[key] || alias;
+       const resolvedAlias = aliasMap[key] || alias;
       switch (operator) {
         case 'eq':
         case '=':

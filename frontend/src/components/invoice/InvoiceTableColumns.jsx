@@ -22,7 +22,7 @@ export function InvoiceStatusBadge({ status }) {
     );
 }
 
-export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onCustomerClick, onAddedByClick, onInvoiceClick }) {
+export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onCustomerClick, onAddedByClick, onInvoiceClick, onAddCreditNote, paymentMode }) {
     const router = useRouter?.();
 
     return [
@@ -110,7 +110,7 @@ export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, on
                 const primaryAction = [
                     { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Edit" },
                     { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Submit" },
-                    { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
+                    { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
                     { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
                     { show: can?.("invoiceView"), label: "View" },
                 ].find((a) => a.show) ?? { label: "View" };
@@ -118,10 +118,10 @@ export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, on
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <button className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer">
+                            <div className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer">
                                 {primaryAction.label}
                                 <ChevronDown className="h-4 w-4 text-gray-400" />
-                            </button>
+                            </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border border-gray-100 p-1">
                             {q.status === "DRAFT" && can?.("invoiceUpdate") && (
@@ -133,11 +133,16 @@ export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, on
                             )}
                             {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
                                 <>
-                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid?.(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                    {paymentMode === "MANUAL" && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid?.(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate?.(q); }}>Update Due Date</DropdownMenuItem>
                                 </>
                             )}
-                            {q.invoicePdfPath && (
+                            {/* {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
+                            )} */}
+                            {/* {q.invoicePdfPath && (
                                 <>
                                     <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"); }}>
                                         <span className="w-full h-full px-4 py-2">View PDF</span>
@@ -151,7 +156,7 @@ export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, on
                                 <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.invoiceId); }}>
                                     <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
                                 </DropdownMenuItem>
-                            )}
+                            )} */}
                             <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router?.push(`/invoice/${q.invoiceId}`); }}>View Details</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

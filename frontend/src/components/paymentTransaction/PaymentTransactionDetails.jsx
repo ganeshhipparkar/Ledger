@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -100,6 +101,7 @@ export default function PaymentTransactionDetails({ id }) {
 
     const currentStatus = transaction.status || "Pending";
     const isPending = currentStatus === "Pending";
+    const isApproved = currentStatus === "Approved";
 
     let statusBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
     if (currentStatus === "Approved") statusBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
@@ -113,19 +115,13 @@ export default function PaymentTransactionDetails({ id }) {
 
             <div className="p-6">
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500" aria-label="Breadcrumb">
-                    <span
-                        className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/")}
-                    >
+                    <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                         Home
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span
-                        className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/payment-transaction-list")}
-                    >
+                    <Link href="/payment-transaction-list" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                         Payment Transactions
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800 font-semibold">{"payment"}</span>
                 </nav>
@@ -165,6 +161,15 @@ export default function PaymentTransactionDetails({ id }) {
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
+                        )}
+
+                        {can && can("paymentTransactionUpdate") && isApproved && (
+                            <button
+                                className="inline-flex h-11 items-center gap-1.5 px-6 text-sm font-semibold border border-red-200 rounded-xl hover:bg-red-100 hover:border-red-300 transition cursor-pointer shadow-xs"
+                                onClick={() => setStatusModal({ open: true, action: "cancel-approved" })}
+                            >
+                                Cancel Payment
+                            </button>
                         )}
                     </div>
                 </div>
@@ -230,16 +235,16 @@ export default function PaymentTransactionDetails({ id }) {
                                                 </div>
                                             </div>
                                             {isSuperAdmin && (
-<div className="grid grid-cols-2">
-                                                <p className="text-gray-500">Company</p>
-                                                <div className="font-medium text-gray-800">
-                                                    <LinkedCompanyCell
-                                                        companyId={transaction.companyId}
-                                                        companyName={transaction.companyName || transaction.company?.companyName}
-                                                    />
+                                                <div className="grid grid-cols-2">
+                                                    <p className="text-gray-500">Company</p>
+                                                    <div className="font-medium text-gray-800">
+                                                        <LinkedCompanyCell
+                                                            companyId={transaction.companyId}
+                                                            companyName={transaction.companyName || transaction.company?.companyName}
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-)}
+                                            )}
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Currency</p>
                                                 <p className="font-medium text-gray-800">

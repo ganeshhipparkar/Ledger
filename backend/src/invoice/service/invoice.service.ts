@@ -18,12 +18,14 @@ import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.e
 import { UserEntity } from 'src/user/entity/user.entity';
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
-import { InvoiceEntity, InvoiceFor, InvoiceStatus } from './entity/invoice.entity';
-import { InvoiceItemEntity, TaxCalculation } from './entity/invoice.item.entity';
-import { InvoiceDiscountEntity } from './entity/invoice.discount.entity';
-import { InvoiceExtraChargeEntity } from './entity/invoice.extra.charge.entity';
-import { InvoiceAttachmentsEntity } from './entity/invoice.attachments';
-import { InvoiceDueDateHistoryEntity } from './entity/invoice.due.date.history.entity';
+import { InvoiceEntity, InvoiceFor, InvoiceStatus } from '../entity/invoice.entity';
+import { InvoiceItemEntity, TaxCalculation } from '../entity/invoice.item.entity';
+import { InvoiceDiscountEntity } from '../entity/invoice.discount.entity';
+import { InvoiceExtraChargeEntity } from '../entity/invoice.extra.charge.entity';
+import { InvoiceAttachmentsEntity } from '../entity/invoice.attachments';
+import { InvoiceDueDateHistoryEntity } from '../entity/invoice.due.date.history.entity';
+import { OrderEntity, OrderStatus, OrderLifecycleStatus } from 'src/order/entity/order.entity';
+import { QuotationEntity, QuotationStatus } from 'src/quotation/entity/quotation.entity';
 import {
   InvoiceDiscountInputDto,
   InvoiceDto,
@@ -32,8 +34,11 @@ import {
   InvoiceListDto,
   InvoiceUpdateDto,
   InvoiceUpdateDueDateDto,
-} from './dto/invoice.dto';
-import { InvoicePdfService } from './invoice.pdf.service';
+  VaultPaymentBodyDto,
+} from '../dto/invoice.dto';
+import { InvoicePdfService } from '../invoice.pdf.service';
+import { VaultService } from 'src/vault/vault.service';
+import { ModSettings } from 'src/user/entity/mod.settings';
 
 interface ComputedItemAmounts {
   totalAmount: number;
@@ -91,6 +96,16 @@ export class InvoiceService {
     @InjectRepository(taxGroupEntity)
     private readonly taxGroupRepo: Repository<taxGroupEntity>,
 
+    @InjectRepository(QuotationEntity)
+    private readonly quotationRepo: Repository<QuotationEntity>,
+
+    @InjectRepository(OrderEntity)
+    private readonly orderRepo: Repository<OrderEntity>,
+
+    @InjectRepository(ModSettings)
+    private readonly modSettingsRepo: Repository<ModSettings>,
+
+    private readonly vaultService: VaultService,
     private readonly filter: Filter,
     private readonly fileTransfer: FileTransfer,
     private readonly eventEmitter: EventEmitter2,
@@ -106,12 +121,12 @@ export class InvoiceService {
   private resolvePerformer(req: any, fallbackId?: number) {
     const performerId: number | undefined = req?.user?.isImpersonation
       ? req?.user?.userId
-      : (req?.user?.impersonatedBy ?? fallbackId);
+      : (req?.user?.userId ?? fallbackId);
     const performerEmail: string = req?.user?.isImpersonation
       ? (req?.user?.email ?? '')
-      : (req?.user?.impersonatorEmail ?? '');
+      : (req?.user?.email ?? '');
     return { performerId, performerEmail };
-  }
+  } 
 
   private toValidNumber(val: any, fallback: number = 0): number {
     if (val === undefined || val === null || val === '') return fallback;
@@ -276,21 +291,41 @@ export class InvoiceService {
   }
 
 
-  private validateInvoiceSource(body: {
+  private async validateInvoiceSource(body: {
     invoiceFor?: string;
     sourceOrderId?: number;
     sourceQuotationId?: number;
-  }): string | null {
+  }): Promise<string | null> {
     if (body.invoiceFor === InvoiceFor.ORDER) {
       if (!body.sourceOrderId)
         return 'sourceOrderId is required when invoiceFor is ORDER';
       if (body.sourceQuotationId)
         return 'sourceQuotationId must not be set when invoiceFor is ORDER';
+        
+      const order = await this.orderRepo.findOne({
+        where: { orderId: body.sourceOrderId }
+      });
+      if (!order) {
+        return 'Source order not found';
+      }
+      if (order.status !== OrderStatus.DELIVERED || order.orderStatus !== OrderLifecycleStatus.OPEN) {
+        return 'Source order must be in DELIVERED and OPEN status.';
+      }
     } else if (body.invoiceFor === InvoiceFor.QUOTATION) {
       if (!body.sourceQuotationId)
         return 'sourceQuotationId is required when invoiceFor is QUOTATION';
       if (body.sourceOrderId)
         return 'sourceOrderId must not be set when invoiceFor is QUOTATION';
+        
+      const quotation = await this.quotationRepo.findOne({
+        where: { quotationId: body.sourceQuotationId }
+      });
+      if (!quotation) {
+        return 'Source quotation not found';
+      }
+      if (quotation.status !== QuotationStatus.CONFIRMED) {
+        return 'Source quotation must be in CONFIRMED status.';
+      }
     } else {
       if (body.sourceOrderId || body.sourceQuotationId)
         return 'sourceOrderId and sourceQuotationId must be null when invoiceFor is not set';
@@ -407,6 +442,8 @@ export class InvoiceService {
         'extraCharges',
         'attachments',
         'dueDateHistory',
+        'sourceOrder',
+        'sourceQuotation',
       ],
     });
 
@@ -430,6 +467,8 @@ export class InvoiceService {
       ? await this.userEntity.findOne({ where: { userId: invoice.updatedBy } })
       : null;
 
+    const invoicePaymentMode = (process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase();
+
     return {
       ...invoice,
       termsConditionsFileUrl: invoice.termsConditionsFile ?? null,
@@ -442,6 +481,9 @@ export class InvoiceService {
       bankBookName: invoice.bankBook?.accountNumber ?? null,
       addedByName: addedByUser?.name ?? null,
       updatedByName: updatedByUser?.name ?? null,
+      sourceOrderCode: invoice.sourceOrder?.orderCode ?? null,
+      sourceQuotationCode: invoice.sourceQuotation?.quotationCode ?? null,
+      invoicePaymentMode,
     };
   }
 
@@ -471,7 +513,7 @@ export class InvoiceService {
       const dateError = this.validateInvoiceDates(body.invoiceDate, body.deliveryDate);
       if (dateError) return { success: 0, message: dateError };
 
-      const sourceError = this.validateInvoiceSource(body);
+      const sourceError = await this.validateInvoiceSource(body);
       if (sourceError) return { success: 0, message: sourceError };
 
       const taxResult = await this.validateTaxGroups(
@@ -732,27 +774,10 @@ export class InvoiceService {
       }
 
       if (existing.status !== InvoiceStatus.DRAFT) {
-        // These 9 fields are permanently locked after submit.
-        // The 7 approved editable fields (invoiceItems, invoiceDate, remarks,
-        // termsConditionsText, businessTerms, paymentType, discountApplicable)
-        // are intentionally NOT included here and pass through for all statuses.
-        const isLockedFieldUpdate =
-          body.bankBookId !== undefined ||
-          body.salesPersonId !== undefined ||
-          body.contactPersonId !== undefined ||
-          body.vatWithheld !== undefined ||
-          body.deliveryTerms !== undefined ||
-          body.shippingState !== undefined ||
-          body.billingState !== undefined ||
-          body.deliveryState !== undefined ||
-          body.deliveryType !== undefined;
-
-        if (isLockedFieldUpdate) {
-          return {
-            success: 0,
-            message: 'This field cannot be changed after the invoice has been submitted.',
-          };
-        }
+        return {
+          success: 0,
+          message: 'Only invoices in Draft status can be updated.',
+        };
       }
 
       if (body.invoiceDate || body.deliveryDate) {
@@ -767,7 +792,7 @@ export class InvoiceService {
         body.sourceOrderId !== undefined ||
         body.sourceQuotationId !== undefined
       ) {
-        const sourceError = this.validateInvoiceSource({
+        const sourceError = await this.validateInvoiceSource({
           invoiceFor: body.invoiceFor ?? (existing.invoiceFor as string | undefined),
           sourceOrderId:
             body.sourceOrderId ?? (existing.sourceOrderId ?? undefined),
@@ -1095,6 +1120,47 @@ export class InvoiceService {
 
       await this.invoiceRepo.update({ invoiceId }, { status: InvoiceStatus.UNPAID });
 
+      let vaultResult: any = null;
+      let finalStatus = InvoiceStatus.UNPAID;
+
+      const mode = (process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase();
+
+      if (mode === 'AUTOMATIC') {
+        const strategy = ((process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO').toUpperCase() as 'FIFO' | 'LIFO';
+
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+          vaultResult = await this.vaultService.deductAutomatic(
+            invoice.invoiceId,
+            invoice.customerId,
+            invoice.currencyId,
+            invoice.companyId,
+            Number(invoice.finalAmount || 0),
+            strategy,
+            queryRunner
+          );
+          
+          if (vaultResult.result === 'PAID') finalStatus = InvoiceStatus.PAID;
+          else if (vaultResult.result === 'PARTIAL') finalStatus = InvoiceStatus.PARTIALLY_PAID;
+
+          if (finalStatus !== InvoiceStatus.UNPAID) {
+            await queryRunner.manager.update(InvoiceEntity, { invoiceId }, { 
+              status: finalStatus,
+              amountPaid: vaultResult.amountPaid,
+            });
+          }
+          await queryRunner.commitTransaction();
+        } catch (err) {
+          await queryRunner.rollbackTransaction();
+          throw err;
+        } finally {
+          await queryRunner.release();
+        }
+      }
+
       this.invoicePdfService
         .generateAndStoreInvoicePdf(invoiceId)
         .catch((err: Error) =>
@@ -1118,19 +1184,23 @@ export class InvoiceService {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
           invoiceCode: invoice.invoiceCode,
-          transition: 'DRAFT→UNPAID',
+          transition: `DRAFT→${finalStatus}`,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
       });
 
-      return { success: 1, message: 'Invoice submitted successfully' };
+      return { 
+        success: 1, 
+        message: 'Invoice submitted successfully',
+        vaultResult 
+      };
     } catch (err: any) {
       return { success: 0, message: err.message };
     }
   }
 
-  async markAsPaid(invoiceId: number, req?: any) {
+  async markAsPaid(invoiceId: number, body: VaultPaymentBodyDto, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
@@ -1157,7 +1227,42 @@ export class InvoiceService {
         };
       }
 
-      await this.invoiceRepo.update({ invoiceId }, { status: InvoiceStatus.PAID });
+      let vaultResult: any = null;
+      let finalStatus = invoice.status;
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        const remainingToPay = Number(invoice.finalAmount || 0) - Number(invoice.amountPaid || 0);
+        const strategy = ((process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO').toUpperCase() as 'FIFO' | 'LIFO';
+
+        vaultResult = await this.vaultService.deductAutomatic(
+          invoice.invoiceId,
+          invoice.customerId,
+          invoice.currencyId,
+          invoice.companyId,
+          remainingToPay,
+          strategy,
+          queryRunner
+        );
+
+        if (vaultResult && (vaultResult.result === 'PAID' || vaultResult.result === 'PARTIAL')) {
+          finalStatus = vaultResult.result === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+          const newAmountPaid = Number(invoice.amountPaid) + vaultResult.amountPaid;
+          await queryRunner.manager.update(InvoiceEntity, { invoiceId }, { 
+            status: finalStatus,
+            amountPaid: newAmountPaid,
+          });
+        }
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
 
       this.invoicePdfService
         .generateAndStoreInvoicePdf(invoiceId)
@@ -1182,13 +1287,25 @@ export class InvoiceService {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
           invoiceCode: invoice.invoiceCode,
-          transition: `${invoice.status}→PAID`,
+          transition: `${invoice.status}→${finalStatus}`,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
       });
 
-      return { success: 1, message: 'Invoice marked as paid successfully' };
+      if (vaultResult && vaultResult.result === 'UNPAID') {
+        return {
+          success: 0,
+          message: 'Insufficient vault balance — nothing was paid.',
+          vaultResult
+        };
+      }
+
+      return { 
+        success: 1, 
+        message: 'Invoice payment processed successfully',
+        vaultResult
+      };
     } catch (err: any) {
       return { success: 0, message: err.message };
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import { MoreVertical, ChevronDown, LayoutList, EllipsisVertical } from "lucide-react";
 import { formatDisplayDate } from "@/lib/utils";
 import {
@@ -9,7 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getInitials } from "@/lib/utils";
+import { getInitials, downloadFile } from "@/lib/utils";
 
 export const ORDER_STATUS_COLORS = {
     DRAFT: "mt-2 inline-block rounded-sm bg-amber-100 px-3 py-1 text-sm text-amber-700 font-medium",
@@ -54,13 +55,17 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
     const handleCancel = () => onStatusUpdate?.(q.orderId, "CANCEL");
     const handleClose = () => onStatusUpdate?.(q.orderId, "CLOSE");
     const handleDelete = () => onStatusUpdate?.(q.orderId, "DELETE");
+    const handleMarkAsDelivered = () => onStatusUpdate?.(q.orderId, "MARK_DELIVERED");
+    const handleConvertToInvoice = () => router.push(`/add-invoice?fromOrder=${q.orderId}`);
 
     const initials = getInitials(q.orderCode ?? `OD-${q.orderId}`);
     const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
     const hasActions = Boolean(
         (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
         (isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false) ||
-        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+        (isOpen && q.status === "PLACED" && can?.("invoiceAdd") !== false) ||
+        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false) ||
+        can?.("orderAdd") !== false
     );
     // if (isOpen) {
     //     if (q.status === "DRAFT" && can?.("orderUpdate") !== false) {
@@ -228,7 +233,25 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                     {isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false && (
                                         <>
                                             <DropdownMenuItem
-                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-red-50"
+                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdatePrice?.(q);
+                                                }}
+                                            >
+                                                Update Price
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMarkAsDelivered();
+                                                }}
+                                            >
+                                                Mark as Delivered
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleCancel();
@@ -236,29 +259,34 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                             >
                                                 Cancel Order
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onUpdatePrice?.(q);
-                                                }}
-                                            >
-                                                Update Price
-                                            </DropdownMenuItem>
-
                                         </>
                                     )}
                                     {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
                                         <>
-                                            <DropdownMenuItem
-                                                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onUpdatePrice?.(q);
-                                                }}
-                                            >
-                                                Update Price
-                                            </DropdownMenuItem>
+                                            {q.invoicePdfPath && (
+                                                <>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank"); }}
+                                                    >
+                                                        View Invoice
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                                                            } catch (err) {
+                                                                toast.error("Failed to download invoice", { position: "top-right" });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Download Invoice
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
+                                            {/* Note: Regenerate PDF requires onRegeneratePdf prop which isn't currently passed to OrderCard, so keeping it omitted like it was initially */}
                                             <DropdownMenuItem
                                                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 onClick={(e) => {
@@ -268,6 +296,17 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                             >
                                                 Close Order
                                             </DropdownMenuItem>
+                                            {can?.("invoiceAdd") && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleConvertToInvoice();
+                                                    }}
+                                                >
+                                                    Convert to Invoice
+                                                </DropdownMenuItem>
+                                            )}
                                         </>
                                     )}
                                     {isOpen && can?.("orderAdd") && (

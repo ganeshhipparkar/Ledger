@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useContext, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -357,26 +358,17 @@ export default function EditUserPage({ user, onBack }) {
                 className="p-6 flex items-center space-x-2 text-sm font-medium text-gray-500"
                 aria-label="Breadcrumb"
             >
-                <span
-                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                    onClick={(e) => gotoPages(e, "/")}
-                >
+                <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                     Home
-                </span>
+                </Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span
-                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                    onClick={(e) => gotoPages(e, "/users")}
-                >
+                <Link href="/users" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                     Users
-                </span>
+                </Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span
-                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                    onClick={(e) => gotoPages(e, "/user")}
-                >
+                <Link href="/user" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                     User
-                </span>
+                </Link>
                 <span className="text-gray-400">{">>"}</span>
                 <span className="text-gray-800 cursor-pointer">Update</span>
             </nav>

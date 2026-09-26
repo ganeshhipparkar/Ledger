@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { BankMasterService } from './bank.service';
+import { BankMasterService } from './service/bank.service';
 import {
   bankListDto,
   BankMasterDto,

@@ -7,7 +7,7 @@ import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BrandController } from "./brand.controller";
-import { BrandService } from "./brand.service";
+import { BrandService } from "./service/brand.service";
 import { BrandEntity } from "./entity/brand.entity";
 import { ItemEntity } from "src/item/entity/item.entity";
 

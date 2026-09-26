@@ -93,29 +93,36 @@ export const MODULES = [
         permissions: ["taxGroupList", "taxGroupView", "taxGroupAdd", "taxGroupUpdate"],
     },
     {
-        section: "Finance",
+        section: "Sales",
         label: "Payment Transaction",
         key: "paymentTransaction",
         permissions: ["paymentTransactionList", "paymentTransactionView", "paymentTransactionAdd", "paymentTransactionUpdate"],
     },
     {
-        section: "Finance",
+        section: "Sales",
         label: "Quotation",
         key: "quotation",
         permissions: ["quotationList", "quotationView", "quotationAdd", "quotationUpdate"],
     },
     {
-        section: "Finance",
+        section: "Sales",
         label: "Order",
         key: "order",
         permissions: ["orderList", "orderView", "orderAdd", "orderUpdate"],
     },
     {
-        section: "Finance",
+        section: "Sales",
         label: "Invoice",
         key: "invoice",
         permissions: ["invoiceList", "invoiceView", "invoiceAdd", "invoiceUpdate"],
-    }
+    },
+    {
+        section: "Sales",
+        label: "Credit Note",
+        key: "creditNote",
+        permissions: ["creditNoteList", "creditNoteView", "creditNoteAdd"],
+    },
+
 ];
 
 export const COL_HEADERS = ["List", "View", "Add", "Update"];

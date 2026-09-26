@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { UomService } from './uom.service';
+import { UomService } from './service/uom.service';
 import {
   UomListDto,
   UomDto,

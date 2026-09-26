@@ -1,5 +1,7 @@
 "use client";
+import Link from "next/link";
 import Select from "react-select";
+import { limitDecimals } from "@/lib/utils";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -156,7 +158,7 @@ export default function OrderUpdate({ id }) {
                                 itemGL: it.itemGL ?? "",
                                 isDecimalAllowed: it.isDecimalAllowed !== undefined ? (it.isDecimalAllowed !== false && String(it.isDecimalAllowed) !== "false") : (it.item?.isDecimalAllowed !== undefined ? (it.item.isDecimalAllowed !== false && String(it.item.isDecimalAllowed) !== "false") : true),
                                 baseCurrencyPrice: basePrice,
-                                quantity: it.quantity ?? 1,
+                                quantity: limitDecimals(String(it.quantity ?? 1)),
                                 unitPrice: unitPriceVal,
                                 taxCalculation: loadedTaxCalc,
                                 taxGroup: it.taxGroup || "",
@@ -245,7 +247,10 @@ export default function OrderUpdate({ id }) {
                     headers: { ...authHeaders(), endpoint: "bank-book-list", module: "bank-book", "Content-Type": "application/json" },
                     body: JSON.stringify({
                         page: 1, limit: 100,
-                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" }],
+                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
+                        { key: "status", value: "status", operator: "equal" }
+
+                        ],
                     }),
                 });
                 const payload = await res.json();
@@ -431,9 +436,9 @@ export default function OrderUpdate({ id }) {
 
             <div className="px-6 pt-4">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/order-list")}>Orders</span>
+                    <Link href="/order-list" className="cursor-pointer hover:text-blue-600">Orders</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">
                         Edit

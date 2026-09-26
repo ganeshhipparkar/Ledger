@@ -27,14 +27,24 @@ import { ItemEntity } from './item/entity/item.entity';
 import { TermsAndConditionsModule } from './terms_conditions/terms.conditions.module';
 import { TaxGroupModule } from './tax_group/tax.group.module';
 import { PaymentTransactionModule } from './payment_transaction/payment.transaction.module';
+import { VaultModule } from './vault/vault.module';
+import { CustomerCurrencyVaultEntity } from './vault/entity/customer.currency.vault.entity';
+import { VaultLedgerEntity } from './vault/entity/vault.ledger.entity';
 import { QuotationModule } from './quotation/quotation.module';
 import { OrderModule } from './order/order.module';
 import { InvoiceModule } from './invoice/invoice.module';
+import { ModSettingsModule } from './mod_setting/mod.settings.module';
+import { CreditNoteModule } from './credit_note/credit.note.module';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(typeOrmConfig),
-    TypeOrmModule.forFeature([PermissionEntity, ActivityMasterEntity]),
+    TypeOrmModule.forFeature([
+      PermissionEntity,
+      ActivityMasterEntity,
+      CustomerCurrencyVaultEntity,
+      VaultLedgerEntity,
+    ]),
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'upload'),
@@ -61,6 +71,9 @@ import { InvoiceModule } from './invoice/invoice.module';
     QuotationModule,
     OrderModule,
     InvoiceModule,
+    ModSettingsModule,
+    VaultModule,
+    CreditNoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

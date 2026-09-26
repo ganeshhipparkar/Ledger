@@ -16,7 +16,7 @@ import { Filter } from "src/utilities/filter";
 import { FileTransfer } from "src/utilities/file.transfer";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { ItemController } from "./item.controller";
-import { ItemService } from "./item.service";
+import { ItemService } from "./service/item.service";
 
 @Module({
   imports: [

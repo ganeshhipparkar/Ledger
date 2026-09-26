@@ -7,14 +7,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
 import { Filter } from 'src/utilities/filter';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
-import { UomEntity } from './entity/uom.entity';
-import { UomDto, UomListDto, UomUpdateDto } from './dto/uom.dto';
+import { UomEntity } from '../entity/uom.entity';
+import { UomDto, UomListDto, UomUpdateDto } from '../dto/uom.dto';
 
 @Injectable()
 export class UomService {

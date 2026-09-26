@@ -7,29 +7,29 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
-import { BankBookEntity } from './entity/bank.book.entity';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
+import { BankMasterEntity } from '../entity/bank.master.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
-import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
+import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import {
-  bankBookListDto,
-  BankBookDto,
-  BankBookUpdateDto,
-} from './dto/bank.book.dto';
+  bankListDto,
+  BankMasterDto,
+  BankMasterUpdateDto,
+} from '../dto/bank.dto';
 
 @Injectable()
-export class BankBookService {
+export class BankMasterService {
   @Inject()
   private readonly filter!: Filter;
 
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
 
-  @InjectRepository(BankBookEntity)
-  private readonly bankBookRepository!: Repository<BankBookEntity>;
+  @InjectRepository(BankMasterEntity)
+  private readonly bankRepository!: Repository<BankMasterEntity>;
 
   @InjectRepository(UserCompanyGroupEntity)
   private readonly ucgEntity!: Repository<UserCompanyGroupEntity>;
@@ -40,12 +40,12 @@ export class BankBookService {
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
 
-  async bankBookList(param: bankBookListDto, req?: any) {
+  async bankList(param: bankListDto, req?: any) {
     let return_data: any = {};
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const queryBuilder =
-        this.bankBookRepository.createQueryBuilder('bankBook');
+        this.bankRepository.createQueryBuilder('bank');
 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [
@@ -53,13 +53,13 @@ export class BankBookService {
         ];
         if (scopedCompanyIds.length > 0) {
           queryBuilder.andWhere(
-            'bankBook.companyId IN (:...scopedCompanyIds)',
+            'bank.companyId IN (:...scopedCompanyIds)',
             { scopedCompanyIds },
           );
         } else {
           return {
             success: 1,
-            message: 'Bank books fetched successfully',
+            message: 'Banks fetched successfully',
             total: 0,
             data: [],
           };
@@ -68,7 +68,7 @@ export class BankBookService {
 
       const queryString = await this.filter.makeFilterString(
         param.filters,
-        'bankBook',
+        'bank',
         {},
         param.condition === 'Any' ? 'Any' : 'All',
       );
@@ -78,29 +78,32 @@ export class BankBookService {
 
       const [skip, limit] = (await this.filter.calcPages(
         param,
-        this.bankBookRepository,
+        this.bankRepository,
       )) as [number, number];
 
-      queryBuilder.leftJoinAndSelect('bankBook.bank', 'bank');
-      queryBuilder.leftJoinAndSelect('bankBook.company', 'company');
-      queryBuilder.leftJoinAndSelect('bankBook.currency', 'currency');
+      queryBuilder
+        .select([
+          'bank.bankId',
+          'bank.bankName',
+          'bank.bankCode',
+          'bank.companyId',
+          'bank.status',
+          'company.companyName',
+        ])
+        .leftJoin('bank.company', 'company');
       queryBuilder.skip(skip).take(limit);
-      queryBuilder.orderBy('bankBook.bankBookName', 'ASC');
-      
+      queryBuilder.orderBy('bank.bankName', 'ASC');
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
       const formattedData = data.map((item) => ({
         ...item,
-        bankName: item.bank?.bankName ?? null,
         companyName: item.company?.companyName ?? null,
-        currencyCode: item.currency?.code ?? null,
-        currencySymbol: item.currency?.symbol ?? null,
       }));
 
       return_data = {
         success: 1,
-        message: 'Bank books fetched successfully',
+        message: 'Banks fetched successfully',
         total,
         data: formattedData,
       };
@@ -110,49 +113,45 @@ export class BankBookService {
     return return_data;
   }
 
-  async getBankBookDetails(id: number, req?: any) {
+  async getBankDetails(id: number, req?: any) {
     const authCtx = await resolveAuthContext(req, this.ucgEntity);
-    const bankBook = await this.bankBookRepository.findOne({
-      where: { bankBookId: id },
-      relations: ['bank', 'company', 'currency'],
+    const bank = await this.bankRepository.findOne({
+      where: { bankId: id },
+      relations: ['company'],
     });
-    if (!bankBook) {
-      throw new NotFoundException('Bank book not found');
+    if (!bank) {
+      throw new NotFoundException('Bank not found');
     }
 
     if (!authCtx.isSuperAdmin) {
       const scopedCompanyIds = req?.scopedCompanyIds || [
         authCtx.activeCompanyId,
       ];
-      if (!scopedCompanyIds.includes(Number(bankBook.companyId))) {
+      if (!scopedCompanyIds.includes(Number(bank.companyId))) {
         throw new ForbiddenException(
-          'Access denied: bank book belongs to another company',
+          'Access denied: bank belongs to another company',
         );
       }
     }
 
-    const addedByUser = bankBook.addedBy
-      ? await this.userEntity.findOne({ where: { userId: bankBook.addedBy } })
+    const addedByUser = bank.addedBy
+      ? await this.userEntity.findOne({ where: { userId: bank.addedBy } })
       : null;
-    const updatedByUser = bankBook.updatedBy
+    const updatedByUser = bank.updatedBy
       ? await this.userEntity.findOne({
-          where: { userId: bankBook.updatedBy },
+          where: { userId: bank.updatedBy },
         })
       : null;
 
     return {
-      ...bankBook,
-      bankName: bankBook.bank?.bankName ?? null,
-      companyName: bankBook.company?.companyName ?? null,
-      currencyCode: bankBook.currency?.code ?? null,
-      currencySymbol: bankBook.currency?.symbol ?? null,
-      beneficiaryName: bankBook.beneficiaryName,
+      ...bank,
+      companyName: bank.company?.companyName ?? null,
       addedByName: addedByUser?.name ?? null,
       updatedByName: updatedByUser?.name ?? null,
     };
   }
 
-  async insertBankBook(params: BankBookDto, req?: any) {
+  async insertBank(params: BankMasterDto, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
@@ -163,16 +162,16 @@ export class BankBookService {
         if (!scopedCompanyIds.includes(Number(params.companyId))) {
           return {
             success: 0,
-            message: 'Access denied: cannot add bank book to another company',
+            message: 'Access denied: cannot add bank to another company',
           };
         }
       }
 
-      const bankBookCode = await this.codeGeneratorService.generateCode(
-        this.bankBookRepository,
-        params.bankBookName,
+      const bankCode = await this.codeGeneratorService.generateCode(
+        this.bankRepository,
+        params.bankName,
         params.companyId,
-        'bankBookCode',
+        'bankCode',
       );
 
       const performerId = req?.user?.isImpersonation
@@ -183,38 +182,32 @@ export class BankBookService {
         : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
-        bankBookCode,
-        bankBookName: params.bankBookName,
-        bankId: Number(params.bankId),
+        bankCode,
+        bankName: params.bankName,
         companyId: Number(params.companyId),
-        currencyId: Number(params.currencyId),
-        beneficiaryName: params.beneficiaryName,
         status: params.status,
       };
-
-      if (params.accountNumber !== undefined) queryParams.accountNumber = params.accountNumber;
-      if (params.branchName !== undefined) queryParams.branchName = params.branchName;
       if (params.remarks !== undefined) queryParams.remarks = params.remarks;
       if (performerId) queryParams.addedBy = Number(performerId);
       queryParams.addedDate = new Date();
 
-      const result = await this.bankBookRepository.insert(queryParams);
+      const result = await this.bankRepository.insert(queryParams);
       const insertId = result?.raw?.insertId;
 
       this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.BANK_BOOK_CREATE,
+        activityCode: ActivityCode.BANK_CREATE,
         userId: performerId,
         companyId: Number(params.companyId),
         actorType: 'USER',
-        targetType: 'BANK_BOOK',
+        targetType: 'BANK',
         targetId: String(insertId),
         executionStatus: 'SUCCESS',
         severity: 'INFO',
         parameters: {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
-          bankBookCode,
-          bankBookName: params.bankBookName,
+          bankCode,
+          bankName: params.bankName,
           companyId: params.companyId,
           impersonated: !!req?.user?.isImpersonation,
         },
@@ -223,7 +216,7 @@ export class BankBookService {
 
       return {
         success: 1,
-        message: 'Bank book inserted successfully',
+        message: 'Bank inserted successfully',
         data: { insertData: insertId },
       };
     } catch (err: any) {
@@ -231,40 +224,36 @@ export class BankBookService {
     }
   }
 
-  async updateBankBook(params: BankBookUpdateDto, req?: any) {
-    if (!params.bankBookId) {
-      return { success: 0, message: 'bankBookId is mandatory' };
+  async updateBank(params: BankMasterUpdateDto, req?: any) {
+    if (!params.bankId) {
+      return { success: 0, message: 'bankId is mandatory' };
     }
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const existingBankBook = await this.bankBookRepository.findOne({
-        where: { bankBookId: Number(params.bankBookId) },
+      const existingBank = await this.bankRepository.findOne({
+        where: { bankId: Number(params.bankId) },
       });
-      if (!existingBankBook) {
-        return { success: 0, message: 'Bank book not found' };
+      if (!existingBank) {
+        return { success: 0, message: 'Bank not found' };
       }
 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [
           authCtx.activeCompanyId,
         ];
-        if (!scopedCompanyIds.includes(Number(existingBankBook.companyId))) {
+        if (!scopedCompanyIds.includes(Number(existingBank.companyId))) {
           return {
             success: 0,
-            message: 'Access denied: cannot update bank book of another company',
+            message: 'Access denied: cannot update bank of another company',
           };
         }
       }
 
       const queryParams: any = {};
-      if (params.bankBookName !== undefined) queryParams.bankBookName = params.bankBookName;
-      if (params.bankId !== undefined) queryParams.bankId = Number(params.bankId);
-      if (params.companyId !== undefined) queryParams.companyId = Number(params.companyId);
-      if (params.currencyId !== undefined) queryParams.currencyId = Number(params.currencyId);
-      if (params.beneficiaryName !== undefined) queryParams.beneficiaryName = params.beneficiaryName;
-      if (params.accountNumber !== undefined) queryParams.accountNumber = params.accountNumber;
-      if (params.branchName !== undefined) queryParams.branchName = params.branchName;
-      if (params.remarks !== undefined) queryParams.remarks = params.remarks;
+      if (params.bankName !== undefined)
+        queryParams.bankName = params.bankName;
+      if (params.remarks !== undefined)
+        queryParams.remarks = params.remarks;
       if (params.status) queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
@@ -277,26 +266,26 @@ export class BankBookService {
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();
 
-      await this.bankBookRepository.update(
-        { bankBookId: Number(params.bankBookId) },
+      await this.bankRepository.update(
+        { bankId: Number(params.bankId) },
         queryParams,
       );
 
       this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.BANK_BOOK_UPDATE,
+        activityCode: ActivityCode.BANK_UPDATE,
         userId: performerId,
-        companyId: existingBankBook.companyId,
+        companyId: existingBank.companyId,
         actorType: 'USER',
-        targetType: 'BANK_BOOK',
-        targetId: String(params.bankBookId),
+        targetType: 'BANK',
+        targetId: String(params.bankId),
         executionStatus: 'SUCCESS',
         severity: 'INFO',
         parameters: {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
-          bankBookCode: existingBankBook.bankBookCode,
-          bankBookName: params.bankBookName ?? existingBankBook.bankBookName,
-          status: params.status ?? existingBankBook.status,
+          bankCode: existingBank.bankCode,
+          bankName: params.bankName ?? existingBank.bankName,
+          status: params.status ?? existingBank.status,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
@@ -304,7 +293,7 @@ export class BankBookService {
 
       return {
         success: 1,
-        message: 'Bank book updated successfully',
+        message: 'Bank updated successfully',
       };
     } catch (err: any) {
       return { success: 0, message: err.message };

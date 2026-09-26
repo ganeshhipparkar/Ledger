@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -118,7 +119,7 @@ export default function ItemList() {
 
                 <div className="mb-4 flex items-center justify-between">
                     <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                        <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
+                        <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">Home</Link>
                         <span className="text-gray-400">{">>"}</span>
                         <span className="text-gray-800">Items</span>
                     </nav>

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +9,7 @@ import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText
+    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -29,6 +30,7 @@ import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import { FaRegFilePdf } from "react-icons/fa";
 import { STATUS_COLORS, STATUS_LABELS } from "./InvoiceList";
 import InvoiceDueDatePanel from "./InvoiceDueDatePanel";
+import CreditNoteAddPanel from "../creditNote/CreditNoteAddPanel";
 
 const MySwal = withReactContent(Swal);
 
@@ -58,6 +60,13 @@ const NAV_ITEMS = [
 ];
 
 export default function InvoiceDetails({ id }) {
+    const qtyDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10)
+        : 2;
+    const priceDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10)
+        : 4;
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const { can } = useContext(loginContext) || {};
@@ -80,6 +89,25 @@ export default function InvoiceDetails({ id }) {
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
     const [dueDateInvoice, setDueDateInvoice] = useState(null);
+    const [creditNoteInvoice, setCreditNoteInvoice] = useState(null);
+    const [paymentMode, setPaymentMode] = useState("AUTOMATIC");
+
+    useEffect(() => {
+        const fetchPaymentMode = async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "GET",
+                    headers: { ...authHeaders(), endpoint: "payment-config", module: "vault" }
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                if (data?.success === 1) {
+                    setPaymentMode(data.mode);
+                }
+            } catch (err) { }
+        };
+        fetchPaymentMode();
+    }, []);
 
     const fetchDetails = useCallback(async () => {
         try {
@@ -133,6 +161,34 @@ export default function InvoiceDetails({ id }) {
         }
     };
 
+    const handleStatusUpdate = async (actionType) => {
+        if (actionType !== "DELETE") return;
+        const result = await MySwal.fire({
+            title: "Delete this draft invoice?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Delete",
+            confirmButtonColor: "#dc2626",
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch("/relayapi", {
+                method: "DELETE",
+                headers: { ...authHeaders(), endpoint: `invoice-delete/${id}`, module: "invoice" },
+            });
+            const payload = await res.json();
+            const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+            if (data?.success === 1 || data?.status === true) {
+                toast.success("Invoice deleted successfully.", { position: "top-right" });
+                router.push("/invoice-list");
+            } else {
+                toast.error(data?.message || "Failed to delete invoice.", { position: "top-right" });
+            }
+        } catch (err) {
+            toast.error(err.message, { position: "top-right" });
+        }
+    };
+
     const handleMarkPaid = async () => {
         const result = await MySwal.fire({
             title: "Mark this invoice as Paid?",
@@ -145,12 +201,20 @@ export default function InvoiceDetails({ id }) {
         try {
             const res = await fetch("/relayapi", {
                 method: "PUT",
-                headers: { ...authHeaders(), endpoint: `invoice-mark-paid/${id}`, module: "invoice" },
+                headers: { ...authHeaders(), "Content-Type": "application/json", endpoint: `invoice-mark-paid/${id}`, module: "invoice" },
+                body: JSON.stringify({})
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice marked as paid.", { position: "top-right" });
+                const vaultRes = data.vaultResult;
+                if (vaultRes && vaultRes.result === 'PAID') {
+                    toast.success("Paid successfully.", { position: "top-right" });
+                } else if (vaultRes && vaultRes.result === 'PARTIAL') {
+                    toast.info(`Insufficient balance — invoice marked as partially paid.`, { position: "top-right" });
+                } else {
+                    toast.success("Invoice marked as paid.", { position: "top-right" });
+                }
                 fetchDetails();
             } else {
                 toast.error(data?.message || "Failed to mark as paid.", { position: "top-right" });
@@ -220,9 +284,9 @@ export default function InvoiceDetails({ id }) {
 
             <div className="px-6 pt-4 pb-2">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/invoice-list")}>Invoices</span>
+                    <Link href="/invoice-list" className="cursor-pointer hover:text-blue-600">Invoices</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Invoice</span>
                 </nav>
@@ -255,18 +319,21 @@ export default function InvoiceDetails({ id }) {
                                 <>
                                     <ActionBtn onClick={() => router.push(`/invoice/${id}?edit=true`)} icon={<Edit2 className="h-4 w-4" />} label="Edit" variant="amber" />
                                     <ActionBtn onClick={handleSubmitInvoice} icon={<ClipboardList className="h-4 w-4" />} label="Submit" variant="blue" />
+                                    <ActionBtn onClick={() => handleStatusUpdate("DELETE")} icon={<Trash2 className="h-4 w-4" />} label="Delete" variant="danger" className="border-red-200 text-red-600 hover:bg-red-50" />
                                 </>
+                            )}
+                            {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                                <ActionBtn onClick={() => setCreditNoteInvoice(q)} icon={<FileText className="h-4 w-4" />} label="Add Credit Note" variant="outline" />
                             )}
                             {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
                                 <>
-                                    <ActionBtn onClick={() => router.push(`/invoice/${id}?edit=true`)} icon={<Edit2 className="h-4 w-4" />} label="Edit" variant="amber" />
                                     <ActionBtn onClick={() => setDueDateInvoice(q)} icon={<RefreshCw className="h-4 w-4" />} label="Update Due Date" variant="outline" />
-                                    <ActionBtn onClick={handleMarkPaid} icon={<CheckCircle className="h-4 w-4" />} label="Mark as Paid" variant="green" />
+                                    {paymentMode === "MANUAL" && (
+                                        <ActionBtn onClick={handleMarkPaid} icon={<CheckCircle className="h-4 w-4" />} label="Mark as Paid" variant="green" />
+                                    )}
                                 </>
                             )}
-                            {q.status === "PAID" && can?.("invoiceUpdate") && (
-                                <ActionBtn onClick={() => router.push(`/invoice/${id}?edit=true`)} icon={<Edit2 className="h-4 w-4" />} label="Edit" variant="amber" />
-                            )}
+
                             {q.status !== "DRAFT" && (
                                 <>
                                     {q.invoicePdfPath && (
@@ -356,11 +423,11 @@ export default function InvoiceDetails({ id }) {
                                                                 <span className="font-semibold text-gray-800 break-words">{item.description ?? "—"}</span>
                                                             )}
                                                         </td>
-                                                        <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol}{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-medium text-gray-800">{q?.currencySymbol} {Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{Number(item.quantity ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: qtyDecimals })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol}{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
+                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-medium text-gray-800">{q?.currencySymbol} {Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
                                                         <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
                                                             <span className="px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600">
                                                                 {formatTaxCalcLabel(item.taxCalculation)}
@@ -373,8 +440,8 @@ export default function InvoiceDetails({ id }) {
                                                                 </span>
                                                             ) : (item.taxGroup ?? "—")}
                                                         </td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">{q?.currencySymbol} {Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
+                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">{q?.currencySymbol} {Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
                                                     </tr>
                                                 );
                                             })}
@@ -396,7 +463,6 @@ export default function InvoiceDetails({ id }) {
                                             <ReadField label="Payment Type" value={q.paymentType ?? "—"} />
                                             <ReadField label="Discount Applicable" value={q.discountApplicable ?? "—"} />
                                             <ReadField label="Bank Account" value={q.bankBookName ?? "—"} />
-                                            <ReadField label="Account Number" value={q.accountNumber ?? "—"} />
                                             <ReadField
                                                 label="Sales Person"
                                                 value={q.salesPersonId ? (
@@ -424,7 +490,6 @@ export default function InvoiceDetails({ id }) {
                                             <ReadField label="Billing State" value={q.billingState ?? "—"} />
                                             <ReadField label="Delivery State" value={q.deliveryState ?? "—"} />
                                             <ReadField label="Delivery Type" value={q.deliveryType ?? "—"} />
-                                            <ReadField label="Delivery Terms" value={q.deliveryTerms ?? "—"} />
                                         </div>
                                     </div>
 
@@ -469,6 +534,7 @@ export default function InvoiceDetails({ id }) {
                                         vatWithheld={q.vatWithheld ?? "NO"}
                                         existingAttachments={q.attachments ?? []}
                                         staticTotals={staticTotals}
+                                        amountPaid={Number(q.amountPaid ?? 0)}
                                     />
                                 </div>
                             </div>
@@ -488,6 +554,21 @@ export default function InvoiceDetails({ id }) {
             {selectedUserPanelId && typeof document !== "undefined" && createPortal(<UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />, document.body)}
             {selectedCustomerPanelId && typeof document !== "undefined" && createPortal(<CustomerSidePanel customerId={selectedCustomerPanelId} onClose={() => setSelectedCustomerPanelId(null)} />, document.body)}
             {dueDateInvoice && <InvoiceDueDatePanel invoice={dueDateInvoice} onClose={() => setDueDateInvoice(null)} onSuccess={() => { setDueDateInvoice(null); fetchDetails(); }} />}
+            {creditNoteInvoice && typeof document !== "undefined" && createPortal(
+                <CreditNoteAddPanel
+                    lockedCustomerId={creditNoteInvoice.customerId}
+                    lockedCustomerName={creditNoteInvoice.customerName}
+                    lockedCurrencyId={creditNoteInvoice.currencyId}
+                    lockedCurrencyCode={creditNoteInvoice.currencyCode}
+                    lockedInvoiceId={creditNoteInvoice.invoiceId}
+                    lockedInvoiceCode={creditNoteInvoice.invoiceCode}
+                    lockedCompanyId={creditNoteInvoice.companyId}
+                    onClose={() => setCreditNoteInvoice(null)}
+                    onSuccess={() => setCreditNoteInvoice(null)}
+                />,
+                document.body
+            )}
+
         </div>
     );
 }

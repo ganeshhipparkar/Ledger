@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Header from "./Header";
 import { useContext, useEffect, useState } from "react";
 import { loginContext } from "./hooks/LoginContext";
@@ -8,7 +8,6 @@ import { isSuperAdmin } from "@/app/lib/auth";
 import { toast } from "react-toastify";
 
 export default function SiteMap() {
-    const router = useRouter();
     const { isLogin, can, impersonating, permissions, authReady } = useContext(loginContext);
     const [superAdmin, setSuperAdmin] = useState(false);
 
@@ -103,6 +102,7 @@ export default function SiteMap() {
                 { label: "Quotation", redirectTo: "/quotation-list", show: permissions.includes("quotationList") || superAdmin },
                 { label: "Order", redirectTo: "/order-list", show: permissions.includes("orderList") || superAdmin },
                 { label: "Invoice", redirectTo: "/invoice-list", show: permissions.includes("invoiceList") || superAdmin },
+                { label: "Credit Note", redirectTo: "/credit-note-list", show: permissions.includes("creditNoteList") || superAdmin }
             ],
         },
     ];
@@ -125,9 +125,6 @@ export default function SiteMap() {
         colHeights[minColIdx] += itemWeight;
     });
 
-    const gotoPage = (e, item) => {
-        router.push(item);
-    };
 
     const gotoPages = (e, url) => {
         e.preventDefault();
@@ -170,11 +167,12 @@ export default function SiteMap() {
                                         {section.items.filter((i) => i.show).map((item, itemIndex) => (
                                             <li
                                                 key={itemIndex}
-                                                className="flex items-center text-gray-600 hover:text-black cursor-pointer transition"
-                                                onClick={(e) => { gotoPage(e, item.redirectTo) }}
+                                                className="flex items-center text-gray-600 hover:text-black transition"
                                             >
-                                                <span className="mr-3 text-xs">•</span>
-                                                {item.label}
+                                                <Link href={item.redirectTo} className="flex items-center w-full">
+                                                    <span className="mr-3 text-xs">•</span>
+                                                    {item.label}
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>

@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { loginContext } from "./hooks/LoginContext";
 import { useRouter } from "next/navigation";
@@ -429,13 +429,11 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                        <div className="h-11 w-11 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer" onClick={(e) => {
-                            gotoSitemap(e)
-                        }}>
+                        <Link href="/" className="h-11 w-11 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer">
                             <span className="text-blue-600 font-bold text-xl">
                                 <img src="/header/production.svg" alt="logo" />
                             </span>
-                        </div>
+                        </Link>
 
                         <div className="leading-tight">
                             <h1 className="text-2xl font-bold text-gray-800"></h1>
@@ -485,6 +483,8 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                             "tax-groups": { perm: "taxGroupAdd", label: "Add Tax Group" },
                             "quotation-list": { perm: "quotationAdd", label: "Add Quotation" },
                             "order-list": { perm: "orderAdd", label: "Add Order" },
+                            "invoice-list": { perm: "invoiceAdd", label: "Add Invoice" },
+                            "credit-note-list": { perm: "creditNoteAdd", label: "Add Credit Note" },
                         };
 
                         const currentAddConfig = addBtnConfigs[page];
@@ -810,12 +810,13 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                     </div>
                                 )}
 
-                                <button
+                                <Link
+                                    href="/profile"
                                     className="flex w-full items-center gap-4 px-5 py-4 hover:bg-gray-50 border-b"
-                                    onClick={() => { router.push("/profile"); setOpenProfile(false); }}
+                                    onClick={() => setOpenProfile(false)}
                                 >
                                     <span className="text-sm font-medium text-gray-700 cursor-pointer">Profile</span>
-                                </button>
+                                </Link>
 
                                 {/* <button className="flex w-full items-center gap-4 px-5 py-4 hover:bg-gray-50 border-b">
                                     <span className="text-sm font-medium text-gray-700">

@@ -122,101 +122,111 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                 const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
                 const hasActions = Boolean(
                     (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
-                    (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false)) ||
-                    (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+                    (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false || can?.("invoiceAdd"))) ||
+                    (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false) ||
+                    can?.("orderAdd")
                 );
 
                 return (
                     hasActions ? (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            {(() => {
-                                const primaryAction = [
-                                    { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
-                                    { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Pdf" },
-                                    { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
-                                    { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
-                                    { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
-                                ].find(x => x.show)?.label ?? "Actions";
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                {(() => {
+                                    const primaryAction = [
+                                        { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
+                                        { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Cancel" },
+                                        { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                        { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
+                                    ].find(x => x.show)?.label ?? "Actions";
 
-                                return (
-                                    <div
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto"
-                                    >
-                                        <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>
-                                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
-                                    </div>
-                                );
-                            })()}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">                            {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
-                                <>
-                                    <DropdownMenuItem onClick={() => window.location.href = `/order/${q.orderId}?edit=true`} className="cursor-pointer text-sm py-2">
-                                        Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "SUBMIT")} className="cursor-pointer text-sm py-2 font-medium text-blue-600 hover:bg-blue-50">
-                                        Submit Order
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "DELETE")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                            {isOpen && q.status === "PLACED" && (
-                                <>
-                                    {q.invoicePdfPath && (
-                                        <>
-                                            <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
-                                                View Pdf
+                                    return (
+                                        <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs ml-auto"
+                                        >
+                                            <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>
+                                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+                                        </div>
+                                    );
+                                })()}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
+                                {isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => window.location.href = `/order/${q.orderId}?edit=true`} className="cursor-pointer text-sm py-2">
+                                            Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "SUBMIT")} className="cursor-pointer text-sm py-2 font-medium text-blue-600 hover:bg-blue-50">
+                                            Submit Order
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "DELETE")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {isOpen && q.status === "PLACED" && (
+                                    <>
+                                        {can?.("orderUpdate") !== false && (
+                                            <>
+                                                <DropdownMenuItem onClick={() => onUpdatePrice?.(q)} className="cursor-pointer text-sm py-2">
+                                                    Update Price
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "MARK_DELIVERED")} className="cursor-pointer text-sm py-2 font-medium text-green-700 hover:bg-green-50">
+                                                    Mark as Delivered
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CANCEL")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
+                                                    Cancel Order
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                                {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && (
+                                    <>
+                                        {q.invoicePdfPath && (
+                                            <>
+                                                <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
+                                                    View Pdf
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => {
+                                                        const link = document.createElement("a");
+                                                        link.href = `http://localhost:4000${q.invoicePdfPath}`;
+                                                        link.download = `Invoice_${q.orderCode ?? q.orderId}.pdf`;
+                                                        document.body.appendChild(link);
+                                                        link.click();
+                                                        document.body.removeChild(link);
+                                                    }}
+                                                    className="cursor-pointer text-sm py-2"
+                                                >
+                                                    Download Pdf
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {can?.("orderUpdate") !== false && (
+                                            <>
+                                                <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.orderId)} className="cursor-pointer text-sm py-2">
+                                                    Regenerate PDF
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CLOSE")} className="cursor-pointer text-sm py-2">
+                                                    Close Order
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {can?.("invoiceAdd") && (
+                                            <DropdownMenuItem onClick={() => window.location.href = `/add-invoice?fromOrder=${q.orderId}`} className="cursor-pointer text-sm py-2">
+                                                Convert to Invoice
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => {
-                                                    const link = document.createElement("a");
-                                                    link.href = `http://localhost:4000${q.invoicePdfPath}`;
-                                                    link.download = `Invoice_${q.orderCode ?? q.orderId}.pdf`;
-                                                    document.body.appendChild(link);
-                                                    link.click();
-                                                    document.body.removeChild(link);
-                                                }}
-                                                className="cursor-pointer text-sm py-2"
-                                            >
-                                                Download Pdf
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                    {can?.("orderUpdate") !== false && (
-                                        <>
-                                            <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.orderId)} className="cursor-pointer text-sm py-2">
-                                                Regenerate PDF
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => onUpdatePrice?.(q)} className="cursor-pointer text-sm py-2">
-                                                Update Price
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CANCEL")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
-                                                Cancel Order
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                </>
-                            )}
-                            {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
-                                <>
-                                    <DropdownMenuItem onClick={() => onUpdatePrice?.(q)} className="cursor-pointer text-sm py-2">
-                                        Update Price
+                                        )}
+                                    </>
+                                )}
+                                {isOpen && can?.("orderAdd") && (
+                                    <DropdownMenuItem onClick={() => window.location.href = `/add-order?cloneFrom=${q.orderId}`} className="cursor-pointer text-sm py-2">
+                                        Clone Order
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CLOSE")} className="cursor-pointer text-sm py-2">
-                                        Close Order
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                            {isOpen && can?.("orderAdd") && (
-                                <DropdownMenuItem onClick={() => window.location.href = `/add-order?cloneFrom=${q.orderId}`} className="cursor-pointer text-sm py-2">
-                                    Clone Order
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     ) : null
                 );
             },

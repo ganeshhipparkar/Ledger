@@ -138,6 +138,7 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                                 const primaryAction = [
                                     { show: isLatestVersion && q.status === "DRAFT" && can?.("quotationUpdate"), label: "Edit" },
                                     { show: isLatestVersion && q.status === "SUBMITTED" && can?.("quotationUpdate"), label: "Change Quotation" },
+                                    { show: isLatestVersion && q.status === "CONFIRMED" && can?.("invoiceAdd"), label: "Convert to Invoice" },
                                     { show: isLatestVersion && q.status === "CONFIRMED" && can?.("orderAdd"), label: "Convert to Order" },
                                     { show: isLatestVersion && q.status === "CONFIRMED" && !!q.invoicePdfPath, label: "View Pdf" },
                                     { show: isLatestVersion && q.status === "CONFIRMED" && can?.("quotationUpdate"), label: "Regenerate PDF" },
@@ -182,6 +183,11 @@ export function getQuotationTableColumns({ can, onStatusUpdate, onRegeneratePdf,
                             {isLatestVersion && q.status === "CONFIRMED" && can?.("orderAdd") && (
                                 <DropdownMenuItem onClick={() => window.location.href = `/add-order?quotationId=${q.quotationId}`} className="cursor-pointer text-sm py-2">
                                     Convert to Order
+                                </DropdownMenuItem>
+                            )}
+                            {isLatestVersion && q.status === "CONFIRMED" && can?.("invoiceAdd") && (
+                                <DropdownMenuItem onClick={() => window.location.href = `/add-invoice?fromQuotation=${q.quotationId}`} className="cursor-pointer text-sm py-2">
+                                    Convert to Invoice
                                 </DropdownMenuItem>
                             )}
                             {isLatestVersion && q.status === "CONFIRMED" && (

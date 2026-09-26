@@ -28,7 +28,7 @@ import { Trash2, Plus } from "lucide-react";
 import AsyncSelect from "react-select/async";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { limitDecimals } from "@/lib/utils";
+import { limitDecimals, limitPriceDecimals } from "@/lib/utils";
 import { TAX_CALC_OPTIONS, getItemLabel, computeItem, formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import OrderDiscountSidePanel from "./OrderDiscountSidePanel";
 import OrderExtraChargeSidePanel from "./OrderExtraChargeSidePanel";
@@ -148,6 +148,7 @@ export default function OrderItemsTable({
                 filters: [
                     { key: "companyId", value: String(companyId), operator: "eq" },
                     ...(inputValue ? [{ key: "itemName", value: inputValue, operator: "like" }] : []),
+                    { key: "status", value: "Active", operator: "equal" }
                 ],
             }),
         })
@@ -203,8 +204,10 @@ export default function OrderItemsTable({
             let val = value;
             if (field === "quantity" && !it.isDecimalAllowed) {
                 val = String(parseInt(value, 10) || "");
-            } else if (field === "quantity" || field === "unitPrice") {
+            } else if (field === "quantity") {
                 val = limitDecimals(value);
+            } else if (field === "unitPrice") {
+                val = limitPriceDecimals(value);
             }
             return computeItem({ ...it, [field]: val });
         });

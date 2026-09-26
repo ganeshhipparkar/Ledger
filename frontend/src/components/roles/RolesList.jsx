@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -10,8 +11,6 @@ import { authHeaders } from "@/app/lib/auth";
 import AppPagination from "../ui/AppPagination";
 import Loader from "../ui/Loader";
 import { DataTable } from "../data-table";
-import RoleFormSidePanel from "./RoleFormSidePanel";
-import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
 const LIMIT = 10;
@@ -85,7 +84,6 @@ export default function RolesList() {
     const [totalRecords, setTotalRecords] = useState(0);
     const [limit, setLimit] = useState(LIMIT);
     const [currentFilters, setCurrentFilters] = useState({});
-    const [formPanelOpen, setFormPanelOpen] = useState(false);
 
     useEffect(() => {
         fetchData(1, {});
@@ -178,7 +176,7 @@ export default function RolesList() {
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Roles</span>
                 </nav>
@@ -203,7 +201,7 @@ export default function RolesList() {
                                 can && can("groupAdd") ? (
                                     <button
                                         id="add-role-btn"
-                                        onClick={() => setFormPanelOpen(true)}
+                                        onClick={() => router.push("/roles/add")}
                                         className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition shadow-sm cursor-pointer"
                                     >
                                         <Plus className="h-4 w-4" />
@@ -249,16 +247,6 @@ export default function RolesList() {
                     </select>
                 </div>
             </div>
-
-            {typeof document !== "undefined" &&
-                createPortal(
-                    <RoleFormSidePanel
-                        isOpen={formPanelOpen}
-                        onClose={() => setFormPanelOpen(false)}
-                        onSuccess={() => fetchData(currentPage, currentFilters)}
-                    />,
-                    document.body
-                )}
         </div>
     );
 }

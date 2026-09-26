@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import UserSidePanel from "../user/UserSidePanel";
 
 import { decryptResponse } from "@/app/lib/crypto";
@@ -138,12 +139,9 @@ export default function UomList() {
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span
-                        className="cursor-pointer hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/")}
-                    >
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Home
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">UOMs</span>
                 </nav>

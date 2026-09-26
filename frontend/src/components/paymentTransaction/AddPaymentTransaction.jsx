@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -11,6 +12,9 @@ import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
 import { paymentTransactionFormConfig } from "./configs/paymentTransactionForm.config";
 import MultiFilePicker from "../common/MultiFilePicker";
+import FormattedNumberInput from "../ui/FormattedNumberInput";
+import { limitPriceDecimals } from "@/lib/utils";
+import Select from "react-select";
 import { Layers, DollarSign, AlignLeft } from "lucide-react";
 
 const getMySwal = () => withReactContent(Swal);
@@ -67,36 +71,33 @@ export default function AddPaymentTransaction() {
     useEffect(() => {
         fetchCustomers();
         fetchBankBooks();
-        if (formData.companyId) {
-            fetchCompanyCurrencies(formData.companyId);
+    }, [formData.companyId]);
+
+    useEffect(() => {
+        if (formData.customerId) {
+            fetchCustomerCurrencies(formData.customerId);
         } else {
             setCurrencies([]);
         }
-    }, [formData.companyId]);
+    }, [formData.customerId]);
 
-    const fetchCompanyCurrencies = async (companyId) => {
-        if (!companyId) {
-            setCurrencies([]);
-            return;
-        }
+    const fetchCustomerCurrencies = async (customerId) => {
+        if (!customerId) { setCurrencies([]); return; }
         try {
             const res = await fetch("/relayapi", {
-                method: "GET",
-                headers: {
-                    ...authHeaders(),
-                    endpoint: `company-currencies/${companyId}`,
-                    module: "customer",
-                },
+                method: "POST",
+                headers: { ...authHeaders(), endpoint: "customer-currencies-list", module: "customer", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    page: 1,
+                    limit: 500,
+                    filters: [{ key: "customerId", value: customerId, operator: "equal" }],
+                }),
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-            const currencyList = Array.isArray(data?.data)
-                ? data.data
-                : (Array.isArray(data) ? data : []);
-            setCurrencies(currencyList);
-        } catch {
-            setCurrencies([]);
-        }
+            const rows = data?.data ?? [];
+            setCurrencies(rows.map((row) => row.currency).filter(Boolean));
+        } catch { setCurrencies([]); }
     };
 
     useEffect(() => {
@@ -189,6 +190,27 @@ export default function AddPaymentTransaction() {
                 exchangeRate: "",
                 baseAmount: "",
             }));
+        } else if (name === "customerId") {
+            setFormData((prev) => ({
+                ...prev,
+                customerId: value,
+                currencyId: "",
+                bankBookId: "",
+                exchangeRate: "",
+                baseAmount: "",
+            }));
+        } else if (name === "currencyId") {
+            setFormData((prev) => {
+                const currentBb = bankBooks.find((b) => String(b.bankBookId) === String(prev.bankBookId));
+                const isBbValid = currentBb && String(currentBb.currencyId) === String(value);
+                return {
+                    ...prev,
+                    [name]: value,
+                    bankBookId: isBbValid ? prev.bankBookId : "",
+                };
+            });
+        } else if (name === "transactionAmount") {
+            setFormData((prev) => ({ ...prev, transactionAmount: limitPriceDecimals(value) }));
         } else {
             setFormData((prev) => ({ ...prev, [name]: value }));
         }
@@ -238,6 +260,11 @@ export default function AddPaymentTransaction() {
                 if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
             });
             setErrors(fieldErrors);
+            return;
+        }
+
+        if (selectedFiles.length === 0) {
+            setErrors((prev) => ({ ...prev, attachments: "At least one attachment is required." }));
             return;
         }
 
@@ -301,7 +328,7 @@ export default function AddPaymentTransaction() {
         `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
         } bg-white text-gray-800`;
     const selectClass = (name) =>
-        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
+        `w-full rounded-xl border px-4 py-3 text-sm outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${errors[name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
         } bg-white text-gray-800`;
     const readonlyClass =
         "w-full rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-600 outline-none cursor-not-allowed font-mono";
@@ -314,19 +341,13 @@ export default function AddPaymentTransaction() {
                 className="px-6 pt-6 flex items-center space-x-2 text-sm font-medium text-gray-500"
                 aria-label="Breadcrumb"
             >
-                <span
-                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                    onClick={() => router.push("/")}
-                >
+                <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                     Home
-                </span>
+                </Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span
-                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                    onClick={() => router.push("/payment-transaction-list")}
-                >
+                <Link href="/payment-transaction-list" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                     Payment Transaction
-                </span>
+                </Link>
                 <span className="text-gray-400">{">>"}</span>
                 <span className="text-gray-400">{"Add"}</span>
 
@@ -395,6 +416,7 @@ export default function AddPaymentTransaction() {
                                     name="currencyId"
                                     value={formData.currencyId}
                                     onChange={handleChange}
+                                    disabled={!formData?.customerId}
                                     className={selectClass("currencyId")}
                                 >
                                     <option value="">Select Currency</option>
@@ -414,19 +436,48 @@ export default function AddPaymentTransaction() {
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Bank Account <span className="text-red-500">*</span>
                                 </label>
-                                <select
-                                    name="bankBookId"
-                                    value={formData.bankBookId}
-                                    onChange={handleChange}
-                                    className={selectClass("bankBookId")}
-                                >
-                                    <option value="">Select Bank Account</option>
-                                    {bankBooks.map((b) => (
-                                        <option key={b.bankBookId} value={String(b.bankBookId)}>
-                                            {b.bankBookName} ({b.accountNumber || "No Acc #"})
-                                        </option>
-                                    ))}
-                                </select>
+                                {(() => {
+                                    const filteredBankBooks = formData.currencyId
+                                        ? bankBooks.filter((b) => String(b.currencyId) === String(formData.currencyId))
+                                        : [];
+                                    return (
+                                        <Select
+                                            instanceId="bankBookId-select"
+                                            name="bankBookId"
+                                            value={formData.bankBookId ? {
+                                                value: formData.bankBookId,
+                                                label: filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId)) ? (() => {
+                                                    const bb = filteredBankBooks.find(b => String(b.bankBookId ?? b.value) === String(formData.bankBookId));
+                                                    return bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
+                                                })() : ""
+                                            } : null}
+                                            onChange={(selected) => {
+                                                const val = selected ? selected.value : "";
+                                                handleChange({ target: { name: "bankBookId", value: val } });
+                                            }}
+                                            options={filteredBankBooks.map(bb => {
+                                                const baseName = bb.bankBookName || (bb.accountNumber ? `${bb.accountNumber}${bb.bankName ? ` — ${bb.bankName}` : ""}` : `Bank Account #${bb.bankBookId ?? bb.value}`);
+                                                return {
+                                                    label: baseName,
+                                                    value: String(bb.bankBookId ?? bb.value),
+                                                };
+                                            })}
+                                            isDisabled={!formData.currencyId || filteredBankBooks.length === 0}
+                                            placeholder={formData.currencyId ? "-- Select bank account --" : "Select currency first"}
+                                            isClearable
+                                            styles={{
+                                                control: (base) => ({
+                                                    ...base,
+                                                    padding: "4px 8px",
+                                                    borderRadius: "0.75rem",
+                                                    borderColor: errors.bankBookId ? "#ef4444" : "#d1d5db",
+                                                    boxShadow: "none",
+                                                    "&:hover": { borderColor: errors.bankBookId ? "#ef4444" : "#3b82f6" },
+                                                }),
+                                            }}
+                                        />
+                                    );
+                                })()}
                                 {errors.bankBookId && (
                                     <p className="mt-1 text-sm text-red-500">{errors.bankBookId}</p>
                                 )}
@@ -546,11 +597,10 @@ export default function AddPaymentTransaction() {
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Transaction Amount <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    step="0.0001"
+                                <FormattedNumberInput
+                                    id="transactionAmount"
                                     name="transactionAmount"
-                                    value={formData.transactionAmount}
+                                    value={String(limitPriceDecimals(formData.transactionAmount ?? ""))}
                                     onChange={handleChange}
                                     placeholder="0.00"
                                     className={inputClass("transactionAmount")}
@@ -599,14 +649,23 @@ export default function AddPaymentTransaction() {
                                 )}
                             </div>
 
-                            <div className="pt-20">
+                            <div className="">
+                                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Attachments <span className="text-red-500">*</span>
+                                </label>
                                 <MultiFilePicker
                                     selectedFiles={selectedFiles}
-                                    onFilesChange={setSelectedFiles}
+                                    onFilesChange={(files) => {
+                                        setSelectedFiles(files);
+                                        if (files.length > 0) setErrors((prev) => ({ ...prev, attachments: "" }));
+                                    }}
                                     label="Attachments"
                                     required={true}
                                     accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
                                 />
+                                {errors.attachments && (
+                                    <p className="mt-1 text-sm text-red-500">{errors.attachments}</p>
+                                )}
                             </div>
                         </div>
                     </div>

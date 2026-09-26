@@ -41,9 +41,9 @@ export class OrderPdfService {
     });
 
     if (!order) throw new Error(`Order ${orderId} not found`);
-    if (order.status !== 'PLACED') {
+    if (order.status !== 'DELIVERED') {
       throw new Error(
-        `Invoice PDF can only be generated for PLACED orders (current: ${order.status})`,
+        `Invoice PDF can only be generated for DELIVERED orders (current: ${order.status})`,
       );
     }
 

@@ -22,6 +22,10 @@ export default function OrderSummaryPanel({
     staticTotals = null,
     onTotalsChange,
 }) {
+    const priceDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10)
+        : 4;
+
     const [discountPanelOpen, setDiscountPanelOpen] = useState(false);
     const [extraChargePanelOpen, setExtraChargePanelOpen] = useState(false);
 
@@ -54,7 +58,7 @@ export default function OrderSummaryPanel({
     }, [grossAmount, taxableAmount, taxAmount, oDiscount, oExtraCharge, netAmount, vatWithheldAmount, finalAmount]);
 
     const fmt = (n) =>
-        `${currencySymbol} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`.trim();
+        `${currencySymbol} ${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}`.trim();
 
     const Row = ({ label, value, bold = false, bordered = false, action }) => (
         <div className={`flex items-center justify-between py-1.5 ${bordered ? "border-t border-gray-200 mt-1 pt-2" : ""}`}>

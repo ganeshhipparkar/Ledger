@@ -19,13 +19,14 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { encryptResponse } from 'src/utilities/crypto';
-import { InvoiceService } from './invoice.service';
+import { InvoiceService } from './service/invoice.service';
 import { InvoicePdfService } from './invoice.pdf.service';
 import {
   InvoiceDto,
   InvoiceListDto,
   InvoiceUpdateDto,
   InvoiceUpdateDueDateDto,
+  VaultPaymentBodyDto,
 } from './dto/invoice.dto';
 
 @Controller('invoice')
@@ -116,8 +117,8 @@ export class InvoiceController {
   @Put('invoice-mark-paid/:id')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('invoiceUpdate')
-  async markAsPaid(@Req() req: any, @Param('id') id: string) {
-    const result = await this.invoiceService.markAsPaid(Number(id), req);
+  async markAsPaid(@Req() req: any, @Param('id') id: string, @Body() body: VaultPaymentBodyDto) {
+    const result = await this.invoiceService.markAsPaid(Number(id), body, req);
     return { encrypted: encryptResponse(result) };
   }
 

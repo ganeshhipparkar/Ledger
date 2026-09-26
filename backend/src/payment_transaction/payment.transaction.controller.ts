@@ -136,4 +136,19 @@ export class PaymentTransactionController {
       );
     return { encrypted: encryptResponse(result) };
   }
+
+  @Put('payment-transaction-cancel-approved')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('paymentTransactionUpdate')
+  async cancelApprovedPaymentTransaction(
+    @Req() req: any,
+    @Body() body: PaymentTransactionStatusDto,
+  ) {
+    const result =
+      await this.paymentTransactionService.cancelApprovedPaymentTransaction(
+        body,
+        req,
+      );
+    return { encrypted: encryptResponse(result) };
+  }
 }

@@ -10,7 +10,7 @@ import CustomerSidePanel from "../customer/CustomerSidePanel";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 
-export default function InvoiceSidePanel({ id, onClose }) {
+export default function InvoiceSidePanel({ invoiceId: id, onClose }) {
     const router = useRouter();
 
     const [data, setData] = useState(null);

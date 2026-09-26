@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { BrandService } from './brand.service';
+import { BrandService } from './service/brand.service';
 import {
   BrandListDto,
   BrandDto,

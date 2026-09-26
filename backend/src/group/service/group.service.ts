@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { Filter } from 'src/utilities/filter';
 import { Mailer } from 'src/utilities/mailer';
@@ -18,7 +18,7 @@ import {
 } from 'src/group/entity/capability.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
-import { GroupEntity } from './entity/group.entity';
+import { GroupEntity } from '../entity/group.entity';
 
 @Injectable()
 export class GroupService {

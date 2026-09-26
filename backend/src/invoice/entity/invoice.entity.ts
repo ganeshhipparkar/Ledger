@@ -142,6 +142,9 @@ export class InvoiceEntity {
   @Column('decimal', { precision: 18, scale: 4 })
   finalAmount!: number;
 
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
+  amountPaid!: number;
+
   @Column({ type: 'int', nullable: true })
   bankBookId?: number | null;
 

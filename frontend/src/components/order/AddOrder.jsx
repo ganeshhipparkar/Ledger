@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import Select from "react-select";
 
 import { useContext, useEffect, useState } from "react";
@@ -408,6 +409,8 @@ export default function AddOrder() {
                 page: 1, limit: 20,
                 filters: [
                     ...(inputValue ? [{ key: "name", value: inputValue, operator: "contains" }] : []),
+                    { key: "status", value: "Active", operator: "equal" }
+
                 ],
             }),
         }).then(res => res.json()).then(payload => {
@@ -475,6 +478,7 @@ export default function AddOrder() {
                 page: 1, limit: 50,
                 filters: [
                     ...(inputValue ? [{ key: "customerName", value: inputValue, operator: "like" }] : []),
+
                 ],
             }),
         }).then(res => res.json()).then(payload => {
@@ -562,7 +566,9 @@ export default function AddOrder() {
                     headers: { ...authHeaders(), endpoint: "bank-book-list", module: "bank-book", "Content-Type": "application/json" },
                     body: JSON.stringify({
                         page: 1, limit: 100,
-                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" }],
+                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
+                        { key: "status", value: "status", operator: "equal" }
+                        ],
                     }),
                 });
                 const payload = await res.json();
@@ -763,9 +769,9 @@ export default function AddOrder() {
 
             <div className="px-6 pt-4">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/order-list")}>Orders</span>
+                    <Link href="/order-list" className="cursor-pointer hover:text-blue-600">Orders</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">
                         Order

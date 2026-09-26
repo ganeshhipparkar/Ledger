@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
-import { CompanyService } from './company.service';
+import { CompanyService } from './service/company.service';
 import {
   CompanyDto,
   CompanyUpdateDto,

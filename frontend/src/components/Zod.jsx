@@ -484,11 +484,11 @@ export const CustomerFormSchema = z.object({
             { message: "Please select a Customer Logo." }
         )
         .refine(
-            (file) => ["image/jpeg", "image/jpg"].includes(file.type),
+            (file) => !file || (file instanceof File && ["image/jpeg", "image/jpg"].includes(file.type)),
             { message: "Only JPG/JPEG images are allowed." }
         )
         .refine(
-            (file) => file.size <= 1 * 1024 * 1024,
+            (file) => !file || (file instanceof File && file.size <= 1 * 1024 * 1024),
             { message: "Customer Logo must be under 1 MB." }
         ),
     customerEmail: z.string()
@@ -860,4 +860,135 @@ export const OrderUpdateFormSchema = z.object({
     vatWithheld: z.enum(["YES", "NO"]).default("NO"),
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person required."),
     items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
-}); 
+});
+
+const InvoiceItemRowSchema = z.object({
+    itemId: z.union([z.string(), z.number()]).optional(),
+    description: z.string().optional(),
+    itemGL: z.string().optional(),
+    quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
+    unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
+    taxCalculation: z.enum(["N/A", "EXCLUSIVE", "INCLUSIVE"]),
+}).refine((data) => {
+    const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
+    const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
+    return hasItemId || hasDescription;
+}, {
+    message: "Item or description required",
+    path: ["itemId"],
+});
+
+export const InvoiceFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Customer."),
+    currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Currency."),
+    currencyConversionRate: z.number({ coerce: true }).positive("Please Enter Valid Exchange rate."),
+    invoiceDate: z.string().min(1, "Invoice date is required."),
+    deliveryDate: z.string().min(1, "Exchange date is required."),
+    businessTerms: z.string().min(1, "Please Select Business terms."),
+    paymentType: z.string().min(1, "Please Select Payment type."),
+    deliveryType: z.string().min(1, "Please Select Delivery type."),
+    vatWithheld: z.string().min(1, "VAT withheld is required."),
+    contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Contact person."),
+    salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Sales person."),
+    shippingState: z.string().min(1, "Please Select Shipping address."),
+    billingState: z.string().min(1, "Please Select Billing address."),
+    deliveryState: z.string().min(1, "Please Select Place of delivery."),
+    bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Bank account."),
+    items: z.array(InvoiceItemRowSchema).min(1, "Please Select at least one item ."),
+    invoiceFor: z.string().optional(),
+    sourceOrderId: z.union([z.string(), z.number()]).optional(),
+    sourceQuotationId: z.union([z.string(), z.number()]).optional()
+}).superRefine((data, ctx) => {
+    const oneMonthAgoDate = new Date();
+    oneMonthAgoDate.setMonth(oneMonthAgoDate.getMonth() - 1);
+    oneMonthAgoDate.setHours(0, 0, 0, 0);
+
+    if (data.invoiceDate && new Date(data.invoiceDate) < oneMonthAgoDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select valid Invoice date",
+            path: ["invoiceDate"]
+        });
+    }
+
+    if (data.deliveryDate && new Date(data.deliveryDate) < oneMonthAgoDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select valid Exchange date.",
+            path: ["deliveryDate"]
+        });
+    }
+
+    if (data.invoiceFor === "ORDER" && !data.sourceOrderId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please Select Order.",
+            path: ["sourceOrderId"]
+        });
+    }
+
+    if (data.invoiceFor === "QUOTATION" && !data.sourceQuotationId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please Select Quotation.",
+            path: ["sourceQuotationId"]
+        });
+    }
+});
+
+export const InvoiceUpdateFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Customer."),
+    currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Currency is required"),
+    currencyConversionRate: z.number({ coerce: true }).positive("Please Enter Valid Exchange rate."),
+    invoiceDate: z.string().min(1, "Please select Invoice date."),
+    deliveryDate: z.string().min(1, "Please select Exchange date."),
+    businessTerms: z.string().min(1, "Please select Business terms."),
+    paymentType: z.string().min(1, "Please select Payment type."),
+    deliveryType: z.string().min(1, "Please select Delivery type."),
+    vatWithheld: z.string().min(1, "Please select VAT withheld."),
+    contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Contact person."),
+    salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Sales person."),
+    shippingState: z.string().min(1, "Please select Shipping address."),
+    billingState: z.string().min(1, "Please select Billing address."),
+    deliveryState: z.string().min(1, "Please select Place of delivery."),
+    bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Bank account."),
+    items: z.array(InvoiceItemRowSchema).min(1, "Please select at least one item."),
+}).superRefine((data, ctx) => {
+    const oneMonthAgoDate = new Date();
+    oneMonthAgoDate.setMonth(oneMonthAgoDate.getMonth() - 1);
+    oneMonthAgoDate.setHours(0, 0, 0, 0);
+
+    if (data.invoiceDate && new Date(data.invoiceDate) < oneMonthAgoDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select valid Invoice date.",
+            path: ["invoiceDate"]
+        });
+    }
+
+    if (data.deliveryDate && new Date(data.deliveryDate) < oneMonthAgoDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please select valid Exchange date.",
+            path: ["deliveryDate"]
+        });
+    }
+});
+
+export const CreditNoteFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Customer and Currency."),
+    invoiceId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Invoice."),
+    customerCharges: z.string().min(1, "Please Select Customer charges."),
+    taxCalculation: z.string().min(1, "Please Select Tax calculation."),
+    taxGroupId: z.union([z.string(), z.number()]).optional(),
+    totalAmount: z.coerce.number().min(0, "Please enter valid Total amount."),
+    narration: z.string().min(1, "Please enter Narration."),
+}).superRefine((data, ctx) => {
+    if (data.taxCalculation !== "NA" && (!data.taxGroupId || String(data.taxGroupId).trim() === "")) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Tax group is required",
+            path: ["taxGroupId"]
+        });
+    }
+});

@@ -28,7 +28,7 @@ import { Trash2, Plus } from "lucide-react";
 import AsyncSelect from "react-select/async";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { limitDecimals } from "@/lib/utils";
+import { limitDecimals, limitPriceDecimals } from "@/lib/utils";
 import { TAX_CALC_OPTIONS, getItemLabel, computeItem, formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import QuotationDiscountSidePanel from "./QuotationDiscountSidePanel";
 import QuotationExtraChargeSidePanel from "./QuotationExtraChargeSidePanel";
@@ -109,7 +109,11 @@ export default function QuotationItemsTable({
                         module: "tax-group",
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ page: 1, limit: 200, filters: [{ key: "companyId", value: String(companyId), operator: "eq" }] }),
+                    body: JSON.stringify({
+                        page: 1, limit: 200,
+                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
+                        ]
+                    }),
                 });
                 const payload = await res.json();
                 const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
@@ -146,6 +150,8 @@ export default function QuotationItemsTable({
                 filters: [
                     { key: "companyId", value: String(companyId), operator: "eq" },
                     ...(inputValue ? [{ key: "itemName", value: inputValue, operator: "like" }] : []),
+                    { key: "status", value: "Active", operator: "equal" }
+
                 ],
             }),
         })
@@ -201,8 +207,10 @@ export default function QuotationItemsTable({
             let val = value;
             if (field === "quantity" && !it.isDecimalAllowed) {
                 val = String(parseInt(value, 10) || "");
-            } else if (field === "quantity" || field === "unitPrice") {
+            } else if (field === "quantity") {
                 val = limitDecimals(value);
+            } else if (field === "unitPrice") {
+                val = limitPriceDecimals(value);
             }
             return computeItem({ ...it, [field]: val });
         });

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -109,19 +110,13 @@ export default function BrandDetails({ id }) {
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 pb-20">
                 {/* Breadcrumbs */}
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span
-                        className="cursor-pointer hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/")}
-                    >
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Home
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span
-                        className="cursor-pointer hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/brand-list")}
-                    >
+                    <Link href="/brand-list" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Brands
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Brand</span>
                 </nav>

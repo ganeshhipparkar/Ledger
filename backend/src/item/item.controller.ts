@@ -18,7 +18,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { ItemService } from './item.service';
+import { ItemService } from './service/item.service';
 import {
   ItemListDto,
   ItemDto,

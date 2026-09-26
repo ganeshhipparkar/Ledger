@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -88,6 +89,13 @@ const NAV_ITEMS = [
 ];
 
 export default function OrderDetails({ id }) {
+    const qtyDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10)
+        : 2;
+    const priceDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10)
+        : 4;
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const { can } = useContext(loginContext) || {};
@@ -152,6 +160,11 @@ export default function OrderDetails({ id }) {
             confirmText = "Cancel";
             confirmColor = "#dc2626";
             endpoint = `order-cancel/${id}`;
+        } else if (actionType === "MARK_DELIVERED") {
+            title = "Mark this order as delivered?";
+            confirmText = "Mark Delivered";
+            confirmColor = "#16a34a";
+            endpoint = `order-mark-delivered/${id}`;
         } else if (actionType === "CLOSE") {
             title = "Close this order?";
             confirmText = "Close";
@@ -308,6 +321,31 @@ export default function OrderDetails({ id }) {
         } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
             actionBlock = (
                 <div className="flex gap-2 items-center">
+                    <div className="flex rounded-full overflow-hidden border border-green-500">
+                        <button
+                            type="button"
+                            onClick={() => handleStatusUpdate("MARK_DELIVERED")}
+                            className="px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 transition cursor-pointer border-r border-green-200"
+                        >
+                            Mark as Delivered
+                        </button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <div className="px-3 bg-white text-green-700 hover:bg-green-50 transition cursor-pointer flex items-center justify-center">
+                                    <ChevronDown className="h-4 w-4" />
+                                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer text-red-600 hover:bg-red-50" onClick={() => handleStatusUpdate("CANCEL")}>Cancel Order</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+            );
+        } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate")) {
+            actionBlock = (
+                <div className="flex gap-2 items-center">
                     {q.invoicePdfPath && (
                         <>
                             <button
@@ -345,47 +383,22 @@ export default function OrderDetails({ id }) {
                             <RefreshCw className="h-4 w-4" />
                         </button>
                     )}
-                    <div className="flex rounded-full overflow-hidden border border-red-500">
+                    {can?.("invoiceAdd") && (
                         <button
                             type="button"
-                            onClick={() => handleStatusUpdate("CANCEL")}
-                            className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer border-r border-red-200"
+                            onClick={() => router.push(`/add-invoice?fromOrder=${id}`)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
                         >
-                            Cancel Order
+                            <FileText className="h-4 w-4" /> Convert to Invoice
                         </button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <div className="px-3 bg-white text-red-600 hover:bg-red-50 transition cursor-pointer flex items-center justify-center">
-                                    <ChevronDown className="h-4 w-4" />
-                                </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-            );
-        } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate")) {
-            actionBlock = (
-                <div className="flex rounded-full overflow-hidden border border-gray-500">
+                    )}
                     <button
                         type="button"
                         onClick={() => handleStatusUpdate("CLOSE")}
-                        className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer border-r border-gray-200"
+                        className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition border border-gray-500 cursor-pointer"
                     >
                         Close Order
                     </button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <div className="px-3 bg-white text-gray-600 hover:bg-gray-50 transition cursor-pointer flex items-center justify-center">
-                                <ChevronDown className="h-4 w-4" />
-                            </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             );
         }
@@ -397,9 +410,9 @@ export default function OrderDetails({ id }) {
 
             <div className="px-6 pt-4 pb-2">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/order-list")}>Orders</span>
+                    <Link href="/order-list" className="cursor-pointer hover:text-blue-600">Orders</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">{"Order"}</span>
                 </nav>
@@ -547,20 +560,20 @@ export default function OrderDetails({ id }) {
                                                             )}
                                                         </td>
                                                         <td className="min-w-[100px] px-4 py-3.5 text-left text-gray-700 whitespace-nowrap">{ITEM_GL_LABELS[item.itemGL] || item.itemGL || "0"}</td>
-                                                        <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{item.quantity}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">{Number(item.quantity ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: qtyDecimals })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">{q?.currencySymbol} {Number((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemDiscountTotal > 0 ? (
-                                                                <span className="text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                                <span className="text-gray-700">{q?.currencySymbol} {Number(itemDiscountTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</span>
                                                             ) : `${q?.currencySymbol} 0.00`}
                                                         </td>
                                                         <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap">
                                                             {itemExtraChargeTotal > 0 ? (
-                                                                <span className="text-gray-700">{q?.currencySymbol}{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+                                                                <span className="text-gray-700">{q?.currencySymbol}{Number(itemExtraChargeTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</span>
                                                             ) : `${q?.currencySymbol} 0.00`}
                                                         </td>
-                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-semibold text-gray-800">{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-semibold text-gray-800">{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
                                                         <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
                                                             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold "bg-gray-100 text-gray-700 border border-gray-200" ${item.taxCalculation}`}>
                                                                 {formatTaxCalcLabel(item.taxCalculation)}
@@ -575,8 +588,8 @@ export default function OrderDetails({ id }) {
                                                                 item.taxGroup ? `${item.taxGroup} (${Number(item.taxRate ?? 0)}%)` : "—"
                                                             )}
                                                         </td>
-                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700"> {item.taxAmount > 0 ? `${q?.currencySymbol + " " + Number(item.taxAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : "0.00"}</td>
-                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900 bg-gray-50/50">{q?.currencySymbol + " " + Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                                                        <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700"> {item.taxAmount > 0 ? `${q?.currencySymbol + " " + Number(item.taxAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}` : "0.00"}</td>
+                                                        <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900 bg-gray-50/50">{q?.currencySymbol + " " + Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}</td>
                                                     </tr>
                                                 );
                                             })}

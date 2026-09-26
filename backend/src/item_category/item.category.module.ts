@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ItemCategoryController } from './item.category.controller';
-import { ItemCategoryService } from './item.category.service';
+import { ItemCategoryService } from './service/item.category.service';
 import { ItemCategoryEntity } from 'src/item_category/entity/item-category.entity';
 import { UserCompanyGroupEntity } from '../packages/entity/user.company.group.entity';
 import { UserEntity } from '../user/entity/user.entity';

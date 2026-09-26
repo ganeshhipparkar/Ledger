@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -103,9 +104,9 @@ export default function ItemDetails({ id }) {
             <div className="p-6">
                 {/* Breadcrumbs */}
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500" aria-label="Breadcrumb">
-                    <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/")}>Home</span>
+                    <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={(e) => gotoPages(e, "/item-list")}>Items</span>
+                    <Link href="/item-list" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Items</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Details</span>
                 </nav>

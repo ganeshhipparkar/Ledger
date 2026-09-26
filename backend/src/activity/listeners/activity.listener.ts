@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { ActivityService } from '../activity.service';
-import type { LogPayload } from '../activity.service';
+import { ActivityService } from '../service/activity.service';
+import type { LogPayload } from '../service/activity.service';
 
 @Injectable()
 export class ActivityListener {

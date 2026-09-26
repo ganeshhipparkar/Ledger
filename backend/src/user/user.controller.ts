@@ -12,7 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { UserService } from './user.service';
+import { UserService } from './services/user.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
 import {
@@ -133,8 +133,7 @@ export class UserController {
     @Body() body: selectProfileDto,
     @Res({ passthrough: true }) response: any,
   ) {
-    // Step 2: verify ownership, issue real token with profileId.
-    const result = await this.userService.selectProfile(body);
+     const result = await this.userService.selectProfile(body);
     if (result.success === 1 && result.token) {
       response.setHeader('x-auth-token', result.token);
       delete (result as any).token;

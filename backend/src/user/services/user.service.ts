@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
 
 import { UserEntity } from 'src/user/entity/user.entity';
 
@@ -324,7 +324,7 @@ export class UserService {
         };
       }
 
-      // Validate that the submitted companyId is within the viewer's scope
+      
       if (params.companyId) {
         const submittedCompanyId = Number(params.companyId);
         if (!req.scopedCompanyIds.includes(submittedCompanyId)) {
@@ -744,7 +744,7 @@ export class UserService {
   async getUsers(param: any, req?: any) {
     let return_data: any = {};
     try {
-      // Build base query with joins for filtering
+      
       const baseQB = this.userEntity
         .createQueryBuilder('user')
         .leftJoin('user.userCompanyGroups', 'ucg')

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PermissionsGuard, RequirePermission } from 'src/utilities/permissions.guard';
-import { CurrencyService } from './currency.service';
+import { CurrencyService } from './service/currency.service';
 import { getCurrencyListDto, CurrencyDto, CurrencyUpdateDto } from 'src/currency/dto/currency.dto';
 import { encryptResponse } from 'src/utilities/crypto';
 

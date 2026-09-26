@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { decryptResponse } from "../lib/crypto";
 
 function getServiceBase(request) {
-    const module = request.headers.get("module");
+    let module = request.headers.get("module");
+    if (!module && request.nextUrl?.searchParams) {
+        module = request.nextUrl.searchParams.get("module");
+    }
     if (module === "company") return "http://localhost:4000/company";
     if (module === "group") return "http://localhost:4000/group";
     if (module === "user") return "http://localhost:4000/user";
@@ -21,9 +24,11 @@ function getServiceBase(request) {
     if (module === 'tax-group') return "http://localhost:4000/tax-group";
     if (module === 'quotation') return "http://localhost:4000/quotation";
     if (module === "order") return "http://localhost:4000/order";
-
     if (module === "payment-transaction") return "http://localhost:4000/payment-transaction";
     if (module === "quotation") return "http://localhost:4000/quotation";
+    if (module === "invoice") return "http://localhost:4000/invoice";
+    if (module === "vault") return "http://localhost:4000/vault";
+    if (module === "credit-note") return "http://localhost:4000/credit-note";
     return "http://localhost:4000";
 }
 
@@ -53,7 +58,10 @@ async function doFetch(url, options = {}) {
 
 export async function GET(request) {
     try {
-        const endpoint = request.headers.get("endpoint");
+        let endpoint = request.headers.get("endpoint");
+        if (!endpoint && request.nextUrl?.searchParams) {
+            endpoint = request.nextUrl.searchParams.get("endpoint");
+        }
         const token = getAuthToken(request);
         const base = getServiceBase(request);
 

@@ -9,7 +9,7 @@ import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BankBookController } from "./bank.book.controller";
-import { BankBookService } from "./bank.book.service";
+import { BankBookService } from "./service/bank.book.service";
 import { BankBookEntity } from "./entity/bank.book.entity";
 
 @Module({

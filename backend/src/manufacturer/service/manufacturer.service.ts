@@ -7,29 +7,29 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ActivityCode } from '../activity/enums/activity-code.enum';
-import { BankMasterEntity } from './entity/bank.master.entity';
+import { ActivityCode } from '../../activity/enums/activity-code.enum';
+import { ManufacturerEntity } from '../entity/manufacturer.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
-import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
+import { resolveAuthContext } from 'src/utilities/auth-helper';
 import {
-  bankListDto,
-  BankMasterDto,
-  BankMasterUpdateDto,
-} from './dto/bank.dto';
+  manufacturerListDto,
+  ManufacturerDto,
+  ManufacturerUpdateDto,
+} from '../dto/manufacturer.dto';
 
 @Injectable()
-export class BankMasterService {
+export class ManufacturerService {
   @Inject()
   private readonly filter!: Filter;
 
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
 
-  @InjectRepository(BankMasterEntity)
-  private readonly bankRepository!: Repository<BankMasterEntity>;
+  @InjectRepository(ManufacturerEntity)
+  private readonly manufacturerEntity!: Repository<ManufacturerEntity>;
 
   @InjectRepository(UserCompanyGroupEntity)
   private readonly ucgEntity!: Repository<UserCompanyGroupEntity>;
@@ -40,12 +40,12 @@ export class BankMasterService {
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
 
-  async bankList(param: bankListDto, req?: any) {
+  async manufacturerList(param: manufacturerListDto, req?: any) {
     let return_data: any = {};
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const queryBuilder =
-        this.bankRepository.createQueryBuilder('bank');
+        this.manufacturerEntity.createQueryBuilder('manufacturer');
 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [
@@ -53,13 +53,13 @@ export class BankMasterService {
         ];
         if (scopedCompanyIds.length > 0) {
           queryBuilder.andWhere(
-            'bank.companyId IN (:...scopedCompanyIds)',
+            'manufacturer.companyId IN (:...scopedCompanyIds)',
             { scopedCompanyIds },
           );
         } else {
           return {
             success: 1,
-            message: 'Banks fetched successfully',
+            message: 'Manufacturers fetched successfully',
             total: 0,
             data: [],
           };
@@ -68,7 +68,7 @@ export class BankMasterService {
 
       const queryString = await this.filter.makeFilterString(
         param.filters,
-        'bank',
+        'manufacturer',
         {},
         param.condition === 'Any' ? 'Any' : 'All',
       );
@@ -78,21 +78,12 @@ export class BankMasterService {
 
       const [skip, limit] = (await this.filter.calcPages(
         param,
-        this.bankRepository,
+        this.manufacturerEntity,
       )) as [number, number];
 
-      queryBuilder
-        .select([
-          'bank.bankId',
-          'bank.bankName',
-          'bank.bankCode',
-          'bank.companyId',
-          'bank.status',
-          'company.companyName',
-        ])
-        .leftJoin('bank.company', 'company');
+      queryBuilder.leftJoinAndSelect('manufacturer.company', 'company');
       queryBuilder.skip(skip).take(limit);
-      queryBuilder.orderBy('bank.bankName', 'ASC');
+      queryBuilder.orderBy('manufacturer.manufacturerName', 'ASC');
 
       const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -103,7 +94,7 @@ export class BankMasterService {
 
       return_data = {
         success: 1,
-        message: 'Banks fetched successfully',
+        message: 'Manufacturers fetched successfully',
         total,
         data: formattedData,
       };
@@ -113,45 +104,45 @@ export class BankMasterService {
     return return_data;
   }
 
-  async getBankDetails(id: number, req?: any) {
+  async getManufacturerDetails(id: number, req?: any) {
     const authCtx = await resolveAuthContext(req, this.ucgEntity);
-    const bank = await this.bankRepository.findOne({
-      where: { bankId: id },
+    const manufacturer = await this.manufacturerEntity.findOne({
+      where: { manufacturerId: id },
       relations: ['company'],
     });
-    if (!bank) {
-      throw new NotFoundException('Bank not found');
+    if (!manufacturer) {
+      throw new NotFoundException('Manufacturer not found');
     }
 
     if (!authCtx.isSuperAdmin) {
       const scopedCompanyIds = req?.scopedCompanyIds || [
         authCtx.activeCompanyId,
       ];
-      if (!scopedCompanyIds.includes(Number(bank.companyId))) {
+      if (!scopedCompanyIds.includes(Number(manufacturer.companyId))) {
         throw new ForbiddenException(
-          'Access denied: bank belongs to another company',
+          'Access denied: manufacturer belongs to another company',
         );
       }
     }
 
-    const addedByUser = bank.addedBy
-      ? await this.userEntity.findOne({ where: { userId: bank.addedBy } })
+    const addedByUser = manufacturer.addedBy
+      ? await this.userEntity.findOne({ where: { userId: manufacturer.addedBy } })
       : null;
-    const updatedByUser = bank.updatedBy
+    const updatedByUser = manufacturer.updatedBy
       ? await this.userEntity.findOne({
-          where: { userId: bank.updatedBy },
+          where: { userId: manufacturer.updatedBy },
         })
       : null;
 
     return {
-      ...bank,
-      companyName: bank.company?.companyName ?? null,
+      ...manufacturer,
+      companyName: manufacturer.company?.companyName ?? null,
       addedByName: addedByUser?.name ?? null,
       updatedByName: updatedByUser?.name ?? null,
     };
   }
 
-  async insertBank(params: BankMasterDto, req?: any) {
+  async insertManufacturer(params: ManufacturerDto, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
 
@@ -162,16 +153,16 @@ export class BankMasterService {
         if (!scopedCompanyIds.includes(Number(params.companyId))) {
           return {
             success: 0,
-            message: 'Access denied: cannot add bank to another company',
+            message: 'Access denied: cannot add manufacturer to another company',
           };
         }
       }
 
-      const bankCode = await this.codeGeneratorService.generateCode(
-        this.bankRepository,
-        params.bankName,
+      const manufacturerCode = await this.codeGeneratorService.generateCode(
+        this.manufacturerEntity,
+        params.manufacturerName,
         params.companyId,
-        'bankCode',
+        'manufacturerCode',
       );
 
       const performerId = req?.user?.isImpersonation
@@ -182,32 +173,31 @@ export class BankMasterService {
         : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
       const queryParams: any = {
-        bankCode,
-        bankName: params.bankName,
+        manufacturerCode,
+        manufacturerName: params.manufacturerName,
         companyId: Number(params.companyId),
         status: params.status,
       };
-      if (params.remarks !== undefined) queryParams.remarks = params.remarks;
       if (performerId) queryParams.addedBy = Number(performerId);
       queryParams.addedDate = new Date();
 
-      const result = await this.bankRepository.insert(queryParams);
+      const result = await this.manufacturerEntity.insert(queryParams);
       const insertId = result?.raw?.insertId;
 
       this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.BANK_CREATE,
+        activityCode: ActivityCode.MANUFACTURER_CREATE,
         userId: performerId,
         companyId: Number(params.companyId),
         actorType: 'USER',
-        targetType: 'BANK',
+        targetType: 'MANUFACTURER',
         targetId: String(insertId),
         executionStatus: 'SUCCESS',
         severity: 'INFO',
         parameters: {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
-          bankCode,
-          bankName: params.bankName,
+          manufacturerCode,
+          manufacturerName: params.manufacturerName,
           companyId: params.companyId,
           impersonated: !!req?.user?.isImpersonation,
         },
@@ -216,7 +206,7 @@ export class BankMasterService {
 
       return {
         success: 1,
-        message: 'Bank inserted successfully',
+        message: 'Manufacturer inserted successfully',
         data: { insertData: insertId },
       };
     } catch (err: any) {
@@ -224,36 +214,34 @@ export class BankMasterService {
     }
   }
 
-  async updateBank(params: BankMasterUpdateDto, req?: any) {
-    if (!params.bankId) {
-      return { success: 0, message: 'bankId is mandatory' };
+  async updateManufacturer(params: ManufacturerUpdateDto, req?: any) {
+    if (!params.manufacturerId) {
+      return { success: 0, message: 'manufacturerId is mandatory' };
     }
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const existingBank = await this.bankRepository.findOne({
-        where: { bankId: Number(params.bankId) },
+      const existingManufacturer = await this.manufacturerEntity.findOne({
+        where: { manufacturerId: Number(params.manufacturerId) },
       });
-      if (!existingBank) {
-        return { success: 0, message: 'Bank not found' };
+      if (!existingManufacturer) {
+        return { success: 0, message: 'Manufacturer not found' };
       }
 
       if (!authCtx.isSuperAdmin) {
         const scopedCompanyIds = req?.scopedCompanyIds || [
           authCtx.activeCompanyId,
         ];
-        if (!scopedCompanyIds.includes(Number(existingBank.companyId))) {
+        if (!scopedCompanyIds.includes(Number(existingManufacturer.companyId))) {
           return {
             success: 0,
-            message: 'Access denied: cannot update bank of another company',
+            message: 'Access denied: cannot update manufacturer of another company',
           };
         }
       }
 
       const queryParams: any = {};
-      if (params.bankName !== undefined)
-        queryParams.bankName = params.bankName;
-      if (params.remarks !== undefined)
-        queryParams.remarks = params.remarks;
+      if (params.manufacturerName !== undefined)
+        queryParams.manufacturerName = params.manufacturerName;
       if (params.status) queryParams.status = params.status;
 
       const performerId = req?.user?.isImpersonation
@@ -266,26 +254,27 @@ export class BankMasterService {
       if (performerId) queryParams.updatedBy = Number(performerId);
       queryParams.updatedDate = new Date();
 
-      await this.bankRepository.update(
-        { bankId: Number(params.bankId) },
+      await this.manufacturerEntity.update(
+        { manufacturerId: Number(params.manufacturerId) },
         queryParams,
       );
 
       this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.BANK_UPDATE,
+        activityCode: ActivityCode.MANUFACTURER_UPDATE,
         userId: performerId,
-        companyId: existingBank.companyId,
+        companyId: existingManufacturer.companyId,
         actorType: 'USER',
-        targetType: 'BANK',
-        targetId: String(params.bankId),
+        targetType: 'MANUFACTURER',
+        targetId: String(params.manufacturerId),
         executionStatus: 'SUCCESS',
         severity: 'INFO',
         parameters: {
           userEmail: performerEmail,
           userGroup: authCtx.activeGroupName || 'N/A',
-          bankCode: existingBank.bankCode,
-          bankName: params.bankName ?? existingBank.bankName,
-          status: params.status ?? existingBank.status,
+          manufacturerCode: existingManufacturer.manufacturerCode,
+          manufacturerName:
+            params.manufacturerName ?? existingManufacturer.manufacturerName,
+          status: params.status ?? existingManufacturer.status,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
@@ -293,7 +282,7 @@ export class BankMasterService {
 
       return {
         success: 1,
-        message: 'Bank updated successfully',
+        message: 'Manufacturer updated successfully',
       };
     } catch (err: any) {
       return { success: 0, message: err.message };

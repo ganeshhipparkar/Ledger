@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { loginContext } from "./hooks/LoginContext";
 import { isSuperAdmin } from "@/app/lib/auth";
 
 export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
-    const router = useRouter();
     const { isLogin, impersonating, permissions, displayUser } = useContext(loginContext);
 
     const [activeCategory, setActiveCategory] = useState("dashboard");
@@ -76,6 +75,7 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 { label: "Quotation", redirectTo: "/quotation-list", show: activePermissions.includes("quotationList") || isSuper },
                 { label: "Order", redirectTo: "/order-list", show: activePermissions.includes("orderList") || isSuper },
                 { label: "Invoice", redirectTo: "/invoice-list", show: activePermissions.includes("invoiceList") || isSuper },
+                { label: "Credit Note", redirectTo: "/credit-note-list", show: activePermissions.includes("creditNoteList") || isSuper }
             ]
         }
     ];
@@ -165,14 +165,12 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                                             .map((item, idx) => (
                                                 <li
                                                     key={idx}
-                                                    onClick={() => {
-                                                        onClose();
-                                                        router.push(item.redirectTo);
-                                                    }}
-                                                    className="flex items-center text-gray-600 hover:text-black cursor-pointer transition"
+                                                    className="flex items-center text-gray-600 hover:text-black transition"
                                                 >
-                                                    <span className="mr-3 text-xs">•</span>
-                                                    {item.label}
+                                                    <Link href={item.redirectTo} onClick={onClose} className="flex items-center w-full">
+                                                        <span className="mr-3 text-xs">•</span>
+                                                        {item.label}
+                                                    </Link>
                                                 </li>
                                             ))}
                                     </ul>
@@ -192,14 +190,12 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                                             {group.children.map((child, cIdx) => (
                                                 <li
                                                     key={cIdx}
-                                                    onClick={() => {
-                                                        onClose();
-                                                        router.push(child.redirectTo);
-                                                    }}
-                                                    className="flex items-center text-gray-600 hover:text-black cursor-pointer transition"
+                                                    className="flex items-center text-gray-600 hover:text-black transition"
                                                 >
-                                                    <span className="mr-3 text-xs">•</span>
-                                                    {child.label}
+                                                    <Link href={child.redirectTo} onClick={onClose} className="flex items-center w-full">
+                                                        <span className="mr-3 text-xs">•</span>
+                                                        {child.label}
+                                                    </Link>
                                                 </li>
                                             ))}
                                         </ul>

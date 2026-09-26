@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { ItemCategoryService } from './item.category.service';
+import { ItemCategoryService } from './service/item.category.service';
 import {
   categoryListDto,
   ItemCategoryDto,

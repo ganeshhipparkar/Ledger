@@ -43,6 +43,11 @@ import { InvoiceDiscountEntity } from 'src/invoice/entity/invoice.discount.entit
 import { InvoiceExtraChargeEntity } from 'src/invoice/entity/invoice.extra.charge.entity';
 import { InvoiceAttachmentsEntity } from 'src/invoice/entity/invoice.attachments';
 import { InvoiceDueDateHistoryEntity } from 'src/invoice/entity/invoice.due.date.history.entity';
+import { ModSettings } from 'src/user/entity/mod.settings';
+import { CustomerCurrencyVaultEntity } from 'src/vault/entity/customer.currency.vault.entity';
+import { VaultLedgerEntity } from 'src/vault/entity/vault.ledger.entity';
+import { CreditNoteEntity } from 'src/credit_note/entity/credit.note.entity';
+import { CreditNoteAttachmentsEntity } from 'src/credit_note/entity/credit.note.attachments.entity';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -93,6 +98,11 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     InvoiceExtraChargeEntity,
     InvoiceAttachmentsEntity,
     InvoiceDueDateHistoryEntity,
+    ModSettings,
+    CustomerCurrencyVaultEntity,
+    VaultLedgerEntity,
+    CreditNoteEntity,
+    CreditNoteAttachmentsEntity,
   ],
   synchronize: true, 
   migrationsRun: true,

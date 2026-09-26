@@ -13,6 +13,8 @@ import { PaymentTransactionController } from './payment.transaction.controller';
 import { PaymentTransactionService } from './payment.transaction.service';
 import { Filter } from 'src/utilities/filter';
 import { FileTransfer } from 'src/utilities/file.transfer';
+import { VaultModule } from 'src/vault/vault.module';
+import { ModSettingsModule } from 'src/mod_setting/mod.settings.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { FileTransfer } from 'src/utilities/file.transfer';
       UserEntity,
       GroupPermissionEntity,
     ]),
+    VaultModule,
+    ModSettingsModule,
   ],
   controllers: [PaymentTransactionController],
   providers: [PaymentTransactionService, Filter, FileTransfer],

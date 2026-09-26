@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,12 +22,13 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatDisplayDate, downloadFile } from "@/lib/utils";
+import { getInitials, formatDisplayDate, downloadFile } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
 import UserSidePanel from "../user/UserSidePanel";
 import InvoiceSidePanel from "./InvoiceSidePanel";
 import InvoiceDueDatePanel from "./InvoiceDueDatePanel";
+import CreditNoteAddPanel from "../creditNote/CreditNoteAddPanel";
 
 const MySwal = withReactContent(Swal);
 
@@ -81,6 +83,25 @@ export default function InvoiceList() {
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [selectedInvoiceIdForPanel, setSelectedInvoiceIdForPanel] = useState(null);
     const [dueDateInvoice, setDueDateInvoice] = useState(null);
+    const [creditNoteInvoice, setCreditNoteInvoice] = useState(null);
+    const [paymentMode, setPaymentMode] = useState("AUTOMATIC");
+
+    useEffect(() => {
+        const fetchPaymentMode = async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "GET",
+                    headers: { ...authHeaders(), endpoint: "payment-config", module: "vault" }
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                if (data?.success === 1) {
+                    setPaymentMode(data.mode);
+                }
+            } catch (err) { }
+        };
+        fetchPaymentMode();
+    }, []);
 
     const fetchList = useCallback(async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
         setError("");
@@ -175,12 +196,20 @@ export default function InvoiceList() {
         try {
             const res = await fetch("/relayapi", {
                 method: "PUT",
-                headers: { ...authHeaders(), endpoint: `invoice-mark-paid/${invoiceId}`, module: "invoice" },
+                headers: { ...authHeaders(), "Content-Type": "application/json", endpoint: `invoice-mark-paid/${invoiceId}`, module: "invoice" },
+                body: JSON.stringify({})
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice marked as paid.", { position: "top-right" });
+                const vaultRes = data.vaultResult;
+                if (vaultRes && vaultRes.result === 'PAID') {
+                    toast.success("Paid successfully.", { position: "top-right" });
+                } else if (vaultRes && vaultRes.result === 'PARTIAL') {
+                    toast.info(`Insufficient balance — invoice marked as partially paid.`, { position: "top-right" });
+                } else {
+                    toast.success("Invoice marked as paid.", { position: "top-right" });
+                }
                 fetchList(page, limit, statusFilter, currentFilters);
             } else {
                 toast.error(data?.message || "Failed to mark as paid.", { position: "top-right" });
@@ -248,9 +277,11 @@ export default function InvoiceList() {
         onDelete: handleDelete,
         onRegeneratePdf: handleRegeneratePdf,
         onUpdateDueDate: (invoice) => setDueDateInvoice(invoice),
+        onAddCreditNote: (invoice) => setCreditNoteInvoice(invoice),
         onCustomerClick: (id) => setSelectedCustomerId(id),
         onAddedByClick: (id) => setSelectedUserId(id),
         onInvoiceClick: (id) => setSelectedInvoiceIdForPanel(id),
+        paymentMode,
     });
 
     const STATUS_TABS = ["", "DRAFT", "UNPAID", "PARTIALLY_PAID", "PAID"];
@@ -266,29 +297,27 @@ export default function InvoiceList() {
             />
             <div className="px-6 pt-4 pb-2">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Invoices</span>
                 </nav>
             </div>
 
             <div className="px-6 py-4 space-y-5">
-                {/* Status filter tabs */}
-                <div className="flex flex-wrap gap-2">
+                {/* <div className="flex flex-wrap gap-2">
                     {STATUS_TABS.map((s) => (
                         <button
                             key={s || "all"}
                             onClick={() => { setStatusFilter(s); setPage(1); }}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                                statusFilter === s
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${statusFilter === s
                                     ? "bg-blue-600 text-white border-blue-600"
                                     : "bg-white text-gray-600 border-gray-200 hover:border-blue-400"
-                            }`}
+                                }`}
                         >
                             {s === "" ? "All" : STATUS_LABELS[s] ?? s}
                         </button>
                     ))}
-                </div>
+                </div> */}
 
                 {activeView !== "table" && (
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
@@ -330,11 +359,13 @@ export default function InvoiceList() {
                                 onDelete={handleDelete}
                                 onRegeneratePdf={handleRegeneratePdf}
                                 onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
+                                onAddCreditNote={(inv) => setCreditNoteInvoice(inv)}
                                 onCustomerClick={(id) => setSelectedCustomerId(id)}
                                 onAddedByClick={(id) => setSelectedUserId(id)}
                                 onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
                                 isOpen={!!expandedRows[q.invoiceId]}
                                 onToggle={() => toggleRow(q.invoiceId)}
+                                paymentMode={paymentMode}
                             />
                         ))}
                     </div>
@@ -354,11 +385,13 @@ export default function InvoiceList() {
                                     onDelete={handleDelete}
                                     onRegeneratePdf={handleRegeneratePdf}
                                     onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
+                                    onAddCreditNote={(inv) => setCreditNoteInvoice(inv)}
                                     onCustomerClick={(id) => setSelectedCustomerId(id)}
                                     onAddedByClick={(id) => setSelectedUserId(id)}
                                     onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
                                     isExpanded={!!expandedRows[q.invoiceId]}
                                     onToggle={() => toggleRow(q.invoiceId)}
+                                    paymentMode={paymentMode}
                                 />
                             ))}
                         </div>
@@ -402,75 +435,97 @@ export default function InvoiceList() {
                     <UserSidePanel userId={selectedUserId} onClose={() => setSelectedUserId(null)} />,
                     document.body
                 )}
-            {selectedInvoiceIdForPanel && (
-                <InvoiceSidePanel
-                    id={selectedInvoiceIdForPanel}
-                    onClose={() => setSelectedInvoiceIdForPanel(null)}
-                />
-            )}
-            {dueDateInvoice && (
-                <InvoiceDueDatePanel
-                    invoice={dueDateInvoice}
-                    onClose={() => setDueDateInvoice(null)}
-                    onSuccess={() => {
-                        setDueDateInvoice(null);
-                        fetchList(page, limit, statusFilter, currentFilters);
-                    }}
-                />
-            )}
+            {selectedInvoiceIdForPanel && typeof document !== "undefined" && createPortal(<InvoiceSidePanel invoiceId={selectedInvoiceIdForPanel} onClose={() => setSelectedInvoiceIdForPanel(null)} />, document.body)}
+            {dueDateInvoice && <InvoiceDueDatePanel invoice={dueDateInvoice} onClose={() => setDueDateInvoice(null)} onSuccess={() => { setDueDateInvoice(null); fetchList(page, limit, statusFilter, currentFilters); }} />}
+            {/* {creditNoteInvoice && typeof document !== "undefined" && createPortal(
+                <CreditNoteAddPanel
+                    lockedCustomerId={creditNoteInvoice.customerId}
+                    lockedCustomerName={creditNoteInvoice.customerName}
+                    lockedCurrencyId={creditNoteInvoice.currencyId}
+                    lockedCurrencyCode={creditNoteInvoice.currencyCode}
+                    lockedInvoiceId={creditNoteInvoice.invoiceId}
+                    lockedInvoiceCode={creditNoteInvoice.invoiceCode}
+                    lockedCompanyId={creditNoteInvoice.companyId}
+                    onClose={() => setCreditNoteInvoice(null)}
+                    onSuccess={() => setCreditNoteInvoice(null)}
+                />,
+                document.body
+            )} */}
         </div>
     );
 }
 
-function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onCustomerClick, onAddedByClick, onInvoiceClick, isOpen, onToggle }) {
+function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onAddCreditNote, onCustomerClick, onAddedByClick, onInvoiceClick, isOpen, onToggle, paymentMode }) {
     const router = useRouter();
-    const fmtDate = (d) => formatDisplayDate(d) || "—";
+    const fmtDate = (d) => formatDisplayDate(d);
+    const fmtAmt = (n, sym) => n != null ? `${sym ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim() : "—";
 
-    const primaryAction = [
-        { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Edit" },
-        { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Submit" },
-        { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
-        { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
-        { show: can?.("invoiceView"), label: "View" },
-    ].find((a) => a.show) ?? { label: "View" };
 
-    // Hide action dropdown for PAID invoices that have no editable actions
-    const hasPaidActions = q.status === "PAID" && (q.invoicePdfPath || can?.("invoiceUpdate"));
-    const hasDraftActions = q.status === "DRAFT";
-    const hasUnpaidActions = (q.status === "UNPAID" || q.status === "PARTIALLY_PAID");
-    const showDropdown = hasDraftActions || hasUnpaidActions || hasPaidActions;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-5">
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0 flex items-center gap-4 flex-wrap">
-                    <button
-                        type="button"
-                        onClick={() => onInvoiceClick?.(q.invoiceId)}
-                        className="font-semibold text-blue-600 hover:underline text-sm"
-                    >
-                        {q.invoiceCode}
-                    </button>
-                    <InvoiceStatusBadge status={q.status} />
-                    <span
-                        className="text-sm text-gray-600 cursor-pointer hover:text-blue-600 hover:underline"
+        <div className="px-6 py-6 border border-gray-200 bg-gray-50/2 rounded-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-start">
+                <div className="min-w-0">
+                    <div className="text-sm text-gray-500 mb-1">Invoice No.</div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 min-w-[40px] items-center justify-center overflow-hidden rounded-full bg-blue-600 text-base font-bold uppercase text-white">
+                            <span className="text-white font-bold">{getInitials(q.invoiceCode || "-")}</span>
+                        </div>
+                        <div className="min-w-0">
+                            <div
+                                className={`text-base font-semibold truncate ${can?.("invoiceView") !== false ? "cursor-pointer hover:underline text-[#3563e9]" : "text-gray-800"}`}
+                                onClick={() => onInvoiceClick?.(q.invoiceId)}
+                            >
+                                {q.invoiceCode || "-"}
+                            </div>
+                            <div className="text-sm text-gray-500 truncate">{q.customerName ?? "—"}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div className="text-sm text-gray-500 mb-1">Customer</div>
+                    <div
+                        className={`text-base break-all ${q.customerId ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-800"}`}
                         onClick={() => q.customerId && onCustomerClick?.(q.customerId)}
                     >
                         {q.customerName || "—"}
-                    </span>
-                    <span className="text-sm text-gray-500">{q.currencyCode}</span>
-                    <span className="text-sm font-medium text-gray-800">
-                        {Number(q.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    {showDropdown && (
+
+                <div>
+                    <div className="text-sm text-gray-500 mb-1">Status</div>
+                    <InvoiceStatusBadge status={q.status} />
+                </div>
+
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <div className="text-sm text-gray-500 mb-1">Final Amount</div>
+                        <div className="text-base font-semibold text-gray-800">{fmtAmt(q.finalAmount, q.currency?.symbol ?? q?.currencyCode)}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-all cursor-pointer">
-                                    {primaryAction.label}
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                                </button>
+                                {(() => {
+                                    const primaryAction = [
+                                        { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Edit" },
+                                        { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Submit" },
+                                        { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
+                                        { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
+                                        { show: can?.("invoiceView"), label: "View" },
+                                    ].find((a) => a.show) ?? { label: "View" };
+                                    const primaryLabel = primaryAction.label;
+
+                                    return (
+                                        <span
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 w-40 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition cursor-pointer shadow-xs"
+                                        >
+                                            <span className="truncate whitespace-nowrap overflow-hidden">{primaryLabel}</span>
+                                            <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
+                                        </span>
+                                    );
+                                })()}
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border border-gray-100 p-1">
                                 {q.status === "DRAFT" && can?.("invoiceUpdate") && (
@@ -482,11 +537,16 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                 )}
                                 {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
                                     <>
-                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                        {paymentMode === "MANUAL" && (
+                                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                        )}
                                         <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate(q); }}>Update Due Date</DropdownMenuItem>
                                     </>
                                 )}
-                                {q.invoicePdfPath && (
+                                {/* {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
+                                )} */}
+                                {/* {q.invoicePdfPath && (
                                     <>
                                         <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"); }}>
                                             <span className="w-full h-full px-4 py-2">View PDF</span>
@@ -500,26 +560,31 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                     <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf(q.invoiceId); }}>
                                         <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
                                     </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}`); }}>View Details</DropdownMenuItem>
+                                )} */}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); onToggle?.(); }} className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2">
-                        <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                    </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggle?.();
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2"
+                        >
+                            <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        </button>
+                    </div>
                 </div>
             </div>
             {isOpen && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                         <div>
                             <div className="text-sm text-gray-500 mb-1">Invoice Date</div>
-                            <div className="text-base text-gray-800">{fmtDate(q.invoiceDate)}</div>
+                            <div className="text-base text-gray-800 break-all">{q.invoiceDate ? fmtDate(q.invoiceDate) : "—"}</div>
                         </div>
                         <div>
                             <div className="text-sm text-gray-500 mb-1">Exchange Date</div>
-                            <div className="text-base text-gray-800">{fmtDate(q.deliveryDate)}</div>
+                            <div className="text-base text-gray-800 break-all">{q.deliveryDate ? fmtDate(q.deliveryDate) : "—"}</div>
                         </div>
                         <div>
                             <div className="text-sm text-gray-500 mb-1">Added By</div>
@@ -531,9 +596,15 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                             </div>
                         </div>
                         <div>
-                            <div className="text-sm text-gray-500 mb-1">Tax Amount</div>
-                            <div className="text-base text-gray-800">{Number(q.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+                            <div className="text-sm text-gray-500 mb-1">Currency Details</div>
+                            <div className="text-base text-gray-800 break-all">{q.currencyCode || "—"} {q.currencySymbol ? `(${q.currencySymbol})` : ""}</div>
                         </div>
+                        {q.invoiceNo && (
+                            <div>
+                                <div className="text-sm text-gray-500 mb-1">Invoice No.</div>
+                                <div className="text-base text-gray-800 break-all">{q.invoiceNo}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

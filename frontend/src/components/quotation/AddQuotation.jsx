@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import Select from "react-select";
 
 import { useContext, useEffect, useState } from "react";
@@ -393,7 +394,13 @@ export default function AddQuotation() {
                 const res = await fetch("/relayapi", {
                     method: "POST",
                     headers: { ...authHeaders(), endpoint: "bank-book-list", module: "bank-book", "Content-Type": "application/json" },
-                    body: JSON.stringify({ page: 1, limit: 200, filters: [{ key: "companyId", value: String(companyId), operator: "eq" }] }),
+                    body: JSON.stringify({
+                        page: 1, limit: 200,
+                        filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
+                        { key: "status", value: "Active", operator: "equal" }
+
+                        ]
+                    }),
                 });
                 const payload = await res.json();
                 const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
@@ -420,6 +427,7 @@ export default function AddQuotation() {
                 limit: 20,
                 filters: [
                     ...(inputValue ? [{ key: "name", value: inputValue, operator: "contains" }] : []),
+                    { key: "status", value: "Active", operator: "equal" }
                 ],
             }),
         })
@@ -603,12 +611,17 @@ export default function AddQuotation() {
 
             <div className="px-6 pt-4">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/")}>Home</span>
+                    <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="cursor-pointer hover:text-blue-600" onClick={() => router.push("/quotation-list")}>Quotations </span>
+                    <Link href="/quotation-list" className="cursor-pointer hover:text-blue-600">Quotations </Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Quotation</span>
                 </nav>
+            </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 px-6 pt-4">
+                <h1 className="text-2xl font-semibold text-[#1f2937]">
+                    {"Quotation"}
+                </h1>
             </div>
 
             <div className="flex-1 px-6 py-4 pb-24 space-y-5">

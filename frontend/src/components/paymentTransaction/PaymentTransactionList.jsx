@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { decryptResponse } from "@/app/lib/crypto";
 import { useRouter } from "next/navigation";
@@ -140,12 +141,9 @@ export default function PaymentTransactionList() {
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
-                    <span
-                        className="cursor-pointer hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/")}
-                    >
+                    <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Home
-                    </span>
+                    </Link>
 
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800 font-semibold">Payment Transaction</span>
@@ -302,6 +300,7 @@ function PaymentTransactionStatusBadge({ status }) {
 
 function PaymentTransactionListRow({ transaction: q, can, onView, onAction, isOpen, onToggle }) {
     const isPending = (q.status || "Pending") === "Pending";
+    const isApproved = (q.status) === "Approved";
     const fmtAmt = (n, code, sym) => {
         if (n == null) return "—";
         return `${code || ""} ${sym ? `(${sym})` : ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim();
@@ -399,7 +398,15 @@ function PaymentTransactionListRow({ transaction: q, can, onView, onAction, isOp
 
                             </DropdownMenu>
                         )}
-                        {!can?.("paymentTransactionUpdate") || !isPending && (
+                        {can?.("paymentTransactionUpdate") && isApproved && (
+                            <button
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg hover:bg-red-100 transition cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); onAction?.(q.paymentTransactionId, "cancel-approved"); }}
+                            >
+                                Cancel Payment
+                            </button>
+                        )}
+                        {!can?.("paymentTransactionUpdate") || (!isPending && !isApproved) && (
                             <span>-</span>
                         )}
 
@@ -443,6 +450,7 @@ function PaymentTransactionListRow({ transaction: q, can, onView, onAction, isOp
 
 function PaymentTransactionCard({ transaction: q, can, onView, onAction }) {
     const isPending = (q.status || "Pending") === "Pending";
+    const isApproved = (q.status) === "Approved";
     const fmtAmt = (n, code, sym) => {
         if (n == null) return "—";
         return `${code || ""} ${sym ? `(${sym})` : ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim();
@@ -505,6 +513,16 @@ function PaymentTransactionCard({ transaction: q, can, onView, onAction }) {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
+
+                {can?.("paymentTransactionUpdate") && isApproved && (
+                    <button
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg hover:bg-red-100 transition cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); onAction?.(q.paymentTransactionId, "cancel-approved"); }}
+                    >
+                        Cancel Payment
+                    </button>
+                )}
+
             </div>
 
             <div className="px-5 py-4 flex-1 space-y-4">

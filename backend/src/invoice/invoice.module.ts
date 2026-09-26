@@ -22,8 +22,10 @@ import { InvoiceDiscountEntity } from './entity/invoice.discount.entity';
 import { InvoiceExtraChargeEntity } from './entity/invoice.extra.charge.entity';
 import { InvoiceAttachmentsEntity } from './entity/invoice.attachments';
 import { InvoiceDueDateHistoryEntity } from './entity/invoice.due.date.history.entity';
+import { VaultModule } from 'src/vault/vault.module';
+import { ModSettings } from 'src/user/entity/mod.settings';
 import { InvoiceController } from './invoice.controller';
-import { InvoiceService } from './invoice.service';
+import { InvoiceService } from './service/invoice.service';
 import { InvoicePdfService } from './invoice.pdf.service';
 
 @Module({
@@ -48,7 +50,9 @@ import { InvoicePdfService } from './invoice.pdf.service';
       taxGroupEntity,
       OrderEntity,
       QuotationEntity,
+      ModSettings,
     ]),
+    VaultModule,
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService, InvoicePdfService, Filter, FileTransfer, CodeGeneratorService],

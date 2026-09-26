@@ -13,7 +13,7 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
-import { ManufacturerService } from './manufacturer.service';
+import { ManufacturerService } from './service/manufacturer.service';
 import {
   manufacturerListDto,
   ManufacturerDto,

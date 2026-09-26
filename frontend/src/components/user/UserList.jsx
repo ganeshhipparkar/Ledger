@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import Header from "../Header";
@@ -221,16 +222,13 @@ export default function UsersPage() {
                     className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500"
                     aria-label="Breadcrumb"
                 >
-                    <span
-                        className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
-                        onClick={(e) => gotoPages(e, "/")}
-                    >
+                    <Link href="/" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
                         Home
-                    </span>
+                    </Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800" onClick={(e) => gotoPages(e, "/users")}>
+                    <Link href="/users" className="text-gray-800">
                         Users
-                    </span>
+                    </Link>
                 </nav>
 
                 {viewMode !== "table" && (

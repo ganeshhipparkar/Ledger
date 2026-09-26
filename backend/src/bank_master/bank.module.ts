@@ -7,7 +7,7 @@ import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BankController } from "./bank.controller";
-import { BankMasterService } from "./bank.service";
+import { BankMasterService } from "./service/bank.service";
 import { BankMasterEntity } from "./entity/bank.master.entity";
 
 @Module({

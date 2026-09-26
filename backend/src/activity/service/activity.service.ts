@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { ActivityLogEntity } from 'src/activity/entity/activity-log.entity';
 import { Filter } from 'src/utilities/filter';
 import { GetActivityListDto } from 'src/activity/dto/activity.dto';
-import { ActivityMasterEntity } from './entity/activity-master.entity';
+import { ActivityMasterEntity } from '../entity/activity-master.entity';
 
 export interface LogPayload {
   activityCode: string;

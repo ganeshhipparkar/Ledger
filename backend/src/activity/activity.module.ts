@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLogEntity } from 'src/activity/entity/activity-log.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { ActivityController } from './activity.controller';
-import { ActivityService } from './activity.service';
+import { ActivityService } from './service/activity.service';
 
 import { ActivityListener } from './listeners/activity.listener';
 import { Filter } from 'src/utilities/filter';

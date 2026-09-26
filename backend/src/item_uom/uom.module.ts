@@ -7,7 +7,7 @@ import { UserEntity } from "src/user/entity/user.entity";
 import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { UomController } from "./uom.controller";
-import { UomService } from "./uom.service";
+import { UomService } from "./service/uom.service";
 import { UomEntity } from "./entity/uom.entity";
 
 @Module({

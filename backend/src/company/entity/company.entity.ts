@@ -24,6 +24,7 @@ import { OrderEntity } from 'src/order/entity/order.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment.transaction.entity';
 import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
+import { ModSettings } from 'src/user/entity/mod.settings';
 
 @Entity('company')
 export class CompanyEntity {
@@ -156,5 +157,7 @@ export class CompanyEntity {
 
   @OneToMany(() => InvoiceEntity, (invoice) => invoice.company)
   invoices?: InvoiceEntity[];
-}
+
+ @OneToMany(() => ModSettings, (settings) => settings.company)
+  modsettings?: InvoiceEntity[];}
 
