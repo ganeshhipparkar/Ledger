@@ -19,6 +19,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { ItemService } from './service/item.service';
+import { ItemListService } from './service/item.list.service';
 import {
   ItemListDto,
   ItemDto,
@@ -28,13 +29,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('item')
 export class ItemController {
-  constructor(private readonly itemService: ItemService) {}
+  constructor(
+    private readonly itemService: ItemService,
+    private readonly itemListService: ItemListService,
+  ) {}
 
   @Post('item-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('itemList')
   async itemList(@Req() req: any, @Body() body: ItemListDto) {
-    const result = await this.itemService.itemList(body, req);
+    const result = await this.itemListService.itemList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -42,7 +46,7 @@ export class ItemController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('itemView')
   async getItemDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.itemService.getItemDetails(
+    const result = await this.itemListService.getItemDetails(
       Number(id),
       req,
     );

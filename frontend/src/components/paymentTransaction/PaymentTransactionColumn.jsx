@@ -56,7 +56,7 @@ function sortableHeader(label) {
 export const getPaymentTransactionColumns = (onPreview, onAction) => [
     {
         accessorKey: "paymentCode",
-        header: sortableHeader("paymentCode"),
+        header: sortableHeader("Payment Code"),
         cell: ({ row }) => <PaymentTransactionNameCell row={row} onPreview={onPreview} />,
         filterFn: "includesString",
     },
@@ -133,27 +133,21 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
         header: sortableHeader("Transaction Amount"),
         cell: ({ row }) => {
             const val = row.getValue("transactionAmount");
+            const symbol = row.original.currencySymbol || row.original.currency?.symbol;
+
             return (
-                <span className="text-gray-900 text-sm">
-                    {val !== undefined && val !== null ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
-                </span>
+                <>
+                    {symbol && <span className="text-gray-500">{symbol}</span>}
+
+                    <span className="text-gray-900 text-sm">
+                        {val !== undefined && val !== null ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                    </span>
+                </>
             );
         },
         filterFn: "includesString",
     },
-    {
-        accessorKey: "baseAmount",
-        header: sortableHeader("Base Amount"),
-        cell: ({ row }) => {
-            const val = row.getValue("baseAmount");
-            return (
-                <span className="text-gray-900 text-sm ">
-                    {val !== undefined && val !== null ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
-                </span>
-            );
-        },
-        filterFn: "includesString",
-    },
+
     {
         accessorKey: "status",
         header: sortableHeader("Status"),
@@ -238,7 +232,7 @@ export const getPaymentTransactionColumns = (onPreview, onAction) => [
                                 if (onAction) onAction(item.paymentTransactionId, "cancel-approved");
                             }}
                         >
-                            Cancel Payment
+                            Revert Payment
                         </button>
                     )}
 

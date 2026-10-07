@@ -19,6 +19,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { OrderService } from './order.service';
+import { OrderListService } from './order.list.service';
 import {
   OrderDto,
   OrderListDto,
@@ -33,6 +34,7 @@ import { OrderPdfService } from './order.pdf.service';
 export class OrderController {
   constructor(
     private readonly orderService: OrderService,
+    private readonly orderListService: OrderListService,
     private readonly orderPdfService: OrderPdfService,
   ) { }
 
@@ -40,7 +42,7 @@ export class OrderController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('orderList')
   async orderList(@Req() req: any, @Body() body: OrderListDto) {
-    const result = await this.orderService.orderList(body, req);
+    const result = await this.orderListService.orderList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -48,7 +50,7 @@ export class OrderController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('orderView')
   async getOrderDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.orderService.getOrderDetails(Number(id), req);
+    const result = await this.orderListService.getOrderDetails(Number(id), req);
     return { encrypted: encryptResponse(result) };
   }
 

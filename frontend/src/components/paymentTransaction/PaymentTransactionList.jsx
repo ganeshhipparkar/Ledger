@@ -403,7 +403,7 @@ function PaymentTransactionListRow({ transaction: q, can, onView, onAction, isOp
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg hover:bg-red-100 transition cursor-pointer"
                                 onClick={(e) => { e.stopPropagation(); onAction?.(q.paymentTransactionId, "cancel-approved"); }}
                             >
-                                Cancel Payment
+                                Revert Payment
                             </button>
                         )}
                         {!can?.("paymentTransactionUpdate") || (!isPending && !isApproved) && (
@@ -519,7 +519,7 @@ function PaymentTransactionCard({ transaction: q, can, onView, onAction }) {
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg hover:bg-red-100 transition cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); onAction?.(q.paymentTransactionId, "cancel-approved"); }}
                     >
-                        Cancel Payment
+                        Revert Payment
                     </button>
                 )}
 

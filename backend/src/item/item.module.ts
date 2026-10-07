@@ -17,6 +17,7 @@ import { FileTransfer } from "src/utilities/file.transfer";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { ItemController } from "./item.controller";
 import { ItemService } from "./service/item.service";
+import { ItemListService } from "./service/item.list.service";
 
 @Module({
   imports: [
@@ -36,7 +37,7 @@ import { ItemService } from "./service/item.service";
     ]),
   ],
   controllers: [ItemController],
-  providers: [ItemService, Filter, FileTransfer, CodeGeneratorService],
+  providers: [ItemService, ItemListService, Filter, FileTransfer, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class ItemModule {}

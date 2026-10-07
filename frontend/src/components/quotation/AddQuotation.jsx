@@ -647,7 +647,7 @@ export default function AddQuotation() {
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Search customer..."
+                                    placeholder="Please Select customer"
                                     isClearable
                                     isDisabled={lockedCustomer}
                                     classNamePrefix="react-select"
@@ -841,7 +841,7 @@ export default function AddQuotation() {
                                             }));
                                             if (errors.salesPersonId) setErrors((prev) => ({ ...prev, salesPersonId: null }));
                                         }}
-                                        placeholder="Search user..."
+                                        placeholder="Please select Sales Person"
                                         isClearable
                                         classNamePrefix="react-select"
                                         styles={{

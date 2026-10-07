@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { TermsAndConditionsService } from './terms.conditions.service';
+import { TermsConditionsListService } from './terms.conditions.list.service';
 import {
   termsConditionsListDto,
   TermsAndConditionsDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('terms-conditions')
 export class TermsAndConditionsController {
-  constructor(private readonly termsConditionsService: TermsAndConditionsService) {}
+  constructor(
+    private readonly termsConditionsService: TermsAndConditionsService,
+    private readonly termsConditionsListService: TermsConditionsListService,
+  ) {}
 
   @Post('terms-conditions-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('termsConditionsList')
   async termsConditionsList(@Req() req: any, @Body() body: termsConditionsListDto) {
-    const result = await this.termsConditionsService.termsConditionsList(body, req);
+    const result = await this.termsConditionsListService.termsConditionsList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class TermsAndConditionsController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('termsConditionsView')
   async getTermsConditionsDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.termsConditionsService.getTermsConditionsDetails(
+    const result = await this.termsConditionsListService.getTermsConditionsDetails(
       Number(id),
       req,
     );

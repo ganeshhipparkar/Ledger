@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Header from "../Header";
@@ -14,8 +14,10 @@ import { loginContext } from "../hooks/LoginContext";
 import { createPortal } from "react-dom";
 import { ChevronDown, FileText } from "lucide-react";
 import { getInitials } from "@/lib/utils";
-import CreditNoteAddPanel from "./CreditNoteAddPanel";
+import NoteAddPanel from "../notes/NoteAddPanel";
 import CreditNoteCard from "./CreditNoteCard";
+import CustomerSidePanel from "../customer/CustomerSidePanel";
+import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -54,9 +56,17 @@ function getCreditNoteTableColumns({ can, onViewClick }) {
         {
             id: "customerName",
             header: "Customer",
-            cell: ({ row }) => (
-                <span className="text-sm text-gray-700">{row.original.customerName || "—"}</span>
-            ),
+            cell: ({ row }) => {
+                const r = row.original;
+                return (
+                    <span
+                        className="text-sm text-blue-600 hover:underline cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); r.customerId && onCustomerClick?.(r.customerId); }}
+                    >
+                        {r.customerName || "—"}
+                    </span>
+                );
+            },
         },
         {
             id: "invoiceCode",
@@ -146,7 +156,7 @@ function getCreditNoteTableColumns({ can, onViewClick }) {
     ];
 }
 
-function CreditNoteListRow({ creditNote: cn, isOpen, onToggle }) {
+function CreditNoteListRow({ creditNote: cn, isOpen, onToggle, onCustomerClick }) {
     const sym = cn.currencyCode;
     const fmtAmt = (n, s) => n != null ? `${s ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim() : "—";
     const initials = getInitials(cn.creditNoteCode || "-");
@@ -167,7 +177,14 @@ function CreditNoteListRow({ creditNote: cn, isOpen, onToggle }) {
                             >
                                 {cn.creditNoteCode || "-"}
                             </Link>
-                            <div className="text-sm text-gray-500 truncate">{cn.customerName ?? "—"}</div>
+                            <div className="text-sm text-gray-500 truncate">
+                                <span
+                                    className="text-blue-600 hover:underline cursor-pointer"
+                                    onClick={(e) => { e.stopPropagation(); cn.customerId && onCustomerClick?.(cn.customerId); }}
+                                >
+                                    {cn.customerName || "—"}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -190,12 +207,7 @@ function CreditNoteListRow({ creditNote: cn, isOpen, onToggle }) {
                         <div className="text-base font-semibold text-gray-800">{fmtAmt(cn.finalAmount, sym)}</div>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Link
-                            href={`/credit-note/${cn.id}`}
-                            className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                        >
-                            View Details
-                        </Link>
+
                         <button
                             onClick={onToggle}
                             className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2"
@@ -254,8 +266,9 @@ export default function CreditNoteList() {
     const [currentFilters, setCurrentFilters] = useState({});
 
     const [showAddPanel, setShowAddPanel] = useState(false);
+    const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
-    const fetchList = useCallback(async (p = page, lim = limit, searchParams = currentFilters) => {
+    const fetchList = async (p = page, lim = limit, searchParams = currentFilters) => {
         setError("");
         try {
             const filters = searchParams?.filters ? [...searchParams.filters] : [];
@@ -291,7 +304,7 @@ export default function CreditNoteList() {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, currentFilters]);
+    };
 
     useEffect(() => { fetchList(page, limit, currentFilters); }, [page, limit, currentFilters]);
 
@@ -304,13 +317,14 @@ export default function CreditNoteList() {
     const columns = getCreditNoteTableColumns({
         can,
         onViewClick: (id) => router.push(`/credit-note/${id}`),
+        onCustomerClick: (id) => setSelectedCustomerId(id),
     });
 
     return (
         <div className="min-h-screen bg-[#f5f6fa]">
             <Header
                 page="credit-note-list"
-                onAddClick={can?.("creditNoteAdd") ? () => setShowAddPanel(true) : undefined}
+                onAddClick={can?.("creditNoteAdd") ? () => handleCreditNoteAddNavigation({ router, setShowAddPanel }) : undefined}
                 onSearch={handleSearch}
                 viewMode={activeView}
                 onViewModeChange={setViewMode}
@@ -361,6 +375,7 @@ export default function CreditNoteList() {
                                 creditNote={cn}
                                 isOpen={!!expandedRows[cn.id]}
                                 onToggle={() => toggleRow(cn.id)}
+                                onCustomerClick={(id) => setSelectedCustomerId(id)}
                             />
                         ))}
                     </div>
@@ -370,7 +385,7 @@ export default function CreditNoteList() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                         {data.length === 0 && <p className="text-center text-gray-400 py-16 col-span-full bg-white rounded-2xl border border-gray-200">No credit notes found.</p>}
                         {data.map((cn) => (
-                            <CreditNoteCard key={cn.id} creditNote={cn} />
+                            <CreditNoteCard key={cn.id} creditNote={cn} onCustomerClick={(id) => setSelectedCustomerId(id)} />
                         ))}
                     </div>
                 )}
@@ -397,10 +412,16 @@ export default function CreditNoteList() {
             </div>
 
             {showAddPanel && typeof document !== "undefined" && createPortal(
-                <CreditNoteAddPanel
+                <NoteAddPanel
+                    noteType="CREDIT"
                     onClose={() => setShowAddPanel(false)}
                     onSuccess={() => { setShowAddPanel(false); fetchList(page, limit, currentFilters); }}
                 />,
+                document.body
+            )}
+
+            {selectedCustomerId && typeof document !== "undefined" && createPortal(
+                <CustomerSidePanel customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />,
                 document.body
             )}
         </div>

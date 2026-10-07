@@ -18,6 +18,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { PaymentTransactionService } from './payment.transaction.service';
+import { PaymentTransactionListService } from './payment.transaction.list.service';
 import {
   PaymentTransactionDto,
   PaymentTransactionListDto,
@@ -30,6 +31,7 @@ import { encryptResponse } from 'src/utilities/crypto';
 export class PaymentTransactionController {
   constructor(
     private readonly paymentTransactionService: PaymentTransactionService,
+    private readonly paymentTransactionListService: PaymentTransactionListService,
   ) {}
 
   @Post('payment-transaction-list')
@@ -39,7 +41,7 @@ export class PaymentTransactionController {
     @Req() req: any,
     @Body() body: PaymentTransactionListDto,
   ) {
-    const result = await this.paymentTransactionService.paymentTransactionList(
+    const result = await this.paymentTransactionListService.paymentTransactionList(
       body,
       req,
     );
@@ -54,7 +56,7 @@ export class PaymentTransactionController {
     @Param('id') id: string,
   ) { 
     const result =
-      await this.paymentTransactionService.getPaymentTransactionDetails(
+      await this.paymentTransactionListService.getPaymentTransactionDetails(
         Number(id),
         req,
       );
@@ -149,6 +151,14 @@ export class PaymentTransactionController {
         body,
         req,
       );
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Get('payment-transaction-invoices/:id')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('paymentTransactionView')
+  async getPaymentTransactionInvoices(@Param('id') id: number, @Req() req: any) {
+    const result = await this.paymentTransactionListService.getPaymentTransactionInvoices(id, req);
     return { encrypted: encryptResponse(result) };
   }
 }

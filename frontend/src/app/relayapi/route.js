@@ -29,6 +29,7 @@ function getServiceBase(request) {
     if (module === "invoice") return "http://localhost:4000/invoice";
     if (module === "vault") return "http://localhost:4000/vault";
     if (module === "credit-note") return "http://localhost:4000/credit-note";
+    if (module === "debit-note") return "http://localhost:4000/debit-note";
     return "http://localhost:4000";
 }
 

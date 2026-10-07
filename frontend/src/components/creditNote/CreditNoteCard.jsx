@@ -9,7 +9,7 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function CreditNoteCard({ creditNote: cn }) {
+export default function CreditNoteCard({ creditNote: cn, onCustomerClick }) {
     const initials = getInitials(cn.creditNoteCode || "-");
     const sym = cn.currencyCode;
 
@@ -27,7 +27,12 @@ export default function CreditNoteCard({ creditNote: cn }) {
                         {cn.creditNoteCode || "-"}
                     </Link>
                     <div className="text-sm text-gray-600 break-all mt-1">
-                        {cn.customerName || "—"}
+                        <span
+                            className="text-blue-600 hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); cn.customerId && onCustomerClick?.(cn.customerId); }}
+                        >
+                            {cn.customerName || "—"}
+                        </span>
                     </div>
                     <div className="mt-1">
                         <CreditNoteStatusBadge status={cn.status} />

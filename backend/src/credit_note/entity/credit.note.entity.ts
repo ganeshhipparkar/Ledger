@@ -12,7 +12,9 @@ import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import { TaxCalculation } from 'src/invoice/entity/invoice.item.entity';
+import { VatWithheld } from 'src/invoice/entity/invoice.entity';
 import { CreditNoteAttachmentsEntity } from './credit.note.attachments.entity';
+import { CreditNoteItemEntity } from './credit.note.item.entity';
 
 export enum CustomerCharges {
   INVOICE_CHARGES = 'INVOICE_CHARGES',
@@ -27,6 +29,11 @@ export enum CreditNoteStatus {
 export enum ApprovalStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
+}
+
+export enum NoteMode {
+  CUSTOMER = 'CUSTOMER',
+  INVOICE = 'INVOICE',
 }
 
 @Entity('credit_note')
@@ -58,18 +65,35 @@ export class CreditNoteEntity {
   @JoinColumn({ name: 'currencyId' })
   currency!: CurrencyEntity;
 
-  @Column()
-  invoiceId!: number;
+  // nullable — INVOICE mode may have it; CUSTOMER mode may not
+  @Column({ type: 'int', nullable: true })
+  invoiceId?: number | null;
 
-  @ManyToOne(() => InvoiceEntity, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => InvoiceEntity, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'invoiceId' })
-  invoice!: InvoiceEntity;
+  invoice?: InvoiceEntity | null;
 
-  @Column({ type: 'enum', enum: CustomerCharges })
-  customerCharges!: string;
+  @Column({ type: 'date', nullable: true })
+  issueDate?: Date | null;
+
+  @Column({
+    type: 'enum',
+    enum: VatWithheld,
+    default: VatWithheld.NO,
+  })
+  vatWithheld!: string;
+
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
+  vatWithheldAmount!: number;
+
+  @Column({ type: 'enum', enum: CustomerCharges, nullable: true })
+  customerCharges?: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   narration?: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  remarks?: string | null;
 
   @Column({ type: 'enum', enum: TaxCalculation, default: TaxCalculation.NA })
   taxCalculation!: string;
@@ -81,14 +105,20 @@ export class CreditNoteEntity {
   @JoinColumn({ name: 'taxGroupId' })
   taxGroup?: taxGroupEntity | null;
 
-  @Column('decimal', { precision: 18, scale: 4 })
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
   totalAmount!: number;
+
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
+  taxableAmount!: number;
 
   @Column('decimal', { precision: 18, scale: 4, default: 0 })
   taxAmount!: number;
 
-  @Column('decimal', { precision: 18, scale: 4 })
+  @Column('decimal', { precision: 18, scale: 4, default: 0 })
   finalAmount!: number;
+
+  @Column({ type: 'enum', enum: NoteMode, default: NoteMode.CUSTOMER })
+  noteMode!: string;
 
   @Column({ type: 'enum', enum: CreditNoteStatus, default: CreditNoteStatus.SUBMITTED })
   status!: string;
@@ -110,4 +140,10 @@ export class CreditNoteEntity {
 
   @OneToMany(() => CreditNoteAttachmentsEntity, (att) => att.creditNote)
   attachments?: CreditNoteAttachmentsEntity[];
+
+  @OneToMany(() => CreditNoteItemEntity, (item) => item.creditNote)
+  items?: CreditNoteItemEntity[];
+
+  @Column({ type: 'varchar', nullable: true })
+  creditNotePdfPath?: string | null;
 }

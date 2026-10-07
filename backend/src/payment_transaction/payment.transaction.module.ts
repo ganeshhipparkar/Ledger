@@ -11,6 +11,7 @@ import { UserEntity } from 'src/user/entity/user.entity';
 import { GroupPermissionEntity } from 'src/group/entity/capability.entity';
 import { PaymentTransactionController } from './payment.transaction.controller';
 import { PaymentTransactionService } from './payment.transaction.service';
+import { PaymentTransactionListService } from './payment.transaction.list.service';
 import { Filter } from 'src/utilities/filter';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { VaultModule } from 'src/vault/vault.module';
@@ -33,7 +34,7 @@ import { ModSettingsModule } from 'src/mod_setting/mod.settings.module';
     ModSettingsModule,
   ],
   controllers: [PaymentTransactionController],
-  providers: [PaymentTransactionService, Filter, FileTransfer],
-  exports: [PaymentTransactionService],
+  providers: [PaymentTransactionService, PaymentTransactionListService, Filter, FileTransfer],
+  exports: [PaymentTransactionService, PaymentTransactionListService],
 })
 export class PaymentTransactionModule {}

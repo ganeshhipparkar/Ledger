@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { TaxGroupService } from './tax.group.service';
+import { TaxGroupListService } from './tax.group.list.service';
 import {
   taxGroupAddDto,
   taxGroupListDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('tax-group')
 export class TaxGroupController {
-  constructor(private readonly taxGroupService: TaxGroupService) {}
+  constructor(
+    private readonly taxGroupService: TaxGroupService,
+    private readonly taxGroupListService: TaxGroupListService,
+  ) {}
 
   @Post('tax-group-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('taxGroupList')
   async taxGroupList(@Req() req: any, @Body() body: taxGroupListDto) {
-    const result = await this.taxGroupService.taxGroupList(body, req);
+    const result = await this.taxGroupListService.taxGroupList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class TaxGroupController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('taxGroupView')
   async getTaxGroupDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.taxGroupService.getTaxGroupDetails(
+    const result = await this.taxGroupListService.getTaxGroupDetails(
       Number(id),
       req,
     );

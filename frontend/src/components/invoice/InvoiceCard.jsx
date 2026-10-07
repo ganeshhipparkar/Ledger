@@ -85,9 +85,9 @@ export default function InvoiceCard({
                                 <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate?.(q); }}>Update Due Date</DropdownMenuItem>
                             </>
                         )}
-                        {/* {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                        {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
                             <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
-                        )} */}
+                        )}
                         {/* {q.invoicePdfPath && (
                             <>
                                 <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${API_BASE}${q.invoicePdfPath}`, "_blank"); }}>

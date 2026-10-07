@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CompanyController } from './company.controller';
 import { CompanyService } from './service/company.service';
+import { CompanyListService } from './service/company.list.service';
 
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { Filter } from 'src/utilities/filter';
@@ -24,6 +25,6 @@ import { CompanyEntity } from './entity/company.entity';
     ]),
   ],
   controllers: [CompanyController],
-  providers: [CompanyService, Filter, Mailer, FileTransfer],
+  providers: [CompanyService, CompanyListService, Filter, Mailer, FileTransfer],
 })
 export class CompanyModule {}

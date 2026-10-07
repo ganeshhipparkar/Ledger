@@ -40,112 +40,6 @@ export class TaxGroupService {
   @Inject(EventEmitter2)
   private readonly eventEmitter!: EventEmitter2;
 
-  async taxGroupList(param: taxGroupListDto, req?: any) {
-    let return_data: any = {};
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const queryBuilder =
-        this.taxGroupRepository.createQueryBuilder('taxGroup');
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [
-          authCtx.activeCompanyId,
-        ];
-        if (scopedCompanyIds.length > 0) {
-          queryBuilder.andWhere(
-            'taxGroup.companyId IN (:...scopedCompanyIds)',
-            { scopedCompanyIds },
-          );
-        } else {
-          return {
-            success: 1,
-            message: 'Tax groups fetched successfully',
-            total: 0,
-            data: [],
-          };
-        }
-      }
-
-      const queryString = await this.filter.makeFilterString(
-        param.filters,
-        'taxGroup',
-        {},
-        param.condition === 'Any' ? 'Any' : 'All',
-      );
-      if (queryString && queryString !== '') {
-        queryBuilder.andWhere(queryString);
-      }
-
-      const [skip, limit] = (await this.filter.calcPages(
-        param,
-        this.taxGroupRepository,
-      )) as [number, number];
-
-      queryBuilder.leftJoinAndSelect('taxGroup.company', 'company');
-      queryBuilder.skip(skip).take(limit);
-      queryBuilder.orderBy('taxGroup.taxCode', 'ASC');
-
-      const [data, total] = await queryBuilder.getManyAndCount();
-
-      const formattedData = data.map((item) => ({
-        ...item,
-        companyName: item.company?.companyName ?? null,
-      }));
-
-      return_data = {
-        success: 1,
-        message: 'Tax groups fetched successfully',
-        total,
-        data: formattedData,
-      };
-    } catch (err: any) {
-      return_data = { success: 0, message: err.message };
-    }
-    return return_data;
-  }
-
-  async getTaxGroupDetails(id: number, req?: any) {
-    const authCtx = await resolveAuthContext(req, this.ucgEntity);
-    const taxGroup = await this.taxGroupRepository.findOne({
-      where: { taxId: id },
-      relations: ['company'],
-    });
-    if (!taxGroup) {
-      throw new NotFoundException('Tax group not found');
-    }
-
-    if (!authCtx.isSuperAdmin) {
-      const scopedCompanyIds = req?.scopedCompanyIds || [
-        authCtx.activeCompanyId,
-      ];
-      if (!scopedCompanyIds.includes(Number(taxGroup.companyId))) {
-        throw new ForbiddenException(
-          'Access denied: tax group belongs to another company',
-        );
-      }
-    }
-
-    const addedByUser = taxGroup.addedBy
-      ? await this.userEntity.findOne({ where: { userId: taxGroup.addedBy } })
-      : null;
-    const updatedByUser = taxGroup.updatedBy
-      ? await this.userEntity.findOne({
-          where: { userId: taxGroup.updatedBy },
-        })
-      : null;
-
-    return {
-      ...taxGroup,
-      companyName: taxGroup.company?.companyName ?? null,
-      addedByName: addedByUser?.name ?? null,
-      updatedByName: updatedByUser?.name ?? null,
-    };
-  }
-
-  async taxGroupDetails(id: number, req?: any) {
-    return this.getTaxGroupDetails(id, req);
-  }
-
   async insertTaxGroup(params: taxGroupAddDto, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -248,7 +142,6 @@ export class TaxGroupService {
       if (params.taxName !== undefined) queryParams.taxName = params.taxName;
       if (params.taxValue !== undefined)
         queryParams.taxValue = Number(params.taxValue);
-
 
       const performerId = req?.user?.isImpersonation
         ? req?.user?.userId

@@ -10,6 +10,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BankBookController } from "./bank.book.controller";
 import { BankBookService } from "./service/bank.book.service";
+import { BankBookListService } from "./service/bank.book.list.service";
 import { BankBookEntity } from "./entity/bank.book.entity";
 
 @Module({
@@ -25,7 +26,7 @@ import { BankBookEntity } from "./entity/bank.book.entity";
     ]),
   ],
   controllers: [BankBookController],
-  providers: [BankBookService, Filter, CodeGeneratorService],
-  exports: [TypeOrmModule, BankBookService],
+  providers: [BankBookService, BankBookListService, Filter, CodeGeneratorService],
+  exports: [TypeOrmModule, BankBookService, BankBookListService],
 })
 export class BankBookModule {}

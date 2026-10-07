@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -149,10 +149,10 @@ export default function AddInvoice() {
     const [lockedCustomer, setLockedCustomer] = useState(false);
     const [prefillLoading, setPrefillLoading] = useState(!!fromQuotationId || !!fromOrderId);
 
-    const setFormField = useCallback((key, value) => {
+    const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
         if (errors[key]) setErrors((prev) => { const e = { ...prev }; delete e[key]; return e; });
-    }, [errors]);
+    };
 
     const loadSourceIntoForm = async (type, id, shouldLock = false) => {
         if (!id) return;
@@ -283,13 +283,13 @@ export default function AddInvoice() {
                     body: JSON.stringify({
                         page: 1, limit: 200,
                         filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
-                        { key: "status", value: "status", operator: "equal" }
                         ]
                     }),
                 });
                 const payload = await res.json();
                 const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
                 setBankBooks(data?.data ?? []);
+                console.log(data?.data, "the datea lakjd")
             } catch {
                 setBankBooks([]);
             }
@@ -620,7 +620,7 @@ export default function AddInvoice() {
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Search customer..."
+                                    placeholder="Please select customer"
                                     isClearable
                                     classNamePrefix="react-select"
                                     styles={rsStyles(!!errors.customerId)}
@@ -638,7 +638,7 @@ export default function AddInvoice() {
                                 loadOptions={loadUserOptions}
                                 value={formData.contactPersonId ? { value: formData.contactPersonId, label: formData.contactPersonLabel } : null}
                                 onChange={(selected) => setFormData((prev) => ({ ...prev, contactPersonId: selected ? String(selected.value) : "", contactPersonLabel: selected?.label || "" }))}
-                                placeholder="Search user..."
+                                placeholder="Please select Contact person "
                                 isClearable
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.contactPersonId)}
@@ -673,7 +673,7 @@ export default function AddInvoice() {
                                 value={BUSINESS_TERMS_OPTIONS.find((o) => o.value === formData.businessTerms) || null}
                                 onChange={(selected) => setFormField("businessTerms", selected?.value || "")}
                                 options={BUSINESS_TERMS_OPTIONS}
-                                placeholder="Select..."
+                                placeholder="Please select Business Terms"
                                 isClearable
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.businessTerms)}
@@ -689,6 +689,7 @@ export default function AddInvoice() {
                                 value={PAYMENT_TYPE_OPTIONS.find((o) => o.value === formData.paymentType) || null}
                                 onChange={(selected) => setFormField("paymentType", selected?.value || "")}
                                 options={PAYMENT_TYPE_OPTIONS}
+                                placeholder={"Please select Payment type"}
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.paymentType)}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
@@ -731,7 +732,7 @@ export default function AddInvoice() {
                                 onChange={(selected) => setFormField("shippingState", selected ? selected.value : "")}
                                 options={countries}
                                 isClearable
-                                placeholder="Select country"
+                                placeholder="Please Select Shipping Address"
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.shippingState)}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
@@ -747,7 +748,7 @@ export default function AddInvoice() {
                                 onChange={(selected) => setFormField("billingState", selected ? selected.value : "")}
                                 options={countries}
                                 isClearable
-                                placeholder="Select country"
+                                placeholder="Please Select Billing Address"
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.billingState)}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
@@ -763,7 +764,7 @@ export default function AddInvoice() {
                                 onChange={(selected) => setFormField("deliveryState", selected ? selected.value : "")}
                                 options={countries}
                                 isClearable
-                                placeholder="Select country"
+                                placeholder="Please Select Place Of Delivery"
                                 classNamePrefix="react-select"
                                 styles={rsStyles(!!errors.deliveryState)}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
@@ -778,7 +779,9 @@ export default function AddInvoice() {
                                 value={DELIVERY_TYPE_OPTIONS.find((o) => o.value === formData.deliveryType) || null}
                                 onChange={(selected) => setFormField("deliveryType", selected?.value || "")}
                                 options={DELIVERY_TYPE_OPTIONS}
+                                placeholder={"Please Select Delivery Type"}
                                 classNamePrefix="react-select"
+                                isClearable
                                 styles={rsStyles(!!errors.deliveryType)}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                             />
@@ -922,7 +925,7 @@ export default function AddInvoice() {
                                                             label: currencyStr ? `${baseName} (${currencyStr})` : baseName
                                                         };
                                                     })}
-                                                    isDisabled={!formData.currencyId || filteredBankBooks.length === 0}
+                                                    isDisabled={!formData.customerId || filteredBankBooks.length === 0}
                                                     isClearable
                                                     placeholder={formData.currencyId ? "-- Select bank account --" : "Select currency first"}
                                                     classNamePrefix="react-select"
@@ -1030,7 +1033,7 @@ export default function AddInvoice() {
                     >
                         {loading ? "Saving…" : "Save as Draft"}
                     </button>
-                    <button
+                    {/* <button
                         type="button"
                         id="invoice-submit-btn"
                         onClick={() => handleSubmit(true)}
@@ -1038,7 +1041,7 @@ export default function AddInvoice() {
                         className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         {loading ? "Submitting…" : "Submit"}
-                    </button>
+                    </button> */}
                 </div>
             </div>
         </div>

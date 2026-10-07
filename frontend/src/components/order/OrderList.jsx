@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -61,7 +61,7 @@ export default function OrderList() {
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [pricePanelOrder, setPricePanelOrder] = useState(null);
 
-    const fetchList = useCallback(async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
+    const fetchList = async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
         setError("");
         try {
             const filters = searchParams?.filters ? [...searchParams.filters] : [];
@@ -102,7 +102,7 @@ export default function OrderList() {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, statusFilter, currentFilters]);
+    };
 
     useEffect(() => {
         fetchList(page, limit, statusFilter, currentFilters);
@@ -530,7 +530,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                     )}
                                     {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
                                         <>
-                                            {q.invoicePdfPath && (
+                                            {/* {q.invoicePdfPath && (
                                                 <>
                                                     <DropdownMenuItem
                                                         className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -552,10 +552,10 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                                         Download Invoice
                                                     </DropdownMenuItem>
                                                 </>
-                                            )}
+                                            )} */}
                                             {can?.("orderUpdate") !== false && (
                                                 <>
-                                                    <DropdownMenuItem
+                                                    {/* <DropdownMenuItem
                                                         className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -563,7 +563,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                                         }}
                                                     >
                                                         Regenerate PDF
-                                                    </DropdownMenuItem>
+                                                    </DropdownMenuItem> */}
                                                     <DropdownMenuItem
                                                         className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                         onClick={(e) => {

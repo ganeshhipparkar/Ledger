@@ -389,19 +389,33 @@ export default function AddPaymentTransaction() {
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Customer <span className="text-red-500">*</span>
                                 </label>
-                                <select
+                                <Select
+                                    instanceId="customerId-select"
                                     name="customerId"
-                                    value={formData.customerId}
-                                    onChange={handleChange}
-                                    className={selectClass("customerId")}
-                                >
-                                    <option value="">Select Customer</option>
-                                    {customers.map((c) => (
-                                        <option key={c.customerId} value={String(c.customerId)}>
-                                            {c.customerName}
-                                        </option>
-                                    ))}
-                                </select>
+                                    value={formData.customerId ? {
+                                        value: String(formData.customerId),
+                                        label: customers.find(c => String(c.customerId) === String(formData.customerId))?.customerName || ""
+                                    } : null}
+                                    onChange={(selected) => {
+                                        handleChange({ target: { name: "customerId", value: selected ? selected.value : "" } });
+                                    }}
+                                    options={customers.map((c) => ({
+                                        value: String(c.customerId),
+                                        label: c.customerName,
+                                    }))}
+                                    placeholder="Select Customer"
+                                    isClearable
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            padding: "4px 8px",
+                                            borderRadius: "0.75rem",
+                                            borderColor: errors.customerId ? "#ef4444" : "#d1d5db",
+                                            boxShadow: "none",
+                                            "&:hover": { borderColor: errors.customerId ? "#ef4444" : "#3b82f6" },
+                                        }),
+                                    }}
+                                />
                                 {errors.customerId && (
                                     <p className="mt-1 text-sm text-red-500">{errors.customerId}</p>
                                 )}
@@ -412,20 +426,37 @@ export default function AddPaymentTransaction() {
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Customer Currency <span className="text-red-500">*</span>
                                 </label>
-                                <select
+                                <Select
+                                    instanceId="currencyId-select"
                                     name="currencyId"
-                                    value={formData.currencyId}
-                                    onChange={handleChange}
-                                    disabled={!formData?.customerId}
-                                    className={selectClass("currencyId")}
-                                >
-                                    <option value="">Select Currency</option>
-                                    {currencies.map((c) => (
-                                        <option key={c.curId} value={String(c.curId)}>
-                                            {c.code} - {c.name} ({c.symbol})
-                                        </option>
-                                    ))}
-                                </select>
+                                    value={formData.currencyId ? {
+                                        value: String(formData.currencyId),
+                                        label: currencies.find(c => String(c.curId) === String(formData.currencyId)) ? (() => {
+                                            const c = currencies.find(c => String(c.curId) === String(formData.currencyId));
+                                            return `${c.code} - ${c.name} (${c.symbol})`;
+                                        })() : ""
+                                    } : null}
+                                    onChange={(selected) => {
+                                        handleChange({ target: { name: "currencyId", value: selected ? selected.value : "" } });
+                                    }}
+                                    options={currencies.map((c) => ({
+                                        value: String(c.curId),
+                                        label: `${c.code} - ${c.name} (${c.symbol})`,
+                                    }))}
+                                    isDisabled={!formData?.customerId}
+                                    placeholder="Select Currency"
+                                    isClearable
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            padding: "4px 8px",
+                                            borderRadius: "0.75rem",
+                                            borderColor: errors.currencyId ? "#ef4444" : "#d1d5db",
+                                            boxShadow: "none",
+                                            "&:hover": { borderColor: errors.currencyId ? "#ef4444" : "#3b82f6" },
+                                        }),
+                                    }}
+                                />
                                 {errors.currencyId && (
                                     <p className="mt-1 text-sm text-red-500">{errors.currencyId}</p>
                                 )}
@@ -488,21 +519,38 @@ export default function AddPaymentTransaction() {
                                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                                     Payment Mode <span className="text-red-500">*</span>
                                 </label>
-                                <select
+                                <Select
+                                    instanceId="paymentMode-select"
                                     name="paymentMode"
-                                    value={formData.paymentMode}
-                                    onChange={handleChange}
-                                    className={selectClass("paymentMode")}
-                                >
-                                    <option value="">Select Payment Mode</option>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Credit Card">Credit Card</option>
-                                    <option value="Debit Card">Debit Card</option>
-                                    <option value="Digital Wallet">Digital Wallet</option>
-                                    <option value="Bank Transfer">Bank Transfer</option>
-                                    <option value="UPI">UPI</option>
-                                    <option value="Buy Now Pay Later">Buy Now Pay Later</option>
-                                </select>
+                                    value={formData.paymentMode ? {
+                                        value: formData.paymentMode,
+                                        label: formData.paymentMode
+                                    } : null}
+                                    onChange={(selected) => {
+                                        handleChange({ target: { name: "paymentMode", value: selected ? selected.value : "" } });
+                                    }}
+                                    options={[
+                                        { value: "Cash", label: "Cash" },
+                                        { value: "Credit Card", label: "Credit Card" },
+                                        { value: "Debit Card", label: "Debit Card" },
+                                        { value: "Digital Wallet", label: "Digital Wallet" },
+                                        { value: "Bank Transfer", label: "Bank Transfer" },
+                                        { value: "UPI", label: "UPI" },
+                                        { value: "Buy Now Pay Later", label: "Buy Now Pay Later" },
+                                    ]}
+                                    placeholder="Select Payment Mode"
+                                    isClearable
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            padding: "4px 8px",
+                                            borderRadius: "0.75rem",
+                                            borderColor: errors.paymentMode ? "#ef4444" : "#d1d5db",
+                                            boxShadow: "none",
+                                            "&:hover": { borderColor: errors.paymentMode ? "#ef4444" : "#3b82f6" },
+                                        }),
+                                    }}
+                                />
                                 {errors.paymentMode && (
                                     <p className="mt-1 text-sm text-red-500">{errors.paymentMode}</p>
                                 )}

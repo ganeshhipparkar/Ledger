@@ -567,7 +567,6 @@ export default function AddOrder() {
                     body: JSON.stringify({
                         page: 1, limit: 100,
                         filters: [{ key: "companyId", value: String(companyId), operator: "eq" },
-                        { key: "status", value: "status", operator: "equal" }
                         ],
                     }),
                 });
@@ -796,7 +795,7 @@ export default function AddOrder() {
                                 loadOptions={loadQuotationOptions}
                                 value={formData.sourceQuotationId ? { value: formData.sourceQuotationId, label: formData.sourceQuotationLabel } : null}
                                 onChange={handleQuotationChange}
-                                placeholder="Search quotation..."
+                                placeholder="Please select Quotation"
                                 isClearable
                                 isDisabled={!!quotationId}
                                 classNamePrefix="react-select"
@@ -839,7 +838,7 @@ export default function AddOrder() {
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Search customer..."
+                                    placeholder="Please select customer"
                                     isClearable
                                     isDisabled={lockedCustomer}
                                     classNamePrefix="react-select"
@@ -875,7 +874,7 @@ export default function AddOrder() {
                                     setFormField("contactPersonId", selected?.value ?? "");
                                     setFormField("contactPersonLabel", selected?.label ?? "");
                                 }}
-                                placeholder="Select contact..."
+                                placeholder="Please select Contact Person"
                                 isClearable
                                 classNamePrefix="react-select"
                                 styles={{
@@ -949,7 +948,7 @@ export default function AddOrder() {
                                 ]}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select Business Terms"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -987,7 +986,7 @@ export default function AddOrder() {
                                 ]}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select Payment type"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1038,7 +1037,7 @@ export default function AddOrder() {
                                 ]}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select Discount"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1068,7 +1067,7 @@ export default function AddOrder() {
                                 options={countries}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select shipping address"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1098,7 +1097,7 @@ export default function AddOrder() {
                                 options={countries}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select billing address"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1128,7 +1127,7 @@ export default function AddOrder() {
                                 options={countries}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select place of delivery"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1168,7 +1167,7 @@ export default function AddOrder() {
                                 ]}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select delivery type"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1206,7 +1205,7 @@ export default function AddOrder() {
                                 ]}
                                 isClearable
 
-                                placeholder="-- Select --"
+                                placeholder="Please select invoice generation on"
                                 classNamePrefix="react-select"
                                 styles={{
                                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),

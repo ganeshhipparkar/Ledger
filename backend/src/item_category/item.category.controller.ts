@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { ItemCategoryService } from './service/item.category.service';
+import { ItemCategoryListService } from './service/item.category.list.service';
 import {
   categoryListDto,
   ItemCategoryDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('item-category')
 export class ItemCategoryController {
-  constructor(private readonly itemCategoryService: ItemCategoryService) {}
+  constructor(
+    private readonly itemCategoryService: ItemCategoryService,
+    private readonly itemCategoryListService: ItemCategoryListService,
+  ) {}
 
   @Post('item-category-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('itemCategoryList')
   async categoryList(@Req() req: any, @Body() body: categoryListDto) {
-    const result = await this.itemCategoryService.categoryList(body, req);
+    const result = await this.itemCategoryListService.categoryList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class ItemCategoryController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('itemCategoryView')
   async getItemCategory(@Req() req: any, @Param('id') id: string) {
-    const result = await this.itemCategoryService.getItemCategoryDetails(
+    const result = await this.itemCategoryListService.getItemCategoryDetails(
       Number(id),
       req,
     );

@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { CustomerEntity } from 'src/customer/entity/customer.entity';
@@ -117,6 +118,7 @@ export class OrderEntity {
   @Column({ type: 'datetime', nullable: true })
   deliveryDate?: Date | null;
 
+  @Index('idx_orders_company')
   @Column()
   companyId!: number;
 

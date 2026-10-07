@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -28,7 +28,10 @@ import CustomerSidePanel from "../customer/CustomerSidePanel";
 import UserSidePanel from "../user/UserSidePanel";
 import InvoiceSidePanel from "./InvoiceSidePanel";
 import InvoiceDueDatePanel from "./InvoiceDueDatePanel";
-import CreditNoteAddPanel from "../creditNote/CreditNoteAddPanel";
+import NoteAddPanel from "../notes/NoteAddPanel";
+import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
+import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
+import { getCreditNoteMode } from "@/lib/creditNoteMode";
 
 const MySwal = withReactContent(Swal);
 
@@ -84,6 +87,7 @@ export default function InvoiceList() {
     const [selectedInvoiceIdForPanel, setSelectedInvoiceIdForPanel] = useState(null);
     const [dueDateInvoice, setDueDateInvoice] = useState(null);
     const [creditNoteInvoice, setCreditNoteInvoice] = useState(null);
+    const [debitNoteInvoice, setDebitNoteInvoice] = useState(null);
     const [paymentMode, setPaymentMode] = useState("AUTOMATIC");
 
     useEffect(() => {
@@ -103,7 +107,7 @@ export default function InvoiceList() {
         fetchPaymentMode();
     }, []);
 
-    const fetchList = useCallback(async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
+    const fetchList = async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
         setError("");
         try {
             const filters = searchParams?.filters ? [...searchParams.filters] : [];
@@ -142,7 +146,7 @@ export default function InvoiceList() {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, statusFilter, currentFilters]);
+    };
 
     useEffect(() => {
         fetchList(page, limit, statusFilter, currentFilters);
@@ -277,7 +281,12 @@ export default function InvoiceList() {
         onDelete: handleDelete,
         onRegeneratePdf: handleRegeneratePdf,
         onUpdateDueDate: (invoice) => setDueDateInvoice(invoice),
-        onAddCreditNote: (invoice) => setCreditNoteInvoice(invoice),
+        onAddCreditNote: (invoice) => {
+            handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice });
+        },
+        onAddDebitNote: (invoice) => {
+            handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice });
+        },
         onCustomerClick: (id) => setSelectedCustomerId(id),
         onAddedByClick: (id) => setSelectedUserId(id),
         onInvoiceClick: (id) => setSelectedInvoiceIdForPanel(id),
@@ -359,7 +368,7 @@ export default function InvoiceList() {
                                 onDelete={handleDelete}
                                 onRegeneratePdf={handleRegeneratePdf}
                                 onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
-                                onAddCreditNote={(inv) => setCreditNoteInvoice(inv)}
+                                onAddCreditNote={(inv) => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: inv })}
                                 onCustomerClick={(id) => setSelectedCustomerId(id)}
                                 onAddedByClick={(id) => setSelectedUserId(id)}
                                 onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
@@ -385,7 +394,7 @@ export default function InvoiceList() {
                                     onDelete={handleDelete}
                                     onRegeneratePdf={handleRegeneratePdf}
                                     onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
-                                    onAddCreditNote={(inv) => setCreditNoteInvoice(inv)}
+                                    onAddCreditNote={(inv) => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: inv })}
                                     onCustomerClick={(id) => setSelectedCustomerId(id)}
                                     onAddedByClick={(id) => setSelectedUserId(id)}
                                     onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
@@ -437,8 +446,9 @@ export default function InvoiceList() {
                 )}
             {selectedInvoiceIdForPanel && typeof document !== "undefined" && createPortal(<InvoiceSidePanel invoiceId={selectedInvoiceIdForPanel} onClose={() => setSelectedInvoiceIdForPanel(null)} />, document.body)}
             {dueDateInvoice && <InvoiceDueDatePanel invoice={dueDateInvoice} onClose={() => setDueDateInvoice(null)} onSuccess={() => { setDueDateInvoice(null); fetchList(page, limit, statusFilter, currentFilters); }} />}
-            {/* {creditNoteInvoice && typeof document !== "undefined" && createPortal(
-                <CreditNoteAddPanel
+            {creditNoteInvoice && getCreditNoteMode() === "CUSTOMER" && typeof document !== "undefined" && createPortal(
+                <NoteAddPanel
+                    noteType="CREDIT"
                     lockedCustomerId={creditNoteInvoice.customerId}
                     lockedCustomerName={creditNoteInvoice.customerName}
                     lockedCurrencyId={creditNoteInvoice.currencyId}
@@ -450,7 +460,22 @@ export default function InvoiceList() {
                     onSuccess={() => setCreditNoteInvoice(null)}
                 />,
                 document.body
-            )} */}
+            )}
+            {debitNoteInvoice && getCreditNoteMode() === "CUSTOMER" && typeof document !== "undefined" && createPortal(
+                <NoteAddPanel
+                    noteType="DEBIT"
+                    lockedCustomerId={debitNoteInvoice.customerId}
+                    lockedCustomerName={debitNoteInvoice.customerName}
+                    lockedCurrencyId={debitNoteInvoice.currencyId}
+                    lockedCurrencyCode={debitNoteInvoice.currencyCode}
+                    lockedInvoiceId={debitNoteInvoice.invoiceId}
+                    lockedInvoiceCode={debitNoteInvoice.invoiceCode}
+                    lockedCompanyId={debitNoteInvoice.companyId}
+                    onClose={() => setDebitNoteInvoice(null)}
+                    onSuccess={() => setDebitNoteInvoice(null)}
+                />,
+                document.body
+            )}
         </div>
     );
 }
@@ -543,10 +568,10 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                         <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate(q); }}>Update Due Date</DropdownMenuItem>
                                     </>
                                 )}
-                                {/* {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                                {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
                                     <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
-                                )} */}
-                                {/* {q.invoicePdfPath && (
+                                )}
+                                {q.invoicePdfPath && (
                                     <>
                                         <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"); }}>
                                             <span className="w-full h-full px-4 py-2">View PDF</span>
@@ -560,7 +585,7 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                     <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf(q.invoiceId); }}>
                                         <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
                                     </DropdownMenuItem>
-                                )} */}
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <button

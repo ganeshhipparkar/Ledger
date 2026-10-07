@@ -429,9 +429,9 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                        <Link href="/" className="h-11 w-11 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer">
+                        <Link href="/" className="h-11 w-11 rounded-full bg-blue-100 flex items-center justify-center cursor-pointer">
                             <span className="text-blue-600 font-bold text-xl">
-                                <img src="/header/production.svg" alt="logo" />
+                                <img src="/header/sales.jpeg" alt="logo" />
                             </span>
                         </Link>
 
@@ -485,6 +485,7 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                             "order-list": { perm: "orderAdd", label: "Add Order" },
                             "invoice-list": { perm: "invoiceAdd", label: "Add Invoice" },
                             "credit-note-list": { perm: "creditNoteAdd", label: "Add Credit Note" },
+                            "debit-note-list": { perm: "debitNoteAdd", label: "Add Debit Note" },
                         };
 
                         const currentAddConfig = addBtnConfigs[page];
@@ -750,9 +751,9 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                 <h4 className="text-sm font-semibold text-gray-800">
                                     {hasMounted ? (displayUser?.name || "guest") : "guest"}
                                 </h4>
-                                <p className="text-xs text-gray-500">
-                                    {hasMounted ? (formattedGroupName || "N/A") : "N/A"}{" "}|{" "}
-                                    {hasMounted ? (formattedCompanyName || "N/A") : "N/A"}
+                                <p className="text-xs text-gray-700">
+                                    {hasMounted ? (formattedGroupName || "N/A") : "N/A"}{" "}
+                                    {"["}{hasMounted ? (formattedCompanyName || "N/A") : "N/A"}{"]"}
                                 </p>
                             </div>
 

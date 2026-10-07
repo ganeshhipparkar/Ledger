@@ -117,7 +117,6 @@ export class InvoiceService {
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
 
-
   private resolvePerformer(req: any, fallbackId?: number) {
     const performerId: number | undefined = req?.user?.isImpersonation
       ? req?.user?.userId
@@ -265,7 +264,6 @@ export class InvoiceService {
     };
   }
 
-
   private validateInvoiceDates(
     invoiceDate?: string,
     deliveryDate?: string,
@@ -289,7 +287,6 @@ export class InvoiceService {
 
     return null;
   }
-
 
   private async validateInvoiceSource(body: {
     invoiceFor?: string;
@@ -331,160 +328,6 @@ export class InvoiceService {
         return 'sourceOrderId and sourceQuotationId must be null when invoiceFor is not set';
     }
     return null;
-  }
-
-
-  async invoiceList(param: InvoiceListDto, req?: any) {
-    let return_data: any = {};
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const queryBuilder = this.invoiceRepo.createQueryBuilder('invoice');
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (scopedCompanyIds.length > 0) {
-          queryBuilder.andWhere(
-            'invoice.companyId IN (:...scopedCompanyIds)',
-            { scopedCompanyIds },
-          );
-        } else {
-          return {
-            success: 1,
-            message: 'Invoices fetched successfully',
-            total: 0,
-            data: [],
-          };
-        }
-      }
-
-      const queryString = await this.filter.makeFilterString(
-        param.filters,
-        'invoice',
-        {
-          customerName: 'customer',
-          companyName: 'company',
-        },
-        param.condition === 'Any' ? 'Any' : 'All',
-      );
-      if (queryString && queryString !== '') {
-        queryBuilder.andWhere(queryString);
-      }
-
-      const [skip, limit] = (await this.filter.calcPages(
-        param,
-        this.invoiceRepo,
-      )) as [number, number];
-
-      queryBuilder
-        .leftJoinAndSelect('invoice.customer', 'customer')
-        .leftJoinAndSelect('invoice.currency', 'currency')
-        .leftJoinAndSelect('invoice.company', 'company')
-        .leftJoinAndSelect('invoice.salesPerson', 'salesPerson')
-        .leftJoinAndSelect('invoice.bankBook', 'bankBook')
-        .skip(skip)
-        .take(limit)
-        .orderBy('invoice.addedDate', 'DESC');
-
-      const [data, total] = await queryBuilder.getManyAndCount();
-
-      const addedByIds = Array.from(
-        new Set(data.map((o) => o.addedBy).filter(Boolean)),
-      );
-      const userMap = new Map<number, string>();
-      if (addedByIds.length > 0) {
-        const users = await this.userEntity.find({
-          where: { userId: In(addedByIds) },
-          select: ['userId', 'name'],
-        });
-        users.forEach((u) => userMap.set(u.userId, u.name));
-      }
-
-      const formattedData = data.map((o) => ({
-        ...o,
-        customerName: o.customer?.customerName ?? null,
-        currencyCode: o.currency?.code ?? null,
-        companyName: o.company?.companyName ?? null,
-        salesPersonName: o.salesPerson?.name ?? null,
-        bankBookName: o.bankBook?.accountNumber ?? null,
-        addedByName: o.addedBy ? (userMap.get(o.addedBy) ?? null) : null,
-      }));
-
-      return_data = {
-        success: 1,
-        message: 'Invoices fetched successfully',
-        total,
-        data: formattedData,
-      };
-    } catch (err: any) {
-      return_data = { success: 0, message: err.message };
-    }
-    return return_data;
-  }
-
-  async getInvoiceDetails(id: number, req?: any) {
-    const authCtx = await resolveAuthContext(req, this.ucgEntity);
-
-    const invoice = await this.invoiceRepo.findOne({
-      where: { invoiceId: id },
-      relations: [
-        'customer',
-        'currency',
-        'company',
-        'bankBook',
-        'salesPerson',
-        'contactPerson',
-        'termsConditions',
-        'invoiceItems',
-        'invoiceItems.item',
-        'invoiceItems.discounts',
-        'invoiceItems.extraCharges',
-        'discounts',
-        'extraCharges',
-        'attachments',
-        'dueDateHistory',
-        'sourceOrder',
-        'sourceQuotation',
-      ],
-    });
-
-    if (!invoice) {
-      throw new NotFoundException('Invoice not found');
-    }
-
-    if (!authCtx.isSuperAdmin) {
-      const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-      if (!scopedCompanyIds.includes(Number(invoice.companyId))) {
-        throw new ForbiddenException(
-          'Access denied: invoice belongs to another company',
-        );
-      }
-    }
-
-    const addedByUser = invoice.addedBy
-      ? await this.userEntity.findOne({ where: { userId: invoice.addedBy } })
-      : null;
-    const updatedByUser = invoice.updatedBy
-      ? await this.userEntity.findOne({ where: { userId: invoice.updatedBy } })
-      : null;
-
-    const invoicePaymentMode = (process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase();
-
-    return {
-      ...invoice,
-      termsConditionsFileUrl: invoice.termsConditionsFile ?? null,
-      customerName: invoice.customer?.customerName ?? null,
-      currencyCode: invoice.currency?.code ?? null,
-      currencySymbol: (invoice.currency as any)?.symbol ?? null,
-      companyName: invoice.company?.companyName ?? null,
-      salesPersonName: invoice.salesPerson?.name ?? null,
-      contactPersonName: invoice.contactPerson?.name ?? null,
-      bankBookName: invoice.bankBook?.accountNumber ?? null,
-      addedByName: addedByUser?.name ?? null,
-      updatedByName: updatedByUser?.name ?? null,
-      sourceOrderCode: invoice.sourceOrder?.orderCode ?? null,
-      sourceQuotationCode: invoice.sourceQuotation?.quotationCode ?? null,
-      invoicePaymentMode,
-    };
   }
 
   async insertInvoice(

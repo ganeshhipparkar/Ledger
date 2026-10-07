@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
@@ -13,11 +13,14 @@ import { Filter } from 'src/utilities/filter';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
-import { InvoiceEntity, InvoiceStatus } from 'src/invoice/entity/invoice.entity';
+import { InvoiceEntity, InvoiceStatus, VatWithheld } from 'src/invoice/entity/invoice.entity';
+import { InvoiceItemEntity } from 'src/invoice/entity/invoice.item.entity';
 import { TaxCalculation } from 'src/invoice/entity/invoice.item.entity';
-import { CreditNoteEntity, CreditNoteStatus } from '../entity/credit.note.entity';
+import { CreditNoteEntity, CreditNoteStatus, NoteMode, CustomerCharges } from '../entity/credit.note.entity';
 import { CreditNoteAttachmentsEntity } from '../entity/credit.note.attachments.entity';
+import { CreditNoteItemEntity, CreditNoteLineType } from '../entity/credit.note.item.entity';
 import { CreditNoteDto, CreditNoteListDto } from '../dto/credit.note.dto';
+import { CreditNotePdfService } from '../credit.note.pdf.service';
 
 @Injectable()
 export class CreditNoteService {
@@ -27,6 +30,8 @@ export class CreditNoteService {
 
     @InjectRepository(CreditNoteAttachmentsEntity)
     private readonly attachmentRepo: Repository<CreditNoteAttachmentsEntity>,
+
+    private readonly creditNotePdfService: CreditNotePdfService,
 
     @InjectRepository(UserCompanyGroupEntity)
     private readonly ucgRepo: Repository<UserCompanyGroupEntity>,
@@ -42,11 +47,11 @@ export class CreditNoteService {
 
     private readonly filter: Filter,
     private readonly fileTransfer: FileTransfer,
+    private readonly dataSource: DataSource,
   ) {}
 
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
-
 
   private toOptionalNumber(v: any): number | undefined {
     if (v === undefined || v === null || v === '' || v === 'null') return undefined;
@@ -60,7 +65,6 @@ export class CreditNoteService {
     return isNaN(n) ? fallback : n;
   }
 
-
   private computeAmounts(
     totalAmount: number,
     taxCalculation: string,
@@ -71,159 +75,16 @@ export class CreditNoteService {
     let finalAmount = totalAmount;
 
     if (taxCalculation === TaxCalculation.INCLUSIVE) {
-      // Tax is embedded inside totalAmount
       taxAmount = validRate > 0
         ? Math.round((totalAmount - totalAmount / (1 + validRate / 100)) * 10000) / 10000
         : 0;
-      finalAmount = totalAmount; // finalAmount = totalAmount (tax already inside)
+      finalAmount = totalAmount; 
     } else if (taxCalculation === TaxCalculation.EXCLUSIVE) {
-      // Tax is added on top
       taxAmount = Math.round(((totalAmount * validRate) / 100) * 10000) / 10000;
       finalAmount = totalAmount + (isNaN(taxAmount) ? 0 : taxAmount);
     }
-    // NA: taxAmount=0, finalAmount=totalAmount
 
     return { taxAmount: isNaN(taxAmount) ? 0 : taxAmount, finalAmount };
-  }
-
-  // ─────────────────── invoicesByCustomer ───────────────────────────────────
-
-  /**
-   * Returns invoices for a given customer filtered to eligible statuses.
-   * Used by the frontend Add panel's invoice dropdown.
-   */
-  async invoicesByCustomer(customerId: number, currencyId: number, req?: any) {
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgRepo);
-      const eligibleStatuses = [InvoiceStatus.UNPAID, InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID];
-
-      const qb = this.invoiceRepo
-        .createQueryBuilder('invoice')
-        .select(['invoice.invoiceId', 'invoice.invoiceCode', 'invoice.status', 'invoice.currencyId'])
-        .leftJoinAndSelect('invoice.currency', 'currency')
-        .where('invoice.customerId = :customerId', { customerId })
-        .andWhere('invoice.currencyId = :currencyId', { currencyId })
-        .andWhere('invoice.status IN (:...statuses)', { statuses: eligibleStatuses });
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (scopedCompanyIds.length > 0) {
-          qb.andWhere('invoice.companyId IN (:...scopedCompanyIds)', { scopedCompanyIds });
-        } else {
-          return { success: 1, data: [] };
-        }
-      }
-
-      const invoices = await qb.getMany();
-      return {
-        success: 1,
-        data: invoices.map((inv) => ({
-          invoiceId: inv.invoiceId,
-          invoiceCode: inv.invoiceCode,
-          status: inv.status,
-          currencyId: inv.currencyId,
-          currencyCode: (inv.currency as any)?.code ?? null,
-          currencySymbol: (inv.currency as any)?.symbol ?? null,
-        })),
-      };
-    } catch (err: any) {
-      return { success: 0, message: err.message };
-    }
-  }
-
-
-  async creditNoteList(param: CreditNoteListDto, req?: any) {
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgRepo);
-      const qb = this.creditNoteRepo
-        .createQueryBuilder('cn')
-        .leftJoinAndSelect('cn.customer', 'customer')
-        .leftJoinAndSelect('cn.currency', 'currency')
-        .leftJoinAndSelect('cn.invoice', 'invoice')
-        .leftJoinAndSelect('cn.company', 'company');
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (scopedCompanyIds.length > 0) {
-          qb.andWhere('cn.companyId IN (:...scopedCompanyIds)', { scopedCompanyIds });
-        } else {
-          return { success: 1, message: 'Credit notes fetched successfully', total: 0, data: [] };
-        }
-      }
-
-      const filterStr = await this.filter.makeFilterString(
-        param.filters,
-        'cn',
-        {
-          customerName: 'customer',
-          companyName: 'company',
-        },
-        param.condition === 'Any' ? 'Any' : 'All',
-      );
-      if (filterStr && filterStr !== '') qb.andWhere(filterStr);
-
-      const [skip, limit] = (await this.filter.calcPages(param, this.creditNoteRepo)) as [number, number];
-      qb.skip(skip).take(limit).orderBy('cn.id', 'DESC');
-
-      const [data, total] = await qb.getManyAndCount();
-
-      const addedByIds = [...new Set(data.map((r) => r.addedBy).filter(Boolean))] as number[];
-      const userMap = new Map<number, string>();
-      if (addedByIds.length > 0) {
-        const users = await this.userRepo.find({ where: { userId: In(addedByIds) }, select: ['userId', 'name'] });
-        users.forEach((u) => userMap.set(u.userId, u.name));
-      }
-
-      const formatted = data.map((cn) => ({
-        ...cn,
-        customerName: cn.customer?.customerName ?? null,
-        currencyCode: (cn.currency as any)?.code ?? null,
-        currencySymbol: (cn.currency as any)?.symbol ?? null,
-        invoiceCode: cn.invoice?.invoiceCode ?? null,
-        companyName: cn.company?.companyName ?? null,
-        addedByName: cn.addedBy ? (userMap.get(cn.addedBy) ?? null) : null,
-      }));
-
-      return { success: 1, message: 'Credit notes fetched successfully', total, data: formatted };
-    } catch (err: any) {
-      return { success: 0, message: err.message };
-    }
-  }
-
-
-  async creditNoteDetails(id: number, req?: any) {
-    const authCtx = await resolveAuthContext(req, this.ucgRepo);
-
-    const cn = await this.creditNoteRepo.findOne({
-      where: { id },
-      relations: ['customer', 'currency', 'invoice', 'company', 'taxGroup', 'attachments'],
-    });
-
-    if (!cn) throw new NotFoundException('Credit note not found');
-
-    if (!authCtx.isSuperAdmin) {
-      const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-      if (!scopedCompanyIds.includes(Number(cn.companyId))) {
-        throw new ForbiddenException('Access denied: credit note belongs to another company');
-      }
-    }
-
-    const addedByUser = cn.addedBy
-      ? await this.userRepo.findOne({ where: { userId: cn.addedBy } })
-      : null;
-
-    return {
-      ...cn,
-      customerName: cn.customer?.customerName ?? null,
-      currencyCode: (cn.currency as any)?.code ?? null,
-      currencySymbol: (cn.currency as any)?.symbol ?? null,
-      invoiceCode: cn.invoice?.invoiceCode ?? null,
-      companyName: cn.company?.companyName ?? null,
-      taxGroupName: cn.taxGroup?.taxName ?? null,
-      taxGroupCode: cn.taxGroup?.taxCode ?? null,
-      taxGroupValue: cn.taxGroup?.taxValue ?? null,
-      addedByName: addedByUser?.name ?? null,
-    };
   }
 
   async insertCreditNote(
@@ -231,61 +92,282 @@ export class CreditNoteService {
     req?: any,
     files?: { attachments?: Express.Multer.File[] },
   ) {
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgRepo);
+    const authCtx = await resolveAuthContext(req, this.ucgRepo);
 
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (!scopedCompanyIds.includes(Number(body.companyId))) {
-          return { success: 0, message: 'Access denied: cannot add credit note to another company' };
-        }
+    if (!authCtx.isSuperAdmin) {
+      const scopedCompanyIds = req?.scopedCompanyIds || [authCtx.activeCompanyId];
+      if (!scopedCompanyIds.includes(Number(body.companyId))) {
+        return { success: 0, message: 'Access denied: cannot add credit note to another company' };
       }
+    }
 
-      const invoice = await this.invoiceRepo.findOne({ where: { invoiceId: body.invoiceId } });
+    const isInvoiceMode = body.noteMode === NoteMode.INVOICE;
+
+    let invoice: InvoiceEntity | null = null;
+    if (body.invoiceId) {
+      invoice = await this.invoiceRepo.findOne({ where: { invoiceId: body.invoiceId } });
       if (!invoice) return { success: 0, message: 'Invoice not found' };
       const eligibleStatuses: string[] = [InvoiceStatus.UNPAID, InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID];
       if (!eligibleStatuses.includes(invoice.status)) {
         return { success: 0, message: 'Credit notes can only be created for UNPAID, PAID, or PARTIALLY_PAID invoices' };
       }
-
-      let taxRate = 0;
-      if (body.taxCalculation !== TaxCalculation.NA) {
-        if (!body.taxGroupId) {
-          return { success: 0, message: 'taxGroupId is required when taxCalculation is EXCLUSIVE or INCLUSIVE' };
+      
+      if (isInvoiceMode) {
+        if (invoice.companyId !== Number(body.companyId)) return { success: 0, message: 'Invoice company mismatch' };
+        if (invoice.customerId !== Number(body.customerId)) return { success: 0, message: 'Invoice customer mismatch' };
+        if (invoice.currencyId !== Number(body.currencyId)) return { success: 0, message: 'Invoice currency mismatch' };
+        if (body.issueDate && new Date(body.issueDate) < new Date(invoice.invoiceDate)) {
+            return { success: 0, message: 'Issue date cannot be earlier than invoice date' };
         }
-        const tg = await this.taxGroupRepo.findOne({
-          where: { taxId: body.taxGroupId, companyId: Number(body.companyId) },
+      }
+    } else if (isInvoiceMode) {
+      return { success: 0, message: 'invoiceId is required in INVOICE mode' };
+    }
+
+    const performerId = req?.user?.userId ?? this.toOptionalNumber(body.addedBy);
+
+    const creditNoteCode = await this.codeGeneratorService.generateCode(
+      this.creditNoteRepo,
+      `CN${body.customerId}`,
+      Number(body.companyId),
+      'creditNoteCode',
+      'CN',
+    );
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      let taxRate = 0;
+      let taxGroupId: number | null = null;
+      let finalTaxCalculation = body.taxCalculation ?? TaxCalculation.NA;
+      let finalCustomerCharges = body.customerCharges ?? null;
+      let headerTotalAmount = this.toValidNumber(body.totalAmount, 0);
+      let headerTaxAmount = 0;
+      let headerTaxableAmount = 0;
+      let headerFinalAmount = headerTotalAmount;
+
+      let parsedItems: any[] = [];
+      let vatWithheldAmount = 0;
+
+      if (isInvoiceMode) {
+        finalCustomerCharges = CustomerCharges.INVOICE_CHARGES;
+        finalTaxCalculation = TaxCalculation.NA;
+        
+        if (body.items) {
+           try {
+             parsedItems = typeof body.items === 'string' ? JSON.parse(body.items) : body.items;
+           } catch {
+             throw new Error("Invalid items payload");
+           }
+        }
+        
+        if (!parsedItems || parsedItems.length === 0) {
+            throw new Error("At least one line item is required in INVOICE mode");
+        }
+
+        const invoiceItems = await queryRunner.manager.find(InvoiceItemEntity, {
+            where: { invoiceId: invoice!.invoiceId },
+            relations: ['item'],
+            lock: { mode: 'pessimistic_write' }
         });
-        if (!tg) return { success: 0, message: 'Tax group not found for this company' };
-        taxRate = Number(tg.taxValue);
+
+        const invoiceItemMap = new Map(invoiceItems.map(it => [it.invoiceItemId, it]));
+
+        const earlierCnItems = await queryRunner.manager.createQueryBuilder(CreditNoteItemEntity, 'cni')
+          .innerJoin('cni.creditNote', 'cn')
+          .where('cn.invoiceId = :invoiceId', { invoiceId: invoice!.invoiceId })
+          .select('cni.invoiceItemId', 'invoiceItemId')
+          .addSelect('SUM(cni.quantity)', 'creditedQty')
+          .groupBy('cni.invoiceItemId')
+          .getRawMany();
+
+        const creditedQtyMap = new Map();
+        for (const r of earlierCnItems) {
+            if (r.invoiceItemId) {
+              creditedQtyMap.set(Number(r.invoiceItemId), parseFloat(r.creditedQty));
+            }
+        }
+
+        const taxGroups = await queryRunner.manager.find(taxGroupEntity, {
+          where: { companyId: Number(body.companyId) }
+        });
+
+        headerTotalAmount = 0;
+        headerTaxAmount = 0;
+        headerTaxableAmount = 0;
+        headerFinalAmount = 0;
+
+        const seenInvoiceItemIds = new Set<number>();
+
+        for (const item of parsedItems) {
+           const lineType = item.lineType === 'SERVICE' ? CreditNoteLineType.SERVICE : CreditNoteLineType.INVOICE_ITEM;
+           const qty = parseFloat(item.quantity) || 0;
+           if (qty <= 0) throw new Error("Quantity must be greater than 0");
+
+           if (lineType === CreditNoteLineType.INVOICE_ITEM) {
+             const invItemId = Number(item.invoiceItemId);
+             if (seenInvoiceItemIds.has(invItemId)) {
+               throw new Error(`Duplicate invoice line ${invItemId} in payload`);
+             }
+             seenInvoiceItemIds.add(invItemId);
+
+             const invItem = invoiceItemMap.get(invItemId);
+             if (!invItem) throw new Error(`Invoice item ${invItemId} not found`);
+
+             const alreadyCredited = creditedQtyMap.get(invItemId) || 0;
+             if (qty > parseFloat(invItem.quantity as any) - alreadyCredited) {
+                 throw new Error(`Quantity exceeds remaining uncredited quantity for item ${invItem.item?.itemName ?? invItem.description ?? ''}`);
+             }
+
+             const unitPrice = parseFloat(item.unitPrice);
+             if (isNaN(unitPrice) || unitPrice < 0) throw new Error("Unit price must be >= 0");
+
+             const totalAmount = qty * unitPrice;
+             const itemTaxCalculation = item.taxCalculation || TaxCalculation.NA;
+             let itemTaxRate = 0;
+             let itemTaxGroupCode: string | null = null;
+             
+             if (itemTaxCalculation !== TaxCalculation.NA) {
+               const tgId = Number(item.taxGroupId);
+               if (!tgId) throw new Error("Tax group is required when tax is calculated");
+               const tg = taxGroups.find(t => t.taxId === tgId);
+               if (!tg) throw new Error("Tax group not found or belongs to another company");
+               itemTaxRate = Number(tg.taxValue);
+               itemTaxGroupCode = tg.taxCode;
+             }
+
+             const { taxAmount, finalAmount } = this.computeAmounts(totalAmount, itemTaxCalculation, itemTaxRate);
+             let taxableAmount = 0;
+             if (itemTaxCalculation === TaxCalculation.INCLUSIVE) {
+                 taxableAmount = totalAmount - taxAmount;
+             } else if (itemTaxCalculation === TaxCalculation.EXCLUSIVE) {
+                 taxableAmount = totalAmount;
+             }
+
+             item.computed = {
+                lineType,
+                invoiceItemId: invItemId,
+                unitPrice,
+                totalAmount,
+                taxCalculation: itemTaxCalculation,
+                taxGroup: itemTaxGroupCode,
+                taxAmount,
+                taxableAmount,
+                finalAmount,
+                itemId: invItem.itemId,
+                description: item.description?.trim() || invItem.description,
+                itemGL: invItem.itemGL
+             };
+
+             headerTotalAmount += totalAmount;
+             headerTaxableAmount += taxableAmount;
+             headerTaxAmount += taxAmount;
+             headerFinalAmount += finalAmount;
+
+           } else {
+              const description = item.description?.trim();
+             if (!description) throw new Error("Service description is required");
+             if (description.length > 255) throw new Error("Service description too long");
+
+             const unitPrice = parseFloat(item.unitPrice);
+             if (isNaN(unitPrice) || unitPrice < 0) throw new Error("Service unit price must be >= 0");
+
+             const totalAmount = qty * unitPrice;
+             const itemTaxCalculation = item.taxCalculation || TaxCalculation.NA;
+             
+             let itemTaxRate = 0;
+             let itemTaxGroupCode: string | null = null;
+
+             if (itemTaxCalculation !== TaxCalculation.NA) {
+               const tgId = Number(item.taxGroupId);
+               if (!tgId) throw new Error("Tax group is required for service when tax is calculated");
+               const tg = taxGroups.find(t => t.taxId === tgId);
+               if (!tg) throw new Error("Tax group not found or belongs to another company");
+               itemTaxRate = Number(tg.taxValue);
+               itemTaxGroupCode = tg.taxCode;
+             }
+
+             const { taxAmount, finalAmount } = this.computeAmounts(totalAmount, itemTaxCalculation, itemTaxRate);
+             let taxableAmount = 0;
+             if (itemTaxCalculation === TaxCalculation.INCLUSIVE) {
+                 taxableAmount = totalAmount - taxAmount;
+             } else if (itemTaxCalculation === TaxCalculation.EXCLUSIVE) {
+                 taxableAmount = totalAmount;
+             }
+
+             item.computed = {
+                lineType,
+                invoiceItemId: null,
+                unitPrice,
+                totalAmount,
+                taxCalculation: itemTaxCalculation,
+                taxGroup: itemTaxGroupCode,
+                taxAmount,
+                taxableAmount,
+                finalAmount,
+                itemId: null,
+                description,
+                itemGL: null
+             };
+
+             headerTotalAmount += totalAmount;
+             headerTaxableAmount += taxableAmount;
+             headerTaxAmount += taxAmount;
+             headerFinalAmount += finalAmount;
+           }
+        }
+
+        if (body.vatWithheld === VatWithheld.YES) {
+            vatWithheldAmount = headerTaxAmount;
+            headerFinalAmount -= vatWithheldAmount;
+        }
+
+      } else {
+          if (finalTaxCalculation !== TaxCalculation.NA) {
+            if (!body.taxGroupId) {
+              throw new Error('taxGroupId is required when taxCalculation is EXCLUSIVE or INCLUSIVE');
+            }
+            const tg = await this.taxGroupRepo.findOne({
+              where: { taxId: body.taxGroupId, companyId: Number(body.companyId) },
+            });
+            if (!tg) throw new Error('Tax group not found for this company');
+            taxRate = Number(tg.taxValue);
+            taxGroupId = Number(body.taxGroupId);
+          }
+
+          const { taxAmount, finalAmount } = this.computeAmounts(headerTotalAmount, finalTaxCalculation, taxRate);
+          headerTaxAmount = taxAmount;
+          headerFinalAmount = finalAmount;
+          if (finalTaxCalculation === TaxCalculation.EXCLUSIVE) headerTaxableAmount = headerTotalAmount;
+          else if (finalTaxCalculation === TaxCalculation.INCLUSIVE) headerTaxableAmount = headerTotalAmount - taxAmount;
+          
+          if (body.vatWithheld === VatWithheld.YES) {
+             vatWithheldAmount = headerTaxAmount;
+             headerFinalAmount -= vatWithheldAmount;
+          }
       }
 
-      const totalAmount = this.toValidNumber(body.totalAmount, 0);
-      const { taxAmount, finalAmount } = this.computeAmounts(totalAmount, body.taxCalculation, taxRate);
-
-      const performerId = req?.user?.userId ?? this.toOptionalNumber(body.addedBy);
-
-      const creditNoteCode = await this.codeGeneratorService.generateCode(
-        this.creditNoteRepo,
-        `CN${body.customerId}`,
-        Number(body.companyId),
-        'creditNoteCode',
-        'CN',
-      );
-
-      const inserted = await this.creditNoteRepo.insert({
+      const inserted = await queryRunner.manager.insert(CreditNoteEntity, {
         creditNoteCode,
         companyId: Number(body.companyId),
         customerId: Number(body.customerId),
         currencyId: Number(body.currencyId),
-        invoiceId: Number(body.invoiceId),
-        customerCharges: body.customerCharges,
+        invoiceId: body.invoiceId ? Number(body.invoiceId) : null,
+        issueDate: body.issueDate ? new Date(body.issueDate) : null,
+        vatWithheld: body.vatWithheld ?? VatWithheld.NO,
+        vatWithheldAmount: vatWithheldAmount,
+        customerCharges: finalCustomerCharges,
         narration: body.narration ?? null,
-        taxCalculation: body.taxCalculation,
-        taxGroupId: body.taxGroupId ? Number(body.taxGroupId) : null,
-        totalAmount,
-        taxAmount,
-        finalAmount,
+        remarks: body.remarks ?? null,
+        taxCalculation: finalTaxCalculation,
+        taxGroupId: taxGroupId,
+        totalAmount: headerTotalAmount,
+        taxableAmount: headerTaxableAmount,
+        taxAmount: headerTaxAmount,
+        finalAmount: headerFinalAmount,
+        noteMode: body.noteMode ?? NoteMode.CUSTOMER,
         status: CreditNoteStatus.SUBMITTED,
         approvalStatus: null,
         addedBy: performerId ? Number(performerId) : undefined,
@@ -294,14 +376,37 @@ export class CreditNoteService {
 
       const insertId: number = inserted.raw?.insertId;
 
+      if (isInvoiceMode && parsedItems.length > 0) {
+         for (const item of parsedItems) {
+            await queryRunner.manager.insert(CreditNoteItemEntity, {
+                creditNoteId: insertId,
+                lineType: item.computed.lineType,
+                invoiceItemId: item.computed.invoiceItemId,
+                itemId: item.computed.itemId,
+                description: item.computed.description,
+                itemGL: item.computed.itemGL,
+                quantity: parseFloat(item.quantity),
+                unitPrice: item.computed.unitPrice,
+                totalAmount: item.computed.totalAmount,
+                taxCalculation: item.computed.taxCalculation,
+                taxGroup: item.computed.taxGroup,
+                taxAmount: item.computed.taxAmount,
+                taxableAmount: item.computed.taxableAmount,
+                finalAmount: item.computed.finalAmount,
+                addedBy: performerId ? Number(performerId) : undefined,
+                addedDate: new Date(),
+            });
+         }
+      }
+
       for (const file of files?.attachments ?? []) {
         const filename = file.filename || file.originalname;
         await this.fileTransfer.fileTransfer(filename, insertId, 'credit_note', {
           subfolder: 'attachments',
         });
-        await this.attachmentRepo.insert({
+        await queryRunner.manager.insert(CreditNoteAttachmentsEntity, {
           creditNoteId: insertId,
-          invoiceId: Number(body.invoiceId),
+          invoiceId: body.invoiceId ? Number(body.invoiceId) : null,
           attachmentUrl: `/upload/credit_note/${insertId}/attachments/${filename}`,
           addedBy: performerId ? Number(performerId) : undefined,
           addedDate: new Date(),
@@ -309,9 +414,18 @@ export class CreditNoteService {
         });
       }
 
+      await queryRunner.commitTransaction();
+
+       this.creditNotePdfService.generateAndStoreCreditNotePdf(insertId).catch(err => {
+        console.error(`Failed to generate PDF for credit note ${insertId}:`, err);
+      });
+
       return { success: 1, message: 'Credit note created successfully', id: insertId, creditNoteCode };
     } catch (err: any) {
+      await queryRunner.rollbackTransaction();
       return { success: 0, message: err.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 }

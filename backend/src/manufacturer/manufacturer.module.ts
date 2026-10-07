@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { ManufacturerContorller } from "./manufacturer.controller";
 import { ManufacturerService } from "./service/manufacturer.service";
+import { ManufacturerListService } from "./service/manufacturer.list.service";
 import { ManufacturerEntity } from "./entity/manufacturer.entity";
 
 @Module({
@@ -21,7 +22,7 @@ import { ManufacturerEntity } from "./entity/manufacturer.entity";
     ]),
   ],
   controllers: [ManufacturerContorller],
-  providers: [ManufacturerService, Filter, CodeGeneratorService],
+  providers: [ManufacturerService, ManufacturerListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class ManufacturerModule {}

@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { BankBookService } from './service/bank.book.service';
+import { BankBookListService } from './service/bank.book.list.service';
 import {
   bankBookListDto,
   BankBookDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('bank-book')
 export class BankBookController {
-  constructor(private readonly bankBookService: BankBookService) {}
+  constructor(
+    private readonly bankBookService: BankBookService,
+    private readonly bankBookListService: BankBookListService,
+  ) {}
 
   @Post('bank-book-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('bankBookList')
   async bankBookList(@Req() req: any, @Body() body: bankBookListDto) {
-    const result = await this.bankBookService.bankBookList(body, req);
+    const result = await this.bankBookListService.bankBookList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class BankBookController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('bankBookView')
   async getBankBookDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.bankBookService.getBankBookDetails(
+    const result = await this.bankBookListService.getBankBookDetails(
       Number(id),
       req,
     );

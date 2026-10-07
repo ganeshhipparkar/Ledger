@@ -20,6 +20,7 @@ import {
 } from 'src/utilities/permissions.guard';
 import { encryptResponse } from 'src/utilities/crypto';
 import { InvoiceService } from './service/invoice.service';
+import { InvoiceListService } from './service/invoice.list.service';
 import { InvoicePdfService } from './invoice.pdf.service';
 import {
   InvoiceDto,
@@ -33,6 +34,7 @@ import {
 export class InvoiceController {
   constructor(
     private readonly invoiceService: InvoiceService,
+    private readonly invoiceListService: InvoiceListService,
     private readonly invoicePdfService: InvoicePdfService,
   ) {}
 
@@ -40,7 +42,7 @@ export class InvoiceController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('invoiceList')
   async invoiceList(@Req() req: any, @Body() body: InvoiceListDto) {
-    const result = await this.invoiceService.invoiceList(body, req);
+    const result = await this.invoiceListService.invoiceList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -48,7 +50,7 @@ export class InvoiceController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('invoiceView')
   async getInvoiceDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.invoiceService.getInvoiceDetails(Number(id), req);
+    const result = await this.invoiceListService.getInvoiceDetails(Number(id), req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -181,5 +183,13 @@ export class InvoiceController {
     } catch (err: any) {
       return { encrypted: encryptResponse({ success: 0, message: err.message }) };
     }
+  }
+
+  @Get('invoice-payments/:id')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('invoiceView')
+  async getInvoicePayments(@Param('id') id: number, @Req() req: any) {
+    const result = await this.invoiceListService.getInvoicePayments(id, req);
+    return { encrypted: encryptResponse(result) };
   }
 }

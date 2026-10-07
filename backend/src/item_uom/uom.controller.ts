@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { UomService } from './service/uom.service';
+import { UomListService } from './service/uom.list.service';
 import {
   UomListDto,
   UomDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('uom')
 export class UomController {
-  constructor(private readonly uomService: UomService) {}
+  constructor(
+    private readonly uomService: UomService,
+    private readonly uomListService: UomListService,
+  ) {}
 
   @Post('uom-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('uomList')
   async uomList(@Req() req: any, @Body() body: UomListDto) {
-    const result = await this.uomService.uomList(body, req);
+    const result = await this.uomListService.uomList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class UomController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('uomView')
   async getUom(@Req() req: any, @Param('id') id: string) {
-    const result = await this.uomService.getUomDetails(
+    const result = await this.uomListService.getUomDetails(
       Number(id),
       req,
     );

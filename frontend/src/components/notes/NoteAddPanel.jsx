@@ -6,8 +6,12 @@ import { toast } from "react-toastify";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
-import CreditNoteFormCore from "./CreditNoteFormCore";
-import { CreditNoteFormSchema } from "../Zod";
+import NoteFormCore from "./NoteFormCore";
+import { CreditNoteFormSchema, DebitNoteFormSchema } from "../Zod";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+
+const MySwal = withReactContent(Swal);
 
 const EMPTY_FORM = {
     customerId: "",
@@ -21,7 +25,8 @@ const EMPTY_FORM = {
 };
 
 
-export default function CreditNoteAddPanel({
+export default function NoteAddPanel({
+    noteType,
     lockedCustomerId = null,
     lockedCustomerName = null,
     lockedCurrencyId = null,
@@ -49,6 +54,11 @@ export default function CreditNoteAddPanel({
         currencyId: lockedCurrencyId ? String(lockedCurrencyId) : "",
         invoiceId: lockedInvoiceId ? String(lockedInvoiceId) : "",
     });
+
+    const config = {
+        CREDIT: { endpointPrefix: "credit-note", module: "credit-note", title: "Add Credit Note" },
+        DEBIT:  { endpointPrefix: "debit-note",  module: "debit-note",  title: "Add Debit Note"  },
+    }[noteType];
 
     useEffect(() => {
         const t = setTimeout(() => setIsOpen(true), 10);
@@ -79,7 +89,7 @@ export default function CreditNoteAddPanel({
         try {
             const res = await fetch("/relayapi", {
                 method: "GET",
-                headers: { ...authHeaders(), endpoint: `invoices-by-customer/${customerId}/${currencyId}`, module: "credit-note" },
+                headers: { ...authHeaders(), endpoint: `invoices-by-customer/${customerId}/${currencyId}`, module: config.module },
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
@@ -114,10 +124,11 @@ export default function CreditNoteAddPanel({
             ...formData,
             customerId: effectiveCustomerId,
             currencyId: effectiveCurrencyId,
-            invoiceId: effectiveInvoiceId,
+            ...(effectiveInvoiceId ? { invoiceId: effectiveInvoiceId } : {})
         };
 
-        const parseRes = CreditNoteFormSchema.safeParse(payloadToValidate);
+        const schema = noteType === "CREDIT" ? CreditNoteFormSchema : DebitNoteFormSchema;
+        const parseRes = schema.safeParse(payloadToValidate);
         if (!parseRes.success) {
             const fieldErrors = {};
             parseRes.error.issues.forEach((err) => {
@@ -127,6 +138,18 @@ export default function CreditNoteAddPanel({
             setErrors(fieldErrors);
             return;
         }
+
+        const confirmRes = await MySwal.fire({
+            title: noteType === "CREDIT" ? "Create Credit Note?" : "Create Debit Note?",
+            text: noteType === "CREDIT" ? "Are you sure you want to create this credit note?" : "Are you sure you want to create this debit note?",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, create it!",
+            cancelButtonText: "Cancel",
+        });
+        if (!confirmRes.isConfirmed) return;
 
         setLoading(true);
         try {
@@ -141,7 +164,9 @@ export default function CreditNoteAddPanel({
             fd.append("companyId", String(effectiveCompanyId));
             fd.append("customerId", String(effectiveCustomerId));
             fd.append("currencyId", String(effectiveCurrencyId));
-            fd.append("invoiceId", String(effectiveInvoiceId));
+            if (effectiveInvoiceId) {
+                fd.append("invoiceId", String(effectiveInvoiceId));
+            }
             fd.append("customerCharges", formData.customerCharges);
             if (formData.narration?.trim()) fd.append("narration", formData.narration.trim());
             fd.append("taxCalculation", formData.taxCalculation);
@@ -153,18 +178,18 @@ export default function CreditNoteAddPanel({
 
             const res = await fetch("/relayapi", {
                 method: "POST",
-                headers: { endpoint: "credit-note-add", module: "credit-note" },
+                headers: { endpoint: `${config.endpointPrefix}-add`, module: config.module },
                 body: fd,
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
 
             if (data?.success === 1) {
-                toast.success("Credit note created successfully.", { position: "top-right" });
+                toast.success(`${config.title.replace('Add ', '')} created successfully.`, { position: "top-right" });
                 handleClose();
                 onSuccess?.();
             } else {
-                toast.error(data?.message || "Failed to create credit note.", { position: "top-right" });
+                toast.error(data?.message || `Failed to create ${config.title.replace('Add ', '').toLowerCase()}.`, { position: "top-right" });
             }
         } catch (err) {
             toast.error(err.message, { position: "top-right" });
@@ -187,7 +212,7 @@ export default function CreditNoteAddPanel({
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                             <FileText className="h-5 w-5 text-blue-500" />
-                            Add Credit Note
+                            {config.title}
                         </h2>
                         {lockedInvoiceCode && (
                             <p className="text-xs text-gray-500 mt-0.5">
@@ -203,7 +228,8 @@ export default function CreditNoteAddPanel({
                     </button>
                 </div>
 
-                <CreditNoteFormCore
+                <NoteFormCore
+                    noteType={noteType}
                     lockedCustomerId={lockedCustomerId}
                     lockedCustomerName={lockedCustomerName}
                     lockedCurrencyId={lockedCurrencyId}

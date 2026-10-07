@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UserController } from './user.controller';
 import { UserService } from './services/user.service';
+import { UserListService } from './services/user.list.service';
 
 import { UserEntity } from 'src/user/entity/user.entity';
 import { FileTransfer } from 'src/utilities/file.transfer';
@@ -41,6 +42,7 @@ import { GroupEntity } from 'src/group/entity/group.entity';
   controllers: [UserController],
   providers: [
     UserService,
+    UserListService,
     FileTransfer,
     Filter,
     Mailer,

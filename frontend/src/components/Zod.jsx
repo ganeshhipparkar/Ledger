@@ -808,7 +808,7 @@ const OrderItemRowSchema = z.object({
     itemGL: z.string().optional(),
     quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
     unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
-    taxCalculation: z.enum(["N/A", "EXCLUSIVE", "INCLUSIVE"]),
+    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
 }).refine((data) => {
     const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
     const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
@@ -868,7 +868,7 @@ const InvoiceItemRowSchema = z.object({
     itemGL: z.string().optional(),
     quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
     unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
-    taxCalculation: z.enum(["N/A", "EXCLUSIVE", "INCLUSIVE"]),
+    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
 }).refine((data) => {
     const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
     const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
@@ -977,11 +977,11 @@ export const InvoiceUpdateFormSchema = z.object({
 
 export const CreditNoteFormSchema = z.object({
     customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Customer and Currency."),
-    invoiceId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Invoice."),
+    invoiceId: z.union([z.string(), z.number()]).optional(),
     customerCharges: z.string().min(1, "Please Select Customer charges."),
     taxCalculation: z.string().min(1, "Please Select Tax calculation."),
     taxGroupId: z.union([z.string(), z.number()]).optional(),
-    totalAmount: z.coerce.number().min(0, "Please enter valid Total amount."),
+    totalAmount: z.coerce.number().min(0, "Please enter valid Total amount.").positive("Please enter valid Total amount"),
     narration: z.string().min(1, "Please enter Narration."),
 }).superRefine((data, ctx) => {
     if (data.taxCalculation !== "NA" && (!data.taxGroupId || String(data.taxGroupId).trim() === "")) {
@@ -991,4 +991,97 @@ export const CreditNoteFormSchema = z.object({
             path: ["taxGroupId"]
         });
     }
+});
+
+export const CreditNoteItemRowSchema = z.object({
+    lineType: z.enum(["INVOICE_ITEM", "SERVICE"]).optional().default("SERVICE"),
+    invoiceItemId: z.union([z.string(), z.number()]).optional(),
+    itemId: z.union([z.string(), z.number()]).optional(),
+    description: z.string().optional(),
+    quantity: z.number({ coerce: true }).positive("Quantity must be greater than 0."),
+    maxQuantity: z.number({ coerce: true }).optional(),
+    unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
+    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
+    taxGroupId: z.union([z.string(), z.number()]).optional(),
+}).superRefine((data, ctx) => {
+    if (!data.invoiceItemId && (!data.description || data.description.trim() === "")) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Item selection is required.", path: ["itemId"] });
+    }
+    if (data.lineType === "INVOICE_ITEM" && data.maxQuantity !== undefined && data.quantity > data.maxQuantity) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Quantity cannot exceed ${data.maxQuantity}.`, path: ["quantity"] });
+    }
+    if (data.taxCalculation !== "NA" && (!data.taxGroupId || String(data.taxGroupId).trim() === "")) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tax Group is required.", path: ["taxGroupId"] });
+    }
+    if (data.lineType === "SERVICE") {
+        if (!data.description || data.description.trim() === "") {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Service name is required.", path: ["description"] });
+        }
+        if (data.itemId || data.invoiceItemId) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Service row cannot carry an item ID.", path: ["itemId"] });
+        }
+    }
+});
+
+export const CreditNoteInvoiceFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
+    currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Currency is required."),
+    invoiceId: z.union([z.string(), z.number()]).refine(nonEmpty, "Invoice is required."),
+    issueDate: z.string().min(1, "Issue Date is required.").refine((val) => dayjs(val).isValid(), "Valid date is required."),
+    invoiceDate: z.string().optional(),
+    vatWithheld: z.enum(["YES", "NO"]).default("NO"),
+    items: z.array(CreditNoteItemRowSchema).min(1, "At least one item is required.")
+}).superRefine((data, ctx) => {
+    if (data.issueDate && data.invoiceDate) {
+        if (new Date(data.issueDate) < new Date(data.invoiceDate)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Issue Date cannot be earlier than the invoice date.", path: ["issueDate"] });
+        }
+    }
+    
+    const seen = new Set();
+    data.items.forEach((item, idx) => {
+        if (item.lineType === "INVOICE_ITEM" && item.invoiceItemId) {
+            if (seen.has(String(item.invoiceItemId))) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "This item is already selected.", path: ["items", idx, "itemId"] });
+            } else {
+                seen.add(String(item.invoiceItemId));
+            }
+        }
+    });
+});
+
+export const DebitNoteFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Customer and Currency."),
+    invoiceId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Invoice."),
+    customerCharges: z.string().min(1, "Please Select Customer charges."),
+    taxCalculation: z.string().min(1, "Please Select Tax calculation."),
+    taxGroupId: z.union([z.string(), z.number()]).optional(),
+    totalAmount: z.coerce.number().min(0, "Please enter valid Total amount.").positive("Please enter valid Total amount"),
+    narration: z.string().min(1, "Please enter Narration."),
+}).superRefine((data, ctx) => {
+    if (data.taxCalculation !== "NA" && (!data.taxGroupId || String(data.taxGroupId).trim() === "")) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Tax group is required",
+            path: ["taxGroupId"]
+        });
+    }
+});
+
+export const DebitNoteInvoiceFormSchema = z.object({
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
+    currencyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Currency is required."),
+    invoiceId: z.union([z.string(), z.number()]).refine(nonEmpty, "Invoice is required."),
+    items: z.array(CreditNoteItemRowSchema).min(1, "At least one item is required.")
+}).superRefine((data, ctx) => {
+    const seen = new Set();
+    data.items.forEach((item, idx) => {
+        if (item.lineType === "INVOICE_ITEM" && item.invoiceItemId) {
+            if (seen.has(String(item.invoiceItemId))) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "This item is already selected.", path: ["items", idx, "itemId"] });
+            } else {
+                seen.add(String(item.invoiceItemId));
+            }
+        }
+    });
 });

@@ -4,8 +4,11 @@ import React, { useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { loginContext } from "./hooks/LoginContext";
 import { isSuperAdmin } from "@/app/lib/auth";
+import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
+import { useRouter } from "next/navigation";
 
 export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
+    const router = useRouter();
     const { isLogin, impersonating, permissions, displayUser } = useContext(loginContext);
 
     const [activeCategory, setActiveCategory] = useState("dashboard");
@@ -72,12 +75,20 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
             title: "Sales",
             items: [
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: activePermissions.includes("paymentTransactionList") || isSuper },
-                { label: "Quotation", redirectTo: "/quotation-list", show: activePermissions.includes("quotationList") || isSuper },
-                { label: "Order", redirectTo: "/order-list", show: activePermissions.includes("orderList") || isSuper },
+
                 { label: "Invoice", redirectTo: "/invoice-list", show: activePermissions.includes("invoiceList") || isSuper },
-                { label: "Credit Note", redirectTo: "/credit-note-list", show: activePermissions.includes("creditNoteList") || isSuper }
+                { label: "Credit Note", redirectTo: "/credit-note-list", show: activePermissions.includes("creditNoteList") || isSuper },
+                { label: "Debit Note", redirectTo: "/debit-note-list", show: activePermissions.includes("debitNoteList") || isSuper },
+                {
+                    groupLabel: "Order(s)",
+                    children: [
+                        { label: "Quotation", redirectTo: "/quotation-list", show: activePermissions.includes("quotationList") || isSuper },
+                        { label: "Order", redirectTo: "/order-list", show: activePermissions.includes("orderList") || isSuper },
+                    ],
+                }
             ]
-        }
+        },
+
     ];
 
     const menuCategories = rawCategories

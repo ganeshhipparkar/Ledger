@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -57,7 +57,7 @@ export default function QuotationList() {
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [selectedQuotationIdForPanel, setSelectedQuotationIdForPanel] = useState(null);
 
-    const fetchList = useCallback(async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
+    const fetchList = async (p = page, lim = limit, status = statusFilter, searchParams = currentFilters) => {
         setError("");
         try {
             const filters = searchParams?.filters ? [...searchParams.filters] : [];
@@ -98,7 +98,7 @@ export default function QuotationList() {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, statusFilter, currentFilters]);
+    };
 
     useEffect(() => {
         fetchList(page, limit, statusFilter, currentFilters);

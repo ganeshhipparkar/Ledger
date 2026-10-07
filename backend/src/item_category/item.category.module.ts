@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ItemCategoryController } from './item.category.controller';
 import { ItemCategoryService } from './service/item.category.service';
+import { ItemCategoryListService } from './service/item.category.list.service';
 import { ItemCategoryEntity } from 'src/item_category/entity/item-category.entity';
 import { UserCompanyGroupEntity } from '../packages/entity/user.company.group.entity';
 import { UserEntity } from '../user/entity/user.entity';
@@ -23,7 +24,7 @@ import { ItemEntity } from 'src/item/entity/item.entity';
     ]),
   ],
   controllers: [ItemCategoryController],
-  providers: [ItemCategoryService, Filter, CodeGeneratorService],
+  providers: [ItemCategoryService, ItemCategoryListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class ItemCategoryModule {}

@@ -270,12 +270,16 @@ export default function CustomerDetails({ id }) {
                             </div>
                             <div className="mt-6 space-y-3">
                                 {[
-                                    { key: "summary", label: "Summary" },
-                                    { key: "orders", label: "Orders" },
-                                    { key: "quotations", label: "Quotations" },
-                                    { key: "payments", label: "Payments" },
-                                    { key: "invoices", label: "Invoices" },
-                                ].map(({ key, label }) => (
+                                    { key: "summary", label: "Summary", show: true },
+                                    { key: "orders", label: "Orders", show: can("orderList") || isSuperAdmin },
+                                    { key: "quotations", label: "Quotations", show: can("quotationList") || isSuperAdmin },
+                                    { key: "payments", label: "Payments", show: can("paymentTransactionList") || isSuperAdmin },
+                                    { key: "invoices", label: "Invoices", show: can("invoiceList") || isSuperAdmin },
+                                    { key: "credit-notes", label: "Credit Notes", show: can("creditNoteList") || isSuperAdmin },
+                                    { key: "debit-notes", label: "Debit Notes", show: can("debitNoteList") || isSuperAdmin },
+                                ]
+                                .filter(t => t.show)
+                                .map(({ key, label }) => (
                                     <button
                                         key={key}
                                         onClick={() => setActiveTab(key)}
@@ -510,7 +514,7 @@ export default function CustomerDetails({ id }) {
                         {activeTab === "payments" && (
                             <EmbeddedTable
                                 endpoint="payment-transaction-list"
-                                module="paymentTransaction"
+                                module="payment-transaction"
                                 customerId={customer.customerId}
                                 emptyMessage="No payment transactions found for this customer."
                                 columns={["Payment Code", "Payment Date", "Amount", "Status"]}
@@ -537,6 +541,44 @@ export default function CustomerDetails({ id }) {
                                     <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/invoice/${q.invoiceId}`)}>
                                         <td className="px-6 py-4 font-medium text-blue-600">{q.invoiceCode || "-"}</td>
                                         <td className="px-6 py-4">{formatDateOnly(q.invoiceDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
+                        {activeTab === "credit-notes" && (
+                            <EmbeddedTable
+                                endpoint="credit-note-list"
+                                module="credit-note"
+                                customerId={customer.customerId}
+                                emptyMessage="No credit notes found for this customer."
+                                columns={["Credit Note Code", "Date", "Final Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/credit-note/${q.id}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.creditNoteCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.addedDate)}</td>
+                                        <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={statusBadge(q.status)}>{q.status || "-"}</span>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
+                        )}
+                        {activeTab === "debit-notes" && (
+                            <EmbeddedTable
+                                endpoint="debit-note-list"
+                                module="debit-note"
+                                customerId={customer.customerId}
+                                emptyMessage="No debit notes found for this customer."
+                                columns={["Debit Note Code", "Date", "Final Amount", "Status"]}
+                                renderRow={(q, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/debit-note/${q.id}`)}>
+                                        <td className="px-6 py-4 font-medium text-blue-600">{q.debitNoteCode || "-"}</td>
+                                        <td className="px-6 py-4">{formatDateOnly(q.addedDate)}</td>
                                         <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
                                         <td className="px-6 py-4">
                                             <span className={statusBadge(q.status)}>{q.status || "-"}</span>

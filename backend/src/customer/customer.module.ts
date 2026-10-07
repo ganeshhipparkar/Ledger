@@ -7,6 +7,7 @@ import { UserEntity } from 'src/user/entity/user.entity';
 import { Filter } from 'src/utilities/filter';
 import { CustomerContorller } from './customer.controller';
 import { CustomerService } from './service/customer.service';
+import { CustomerListService } from './service/customer.list.service';
 import { CustomerEntity } from './entity/customer.entity';
 import { CustomerCurrencyEntity } from './entity/customer.currency.entity';
 import { CompanyCurrencyEntity } from 'src/packages/entity/company.currency.entity';
@@ -29,7 +30,7 @@ import { CodeGeneratorService } from 'src/utilities/code-generator.service';
     ]),
   ],
   controllers: [CustomerContorller],
-  providers: [CustomerService, Filter, FileTransfer, CodeGeneratorService],
-  exports: [TypeOrmModule, CustomerService],
+  providers: [CustomerService, CustomerListService, Filter, FileTransfer, CodeGeneratorService],
+  exports: [TypeOrmModule, CustomerService, CustomerListService],
 })
 export class CustomerModule {}

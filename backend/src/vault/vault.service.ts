@@ -4,6 +4,7 @@ import { Repository, QueryRunner } from 'typeorm';
 import { CustomerCurrencyVaultEntity } from './entity/customer.currency.vault.entity';
 import { VaultLedgerEntity } from './entity/vault.ledger.entity';
 import { InvoiceEntity, InvoiceStatus } from 'src/invoice/entity/invoice.entity';
+import { applyInvoiceStrategy } from 'src/utilities/strageryFilter';
 
 @Injectable()
 export class VaultService {
@@ -92,7 +93,7 @@ export class VaultService {
       .andWhere('ledger.entryType = :type', { type: 'CREDIT' })
       .andWhere('ledger.remainingAmount > 0')
       .andWhere('ledger.deletedAt IS NULL')
-      .orderBy('ledger.addedDate', order)
+      .orderBy('ledger.addedDate', 'ASC')
       .getMany();
 
     let amountToPay = Number(invoiceAmount);
@@ -147,10 +148,11 @@ export class VaultService {
     customerId: number,
     currencyId: number,
     companyId: number,
-    strategy: 'FIFO' | 'LIFO',
+    strategy: any,
     queryRunner: QueryRunner,
   ): Promise<void> {
     const manager = queryRunner.manager;
+    const order = strategy === 'LIFO' ? 'DESC' : 'ASC';
 
     const vault = await manager.findOne(CustomerCurrencyVaultEntity, {
       where: { customerId, currencyId, companyId },
@@ -159,45 +161,47 @@ export class VaultService {
     if (!vault || Number(vault.totalAmount) <= 0) {
       return;
     }
-
-    const invoices = await manager.createQueryBuilder(InvoiceEntity, 'invoice')
+    const qb = manager.createQueryBuilder(InvoiceEntity, 'invoice')
       .where('invoice.customerId = :customerId', { customerId })
       .andWhere('invoice.currencyId = :currencyId', { currencyId })
       .andWhere('invoice.companyId = :companyId', { companyId })
-      .andWhere('invoice.status IN (:...statuses)', { statuses: [InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID] })
-      .orderBy('invoice.invoiceDate', 'ASC')
-      .getMany();
+      .andWhere('invoice.status IN (:...statuses)', { statuses: [InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID] });
 
-    for (const invoice of invoices) {
-      if (Number(vault.totalAmount) <= 0) {
-        break;
-      }
+    applyInvoiceStrategy(qb, strategy);
 
-      const remainingToPay = Number(invoice.finalAmount) - Number(invoice.amountPaid || 0);
-      if (remainingToPay <= 0) continue;
+      const invoices = await qb.getMany();
+      console.log(invoices,"all invoices")
 
-      const vaultResult = await this.deductAutomatic(
-        invoice.invoiceId,
-        customerId,
-        currencyId,
-        companyId,
-        remainingToPay,
-        strategy,
-        queryRunner
-      );
+    // for (const invoice of invoices) {
+    //   if (Number(vault.totalAmount) <= 0) {
+    //     break;
+    //   }
 
-      if (vaultResult.result === 'PAID' || vaultResult.result === 'PARTIAL') {
-        const finalStatus = vaultResult.result === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
-        const newAmountPaid = Number(invoice.amountPaid || 0) + vaultResult.amountPaid;
+    //   const remainingToPay = Number(invoice.finalAmount) - Number(invoice.amountPaid || 0);
+    //   if (remainingToPay <= 0) continue;
 
-        await manager.update(InvoiceEntity, { invoiceId: invoice.invoiceId }, {
-          status: finalStatus,
-          amountPaid: newAmountPaid,
-        });
+    //   const vaultResult = await this.deductAutomatic(
+    //     invoice.invoiceId,
+    //     customerId,
+    //     currencyId,
+    //     companyId,
+    //     remainingToPay,
+    //     strategy,
+    //     queryRunner
+    //   );
 
-        vault.totalAmount = Number(vault.totalAmount) - vaultResult.amountPaid;
-      }
-    }
+    //   if (vaultResult.result === 'PAID' || vaultResult.result === 'PARTIAL') {
+    //     const finalStatus = vaultResult.result === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+    //     const newAmountPaid = Number(invoice.amountPaid || 0) + vaultResult.amountPaid;
+
+    //     await manager.update(InvoiceEntity, { invoiceId: invoice.invoiceId }, {
+    //       status: finalStatus,
+    //       amountPaid: newAmountPaid,
+    //     });
+
+    //     vault.totalAmount = Number(vault.totalAmount) - vaultResult.amountPaid;
+    //   }
+    // }
   }
 
   async reverseCredit(
@@ -231,7 +235,7 @@ export class VaultService {
         debit.invoiceId,
         (invoiceReversal.get(debit.invoiceId) ?? 0) + Number(debit.amount),
       );
-    }
+    } 
 
     for (const [invoiceId, amountToReverse] of invoiceReversal.entries()) {
       const invoice = await manager.findOne(InvoiceEntity, { where: { invoiceId } });
@@ -296,5 +300,91 @@ export class VaultService {
       currencyId: vault.currencyId,
       companyId: vault.companyId,
     };
+  }
+
+  async getInvoicesForPayment(paymentTransactionId: number) {
+    const rawData = await this.ledgerRepo
+      .createQueryBuilder('ledger')
+      .leftJoin('ledger.invoice', 'invoice')
+      .select('ledger.invoiceId', 'invoiceId')
+      .addSelect('invoice.invoiceCode', 'invoiceCode')
+      .addSelect('invoice.invoiceDate', 'invoiceDate')
+      .addSelect('invoice.status', 'status')
+      .addSelect('invoice.finalAmount', 'finalAmount')
+      .addSelect('invoice.amountPaid', 'amountPaid')
+      .addSelect('SUM(ledger.amount)', 'amountApplied')
+      .addSelect('MAX(ledger.addedDate)', 'appliedDate')
+      .where('ledger.paymentTransactionId = :paymentTransactionId', { paymentTransactionId })
+      .andWhere("ledger.entryType = 'DEBIT'")
+      .andWhere('ledger.deletedAt IS NULL')
+      .andWhere('ledger.invoiceId IS NOT NULL')
+      .groupBy('ledger.invoiceId')
+      .addGroupBy('invoice.invoiceCode')
+      .addGroupBy('invoice.invoiceDate')
+      .addGroupBy('invoice.status')
+      .addGroupBy('invoice.finalAmount')
+      .addGroupBy('invoice.amountPaid')
+      .getRawMany();
+
+    let totalApplied = 0;
+    const data = rawData.map(row => {
+      const amountApplied = Number(row.amountApplied);
+      totalApplied += amountApplied;
+      return {
+        invoiceId: row.invoiceId,
+        invoiceCode: row.invoiceCode,
+        invoiceDate: row.invoiceDate,
+        status: row.status,
+        finalAmount: Number(row.finalAmount),
+        amountPaid: Number(row.amountPaid),
+        amountApplied,
+        appliedDate: row.appliedDate,
+      };
+    });
+
+    return { data, totalApplied };
+  }
+
+  async getPaymentsForInvoice(invoiceId: number) {
+    const rawData = await this.ledgerRepo
+      .createQueryBuilder('ledger')
+      .leftJoin('ledger.paymentTransaction', 'payment')
+      .select('ledger.paymentTransactionId', 'paymentTransactionId')
+      .addSelect('payment.paymentCode', 'paymentCode')
+      .addSelect('payment.paymentDate', 'paymentDate')
+      .addSelect('payment.paymentMode', 'paymentMode')
+      .addSelect('payment.status', 'status')
+      .addSelect('payment.transactionAmount', 'transactionAmount')
+      .addSelect('SUM(ledger.amount)', 'amountApplied')
+      .addSelect('MAX(ledger.addedDate)', 'appliedDate')
+      .where('ledger.invoiceId = :invoiceId', { invoiceId })
+      .andWhere("ledger.entryType = 'DEBIT'")
+      .andWhere('ledger.deletedAt IS NULL')
+      .andWhere('ledger.paymentTransactionId IS NOT NULL')
+      .groupBy('ledger.paymentTransactionId')
+      .addGroupBy('payment.paymentCode')
+      .addGroupBy('payment.paymentDate')
+      .addGroupBy('payment.paymentMode')
+      .addGroupBy('payment.status')
+      .addGroupBy('payment.transactionAmount')
+      .getRawMany();
+
+    let totalApplied = 0;
+    const data = rawData.map(row => {
+      const amountApplied = Number(row.amountApplied);
+      totalApplied += amountApplied;
+      return {
+        paymentTransactionId: row.paymentTransactionId,
+        paymentCode: row.paymentCode,
+        paymentDate: row.paymentDate,
+        paymentMode: row.paymentMode,
+        status: row.status,
+        transactionAmount: Number(row.transactionAmount),
+        amountApplied,
+        appliedDate: row.appliedDate,
+      };
+    });
+
+    return { data, totalApplied };
   }
 }

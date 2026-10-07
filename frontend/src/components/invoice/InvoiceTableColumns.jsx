@@ -22,7 +22,7 @@ export function InvoiceStatusBadge({ status }) {
     );
 }
 
-export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onCustomerClick, onAddedByClick, onInvoiceClick, onAddCreditNote, paymentMode }) {
+export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onCustomerClick, onAddedByClick, onInvoiceClick, onAddCreditNote, onAddDebitNote, paymentMode }) {
     const router = useRouter?.();
 
     return [
@@ -139,9 +139,16 @@ export function getInvoiceTableColumns({ can, onSubmit, onMarkPaid, onDelete, on
                                     <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate?.(q); }}>Update Due Date</DropdownMenuItem>
                                 </>
                             )}
-                            {/* {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
-                            )} */}
+                            {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && (
+                                <>
+                                    {can?.("creditNoteAdd") && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
+                                    )}
+                                    {can?.("debitNoteAdd") && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddDebitNote?.(q); }}>Add Debit Note</DropdownMenuItem>
+                                    )}
+                                </>
+                            )}
                             {/* {q.invoicePdfPath && (
                                 <>
                                     <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"); }}>

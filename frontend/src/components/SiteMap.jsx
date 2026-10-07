@@ -99,12 +99,16 @@ export default function SiteMap() {
             title: "Sales",
             items: [
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: permissions.includes("paymentTransactionList") || superAdmin },
-                { label: "Quotation", redirectTo: "/quotation-list", show: permissions.includes("quotationList") || superAdmin },
-                { label: "Order", redirectTo: "/order-list", show: permissions.includes("orderList") || superAdmin },
                 { label: "Invoice", redirectTo: "/invoice-list", show: permissions.includes("invoiceList") || superAdmin },
-                { label: "Credit Note", redirectTo: "/credit-note-list", show: permissions.includes("creditNoteList") || superAdmin }
+                { label: "Credit Note", redirectTo: "/credit-note-list", show: permissions.includes("creditNoteList") || superAdmin },
+                { label: "Debit Note", redirectTo: "/debit-note-list", show: permissions.includes("debitNoteList") || superAdmin }
             ],
         },
+        {
+            title: "Order(s)",
+            items: [{ label: "Quotation", redirectTo: "/quotation-list", show: permissions.includes("quotationList") || superAdmin },
+            { label: "Order", redirectTo: "/order-list", show: permissions.includes("orderList") || superAdmin },],
+        }
     ];
 
     const dashboardSections = rawSections.filter((s) => s.items.some((i) => i.show));

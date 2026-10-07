@@ -35,6 +35,11 @@ import { OrderModule } from './order/order.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { ModSettingsModule } from './mod_setting/mod.settings.module';
 import { CreditNoteModule } from './credit_note/credit.note.module';
+import { DebitNoteModule } from './debit_note/debit.note.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -44,7 +49,26 @@ import { CreditNoteModule } from './credit_note/credit.note.module';
       ActivityMasterEntity,
       CustomerCurrencyVaultEntity,
       VaultLedgerEntity,
-    ]),
+    ]),  ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60000, 
+          limit: 10,  
+        },
+      ],
+      storage: new ThrottlerStorageRedisService(
+        new Redis({
+          host: 'localhost',
+          port: 6379,
+        }),
+        
+      ),
+        errorMessage: 'You have sent too many requests. Please try again later.',
+
+    }),
+  
+    RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'upload'),
@@ -74,9 +98,11 @@ import { CreditNoteModule } from './credit_note/credit.note.module';
     ModSettingsModule,
     VaultModule,
     CreditNoteModule,
+    DebitNoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
 

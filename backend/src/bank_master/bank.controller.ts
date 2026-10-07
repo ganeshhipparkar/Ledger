@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { BankMasterService } from './service/bank.service';
+import { BankMasterListService } from './service/bank.list.service';
 import {
   bankListDto,
   BankMasterDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('bank')
 export class BankController {
-  constructor(private readonly bankService: BankMasterService) {}
+  constructor(
+    private readonly bankService: BankMasterService,
+    private readonly bankListService: BankMasterListService,
+  ) {}
 
   @Post('bank-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('bankList')
   async bankList(@Req() req: any, @Body() body: bankListDto) {
-    const result = await this.bankService.bankList(body, req);
+    const result = await this.bankListService.bankList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class BankController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('bankView')
   async getBank(@Req() req: any, @Param('id') id: string) {
-    const result = await this.bankService.getBankDetails(
+    const result = await this.bankListService.getBankDetails(
       Number(id),
       req,
     );

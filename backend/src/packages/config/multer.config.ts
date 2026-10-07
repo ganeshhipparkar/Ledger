@@ -3,7 +3,7 @@ import { DiffieHellman } from 'crypto';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
-export const multerConfig = {
+export const  multerConfig = {
   storage: diskStorage({
     destination: `./temp-upload`,
     filename: (req, file, callback) => {

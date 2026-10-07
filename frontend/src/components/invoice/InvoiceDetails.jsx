@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -9,8 +9,9 @@ import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2
+    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet
 } from "lucide-react";
+import InvoicePaymentsTab from "./InvoicePaymentsTab";
 import Header from "../Header";
 import Loader from "../ui/Loader";
 import { authHeaders } from "@/app/lib/auth";
@@ -27,10 +28,13 @@ import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 import { taxGroupSidePanelConfig } from "../taxGroup/configs/taxGroupSidePanel.config";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
+import NoteAddPanel from "../notes/NoteAddPanel";
+import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
+import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
+import { getCreditNoteMode } from "@/lib/creditNoteMode";
 import { FaRegFilePdf } from "react-icons/fa";
 import { STATUS_COLORS, STATUS_LABELS } from "./InvoiceList";
 import InvoiceDueDatePanel from "./InvoiceDueDatePanel";
-import CreditNoteAddPanel from "../creditNote/CreditNoteAddPanel";
 
 const MySwal = withReactContent(Swal);
 
@@ -56,6 +60,7 @@ function fmtAmount(n, symbol) {
 
 const NAV_ITEMS = [
     { key: "summary", label: "Summary", Icon: LayoutList },
+    { key: "payments", label: "Payments", Icon: Wallet, permission: "paymentTransactionList" },
     { key: "activity", label: "Activity", Icon: Activity },
 ];
 
@@ -69,7 +74,7 @@ export default function InvoiceDetails({ id }) {
 
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { can } = useContext(loginContext) || {};
+    const { can, displayUser } = useContext(loginContext) || {};
 
     const [invoice, setInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -77,7 +82,7 @@ export default function InvoiceDetails({ id }) {
 
     useEffect(() => {
         const tab = searchParams.get("tab");
-        if (tab && ["summary", "activity"].includes(tab)) {
+        if (tab && ["summary", "payments", "activity"].includes(tab)) {
             setActiveTab(tab);
         }
     }, [searchParams]);
@@ -90,6 +95,7 @@ export default function InvoiceDetails({ id }) {
     const [selectedItemId, setSelectedItemId] = useState(null);
     const [dueDateInvoice, setDueDateInvoice] = useState(null);
     const [creditNoteInvoice, setCreditNoteInvoice] = useState(null);
+    const [debitNoteInvoice, setDebitNoteInvoice] = useState(null);
     const [paymentMode, setPaymentMode] = useState("AUTOMATIC");
 
     useEffect(() => {
@@ -109,7 +115,7 @@ export default function InvoiceDetails({ id }) {
         fetchPaymentMode();
     }, []);
 
-    const fetchDetails = useCallback(async () => {
+    const fetchDetails = async () => {
         try {
             setLoading(true);
             const res = await fetch("/relayapi", {
@@ -129,9 +135,9 @@ export default function InvoiceDetails({ id }) {
         } finally {
             setLoading(false);
         }
-    }, [id, router]);
+    };
 
-    useEffect(() => { fetchDetails(); }, [fetchDetails]);
+    useEffect(() => { fetchDetails(); }, [id, router]);
 
     const handleSubmitInvoice = async () => {
         const result = await MySwal.fire({
@@ -322,9 +328,17 @@ export default function InvoiceDetails({ id }) {
                                     <ActionBtn onClick={() => handleStatusUpdate("DELETE")} icon={<Trash2 className="h-4 w-4" />} label="Delete" variant="danger" className="border-red-200 text-red-600 hover:bg-red-50" />
                                 </>
                             )}
-                            {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
-                                <ActionBtn onClick={() => setCreditNoteInvoice(q)} icon={<FileText className="h-4 w-4" />} label="Add Credit Note" variant="outline" />
+                            {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && (
+                                <>
+                                    {can?.("creditNoteAdd") && (
+                                        <ActionBtn onClick={() => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: q })} icon={<FileText className="h-4 w-4" />} label="Add Credit Note" variant="outline" />
+                                    )}
+                                    {can?.("debitNoteAdd") && (
+                                        <ActionBtn onClick={() => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: q })} icon={<FileText className="h-4 w-4" />} label="Add Debit Note" variant="outline" />
+                                    )}
+                                </>
                             )}
+
                             {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
                                 <>
                                     <ActionBtn onClick={() => setDueDateInvoice(q)} icon={<RefreshCw className="h-4 w-4" />} label="Update Due Date" variant="outline" />
@@ -365,7 +379,7 @@ export default function InvoiceDetails({ id }) {
                         <button type="button" onClick={() => setSidebarExpanded(!sidebarExpanded)} className="w-full flex items-center justify-center py-2.5 border-b border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer">
                             {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
-                        {NAV_ITEMS.map(({ key, label, Icon }) => (
+                        {NAV_ITEMS.filter(item => !item.permission || (can && can(item.permission)) || displayUser?.isSuperAdmin).map(({ key, label, Icon }) => (
                             <button key={key} type="button" onClick={() => setActiveTab(key)} className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition cursor-pointer ${activeTab === key ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
                                 <Icon className="h-4 w-4 shrink-0" />
                                 {sidebarExpanded && <span className="flex items-center gap-1.5 truncate">{label}</span>}
@@ -540,6 +554,9 @@ export default function InvoiceDetails({ id }) {
                             </div>
                         </div>
                     )}
+                    {activeTab === "payments" && (
+                        <InvoicePaymentsTab invoiceId={id} refreshKey={invoice?.amountPaid} />
+                    )}
                     {activeTab === "activity" && (
                         <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
                             <ActivityTimeline targetType="INVOICE" targetId={id} />
@@ -554,8 +571,9 @@ export default function InvoiceDetails({ id }) {
             {selectedUserPanelId && typeof document !== "undefined" && createPortal(<UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />, document.body)}
             {selectedCustomerPanelId && typeof document !== "undefined" && createPortal(<CustomerSidePanel customerId={selectedCustomerPanelId} onClose={() => setSelectedCustomerPanelId(null)} />, document.body)}
             {dueDateInvoice && <InvoiceDueDatePanel invoice={dueDateInvoice} onClose={() => setDueDateInvoice(null)} onSuccess={() => { setDueDateInvoice(null); fetchDetails(); }} />}
-            {creditNoteInvoice && typeof document !== "undefined" && createPortal(
-                <CreditNoteAddPanel
+            {creditNoteInvoice && getCreditNoteMode() === "CUSTOMER" && typeof document !== "undefined" && createPortal(
+                <NoteAddPanel
+                    noteType="CREDIT"
                     lockedCustomerId={creditNoteInvoice.customerId}
                     lockedCustomerName={creditNoteInvoice.customerName}
                     lockedCurrencyId={creditNoteInvoice.currencyId}
@@ -565,6 +583,21 @@ export default function InvoiceDetails({ id }) {
                     lockedCompanyId={creditNoteInvoice.companyId}
                     onClose={() => setCreditNoteInvoice(null)}
                     onSuccess={() => setCreditNoteInvoice(null)}
+                />,
+                document.body
+            )}
+            {debitNoteInvoice && getCreditNoteMode() === "CUSTOMER" && typeof document !== "undefined" && createPortal(
+                <NoteAddPanel
+                    noteType="DEBIT"
+                    lockedCustomerId={debitNoteInvoice.customerId}
+                    lockedCustomerName={debitNoteInvoice.customerName}
+                    lockedCurrencyId={debitNoteInvoice.currencyId}
+                    lockedCurrencyCode={debitNoteInvoice.currencyCode}
+                    lockedInvoiceId={debitNoteInvoice.invoiceId}
+                    lockedInvoiceCode={debitNoteInvoice.invoiceCode}
+                    lockedCompanyId={debitNoteInvoice.companyId}
+                    onClose={() => setDebitNoteInvoice(null)}
+                    onSuccess={() => setDebitNoteInvoice(null)}
                 />,
                 document.body
             )}

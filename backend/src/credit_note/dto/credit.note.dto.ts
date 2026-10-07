@@ -8,8 +8,9 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { CustomerCharges } from '../entity/credit.note.entity';
+import { CustomerCharges, NoteMode } from '../entity/credit.note.entity';
 import { TaxCalculation } from 'src/invoice/entity/invoice.item.entity';
+import { VatWithheld } from 'src/invoice/entity/invoice.entity';
 
 const safeRequiredId = (value: any): number | undefined => {
   if (
@@ -59,33 +60,56 @@ export class CreditNoteDto {
   @Transform(({ value }) => safeRequiredId(value))
   currencyId!: number;
 
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  @Transform(({ value }) => safeRequiredId(value))
-  invoiceId!: number;
+  @Transform(({ value }) => safeOptionalNumber(value))
+  invoiceId?: number;
 
-  @IsEnum(CustomerCharges)
-  @IsNotEmpty()
-  customerCharges!: CustomerCharges;
+  @IsOptional()
+  @IsEnum(VatWithheld)
+  vatWithheld?: VatWithheld;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  narration!: string;
+  issueDate?: string;
 
+  @IsOptional()
+  @IsEnum(CustomerCharges)
+  @ValidateIf((o) => o.noteMode !== NoteMode.INVOICE)
+  customerCharges?: CustomerCharges;
+
+  @IsOptional()
+  @IsString()
+  @ValidateIf((o) => o.noteMode !== NoteMode.INVOICE)
+  narration?: string;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+
+  @IsEnum(NoteMode)
+  @IsOptional()
+  noteMode?: NoteMode;
+
+  @IsOptional()
   @IsEnum(TaxCalculation)
-  @IsNotEmpty()
-  taxCalculation!: TaxCalculation;
+  @ValidateIf((o) => o.noteMode !== NoteMode.INVOICE)
+  taxCalculation?: TaxCalculation;
 
   @IsOptional()
   @IsInt()
   @Transform(({ value }) => safeOptionalNumber(value))
-  @ValidateIf((o) => o.taxCalculation !== TaxCalculation.NA)
+  @ValidateIf((o) => o.noteMode !== NoteMode.INVOICE && o.taxCalculation && o.taxCalculation !== TaxCalculation.NA)
   taxGroupId?: number;
 
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
   @Transform(({ value }) => safeNumber(value, 0))
-  totalAmount!: number;
+  @ValidateIf((o) => o.noteMode !== NoteMode.INVOICE)
+  totalAmount?: number;
+
+  @IsOptional()
+  items?: any;
 
   @IsOptional()
   @IsInt()

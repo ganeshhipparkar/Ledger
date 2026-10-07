@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { UserService } from './services/user.service';
+import { UserListService } from './services/user.list.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
 import {
@@ -35,10 +36,15 @@ import {
   PermissionsGuard,
   RequirePermission,
 } from 'src/utilities/permissions.guard';
+import { Throttle } from '@nestjs/throttler';
+import { LoginThrottlerGuard } from 'src/utilities/login-throttler.guard';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userListService: UserListService,
+  ) {}
 
   @Get()
   async hello() {
@@ -119,6 +125,8 @@ export class UserController {
   }
 
   @Post('user-login')
+  @UseGuards(LoginThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseInterceptors(FileInterceptor('userFile', multerConfig))
   async login(@Body() body: login, @Res({ passthrough: true }) response: any) {
     const result = await this.userService.login(body);
@@ -148,7 +156,7 @@ export class UserController {
   @RequirePermission('userList')
   @UseInterceptors(FileInterceptor('userFile', multerConfig))
   async getUsers(@Body() body: getUserListDto, @Req() req) {
-    const result = await this.userService.getUsers(body, req);
+    const result = await this.userListService.getUsers(body, req);
     return {
       encrypted: encryptResponse(result),
     };
@@ -162,7 +170,7 @@ export class UserController {
     @Query('profileId') profileId: string,
     @Req() req: any,
   ) {
-    const result = await this.userService.getUser({ id, profileId }, req);
+    const result = await this.userListService.getUser({ id, profileId }, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -262,12 +270,12 @@ export class UserController {
   @Get('user-me')
   @UseGuards(AuthGuard('jwt'))
   async getMyProfile(@Req() req: any) {
-    const result = await this.userService.getUser(
+    const result = await this.userListService.getUser(
       { id: String(req.user.userId), profileId: req.user.profileId },
       req,
     );
     if (req.user?.isImpersonation && req.user?.impersonatedBy) {
-      const adminResult = await this.userService.getUser(
+      const adminResult = await this.userListService.getUser(
         { id: String(req.user.impersonatedBy) },
         req,
       );

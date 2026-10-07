@@ -19,6 +19,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { CustomerService } from './service/customer.service';
+import { CustomerListService } from './service/customer.list.service';
 import {
   CustomerListDto,
   CustomerDto,
@@ -28,13 +29,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('customer')
 export class CustomerContorller {
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(
+    private readonly customerService: CustomerService,
+    private readonly customerListService: CustomerListService,
+  ) {}
 
   @Post('customer-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('customerList')
   async customerList(@Req() req: any, @Body() body: CustomerListDto) {
-    const result = await this.customerService.customerList(body, req);
+    const result = await this.customerListService.customerList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -42,7 +46,7 @@ export class CustomerContorller {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('customerList')
   async customerCurrenciesList(@Req() req: any, @Body() body: CustomerListDto) {
-    const result = await this.customerService.customerCurrenciesList(body, req);
+    const result = await this.customerListService.customerCurrenciesList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -50,7 +54,7 @@ export class CustomerContorller {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('customerView')
   async getCustomer(@Req() req: any, @Param('id') id: string) {
-    const result = await this.customerService.getCustomerDetails(
+    const result = await this.customerListService.getCustomerDetails(
       Number(id),
       req,
     );
@@ -123,7 +127,7 @@ export class CustomerContorller {
     @Req() req: any,
     @Param('companyId') companyId: string,
   ) {
-    const result = await this.customerService.getCompanyCurrencies(
+    const result = await this.customerListService.getCompanyCurrencies(
       Number(companyId),
       req,
     );

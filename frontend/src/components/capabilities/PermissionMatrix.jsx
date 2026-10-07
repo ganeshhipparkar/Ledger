@@ -122,6 +122,12 @@ export const MODULES = [
         key: "creditNote",
         permissions: ["creditNoteList", "creditNoteView", "creditNoteAdd"],
     },
+    {
+        section: "Sales",
+        label: "Debit Note",
+        key: "debitNote",
+        permissions: ["debitNoteList", "debitNoteView", "debitNoteAdd"],
+    },
 
 ];
 

@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { PackageContorller } from "./package.controller";
 import { PackageService } from "./package.service";
+import { PackageListService } from "./package.list.service";
 import { PackageEntity } from "./entity/package.entity";
 
 @Module({
@@ -21,7 +22,7 @@ import { PackageEntity } from "./entity/package.entity";
     ]),
   ],
   controllers: [PackageContorller],
-  providers: [PackageService, Filter, CodeGeneratorService],
+  providers: [PackageService, PackageListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class PackageModule {}

@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
 import { GroupService } from './service/group.service';
+import { GroupListService } from './service/group.list.service';
 import {
   getGroupListDto,
   GroupDto,
@@ -29,7 +30,10 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('group')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(
+    private readonly groupService: GroupService,
+    private readonly groupListService: GroupListService,
+  ) {}
 
   @Get()
   async hello() {
@@ -67,7 +71,7 @@ export class GroupController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('groupList')
   async getGroups(@Req() req, @Body() body: getGroupListDto) {
-    const result = await this.groupService.getGroups(body, req);
+    const result = await this.groupListService.getGroups(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -75,7 +79,7 @@ export class GroupController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('userUpdate')
   async getGroupsForDropdown(@Req() req) {
-    const result = await this.groupService.getGroupsForDropdown(req);
+    const result = await this.groupListService.getGroupsForDropdown(req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -83,7 +87,7 @@ export class GroupController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('groupView')
   async getGroup(@Req() req, @Param('id') param) {
-    const result = await this.groupService.getGroup(param, req);
+    const result = await this.groupListService.getGroup(param, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -91,7 +95,7 @@ export class GroupController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   async getAllPermissions() {
-    const result = await this.groupService.getAllPermissions();
+    const result = await this.groupListService.getAllPermissions();
     return { encrypted: encryptResponse(result) };
   }
 
@@ -99,7 +103,7 @@ export class GroupController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   async getGroupPermissions(@Param('groupId') groupId: string) {
-    const result = await this.groupService.getGroupPermissions(Number(groupId));
+    const result = await this.groupListService.getGroupPermissions(Number(groupId));
     return { encrypted: encryptResponse(result) };
   }
 

@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { TermsAndConditionsController } from "./terms.conditions.controller";
 import { TermsAndConditionsService } from "./terms.conditions.service";
+import { TermsConditionsListService } from "./terms.conditions.list.service";
 import { TermsAndConditionsEntity } from "./entity/terms.conditions.entity";
 
 @Module({
@@ -21,7 +22,7 @@ import { TermsAndConditionsEntity } from "./entity/terms.conditions.entity";
     ]),
   ],
   controllers: [TermsAndConditionsController],
-  providers: [TermsAndConditionsService, Filter, CodeGeneratorService],
+  providers: [TermsAndConditionsService, TermsConditionsListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class TermsAndConditionsModule {}

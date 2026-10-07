@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { BrandService } from './service/brand.service';
+import { BrandListService } from './service/brand.list.service';
 import {
   BrandListDto,
   BrandDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('brand')
 export class BrandController {
-  constructor(private readonly brandService: BrandService) {}
+  constructor(
+    private readonly brandService: BrandService,
+    private readonly brandListService: BrandListService,
+  ) {}
 
   @Post('brand-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('brandList')
   async brandList(@Req() req: any, @Body() body: BrandListDto) {
-    const result = await this.brandService.brandList(body, req);
+    const result = await this.brandListService.brandList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class BrandController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('brandView')
   async getBrand(@Req() req: any, @Param('id') id: string) {
-    const result = await this.brandService.getBrandDetails(
+    const result = await this.brandListService.getBrandDetails(
       Number(id),
       req,
     );

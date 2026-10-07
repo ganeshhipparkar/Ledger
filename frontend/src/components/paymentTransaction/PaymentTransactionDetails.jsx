@@ -11,6 +11,7 @@ import Loader from "../ui/Loader";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
 import LinkedCustomerCell from "../common/LinkedCustomerCell";
 import LinkedBankBookCell from "../common/LinkedBankBookCell";
+import PaymentInvoicesTab from "./PaymentInvoicesTab";
 import PaymentTransactionStatusSidePanel from "./PaymentTransactionStatusSidePanel";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 import { ChevronDown, CheckCircle, XCircle } from "lucide-react";
@@ -168,7 +169,7 @@ export default function PaymentTransactionDetails({ id }) {
                                 className="inline-flex h-11 items-center gap-1.5 px-6 text-sm font-semibold border border-red-200 rounded-xl hover:bg-red-100 hover:border-red-300 transition cursor-pointer shadow-xs"
                                 onClick={() => setStatusModal({ open: true, action: "cancel-approved" })}
                             >
-                                Cancel Payment
+                                Revert Payment
                             </button>
                         )}
                     </div>
@@ -198,7 +199,17 @@ export default function PaymentTransactionDetails({ id }) {
                                 >
                                     Summary
                                 </button>
-
+                                {((can && can("invoiceList")) || displayUser?.isSuperAdmin) && (
+                                    <button
+                                        onClick={() => setActiveTab("invoices")}
+                                        className={`w-full rounded-xl px-4 py-3 text-left font-medium transition cursor-pointer ${activeTab === "invoices"
+                                            ? "bg-gray-600 text-white"
+                                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                            }`}
+                                    >
+                                        Invoices
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -354,6 +365,13 @@ export default function PaymentTransactionDetails({ id }) {
                                     </div>
                                 </div>
                             </div>
+                        )}
+
+                        {activeTab === "invoices" && (
+                            <PaymentInvoicesTab 
+                                paymentTransactionId={id} 
+                                refreshKey={transaction.status} 
+                            />
                         )}
 
                         {activeTab === "activities" && (

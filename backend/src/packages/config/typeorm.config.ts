@@ -47,7 +47,11 @@ import { ModSettings } from 'src/user/entity/mod.settings';
 import { CustomerCurrencyVaultEntity } from 'src/vault/entity/customer.currency.vault.entity';
 import { VaultLedgerEntity } from 'src/vault/entity/vault.ledger.entity';
 import { CreditNoteEntity } from 'src/credit_note/entity/credit.note.entity';
+import { CreditNoteItemEntity } from 'src/credit_note/entity/credit.note.item.entity';
 import { CreditNoteAttachmentsEntity } from 'src/credit_note/entity/credit.note.attachments.entity';
+import { DebitNoteEntity } from 'src/debit_note/entity/debit.note.entity';
+import { DebitNoteAttachmentsEntity } from 'src/debit_note/entity/debit.note.attachments.entity';
+import { DebitNoteItemEntity } from 'src/debit_note/entity/debit.note.item.entity';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -102,7 +106,11 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     CustomerCurrencyVaultEntity,
     VaultLedgerEntity,
     CreditNoteEntity,
+    CreditNoteItemEntity,
     CreditNoteAttachmentsEntity,
+    DebitNoteEntity,
+    DebitNoteAttachmentsEntity,
+    DebitNoteItemEntity,
   ],
   synchronize: true, 
   migrationsRun: true,

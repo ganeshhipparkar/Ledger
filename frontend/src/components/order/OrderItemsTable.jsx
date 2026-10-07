@@ -52,7 +52,7 @@ export function newEmptyItem() {
         unitPrice: "",
         amount: 0,
         totalAmount: 0,
-        taxCalculation: "N/A",
+        taxCalculation: "NA",
         taxGroupId: "",
         taxGroup: "",
         taxGroupLabel: "",
@@ -232,7 +232,7 @@ export default function OrderItemsTable({
     const handleTaxCalcChange = (idx, val) => {
         const updated = items.map((it, i) => {
             if (i !== idx) return it;
-            const hasTax = val !== "N/A";
+            const hasTax = val !== "NA";
             return computeItem({
                 ...it,
                 taxCalculation: val,
@@ -530,7 +530,7 @@ export default function OrderItemsTable({
                                                 value: String(tg.taxId ?? tg.taxGroupId ?? tg.taxCode),
                                                 label: `${tg.taxCode} (${tg.taxValue}%)`
                                             }))}
-                                            isDisabled={item.taxCalculation === "N/A"}
+                                            isDisabled={item.taxCalculation === "NA"}
                                             isClearable
                                             placeholder="-- Tax Group --"
                                             classNamePrefix="react-select"

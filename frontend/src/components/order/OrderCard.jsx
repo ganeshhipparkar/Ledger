@@ -190,7 +190,9 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                             const primaryAction = [
                                                 { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
                                                 { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Cancel Order" },
-                                                { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                                { show: isOpen && (q.status === "PARTIAL_DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
+                                                { show: isOpen && (q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Close Order" },
+
                                                 { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
                                             ].find(x => x.show)?.label ?? "Actions";
                                             return <span className="truncate whitespace-nowrap overflow-hidden">{primaryAction}</span>;
@@ -263,7 +265,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                     )}
                                     {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
                                         <>
-                                            {q.invoicePdfPath && (
+                                            {/* {q.invoicePdfPath && (
                                                 <>
                                                     <DropdownMenuItem
                                                         className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -285,8 +287,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                                                         Download Invoice
                                                     </DropdownMenuItem>
                                                 </>
-                                            )}
-                                            {/* Note: Regenerate PDF requires onRegeneratePdf prop which isn't currently passed to OrderCard, so keeping it omitted like it was initially */}
+                                            )} */}
                                             <DropdownMenuItem
                                                 className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 onClick={(e) => {

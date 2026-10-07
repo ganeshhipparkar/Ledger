@@ -6,6 +6,9 @@ import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import MultiFilePicker from "../common/MultiFilePicker";
 import AsyncSelect from "react-select/async";
+import Select from "react-select";
+import FormattedNumberInput from "../ui/FormattedNumberInput";
+import { limitPriceDecimals } from "@/lib/utils";
 
 const CUSTOMER_CHARGES_OPTIONS = [
     { value: "INVOICE_CHARGES", label: "Invoice Charges" },
@@ -36,7 +39,8 @@ function computePreview(totalAmount, taxCalculation, taxRate) {
 }
 
 
-export default function CreditNoteFormCore({
+export default function NoteFormCore({
+    noteType = "CREDIT",
     lockedCustomerId = null,
     lockedCustomerName = null,
     lockedCurrencyId = null,
@@ -154,7 +158,7 @@ export default function CreditNoteFormCore({
                         Customer & Currency <span className="text-red-500">*</span>
                     </label>
                     <AsyncSelect
-                        instanceId="cn-customer-select"
+                        instanceId="note-customer-select"
                         cacheOptions
                         defaultOptions
                         loadOptions={loadCustomerOptions}
@@ -190,36 +194,56 @@ export default function CreditNoteFormCore({
                 <LockedField label="Invoice" value={lockedInvoiceCode} />
             ) : (
                 <div>
-                    <label htmlFor="cn-invoice" className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Invoice <span className="text-red-500">*</span>
+                    <label htmlFor="note-invoice" className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Invoice {noteType === "DEBIT" && <span className="text-red-500">*</span>}
                     </label>
-                    <select
-                        id="cn-invoice"
-                        value={formData.invoiceId || ""}
-                        onChange={(e) => onChange("invoiceId", e.target.value)}
-                        required
-                        disabled={!formData.currencyId && !lockedCustomerId}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <option value="">{formData.customerId ? "Select invoice…" : "Select a customer first"}</option>
-                        {invoices.map((inv) => (
-                            <option key={inv.invoiceId} value={inv.invoiceId}>
-                                {inv.invoiceCode} — {inv.status}
-                            </option>
-                        ))}
-                    </select>
+                    <Select
+                        instanceId="note-invoice-select"
+                        name="invoiceId"
+                        value={formData.invoiceId ? {
+                            value: String(formData.invoiceId),
+                            label: invoices.find(inv => String(inv.invoiceId) === String(formData.invoiceId)) ? (() => {
+                                const inv = invoices.find(inv => String(inv.invoiceId) === String(formData.invoiceId));
+                                return `${inv.invoiceCode} — ${inv.status}`;
+                            })() : ""
+                        } : null}
+                        onChange={(selected) => {
+                            onChange("invoiceId", selected ? selected.value : "");
+                        }}
+                        options={invoices.map((inv) => ({
+                            value: String(inv.invoiceId),
+                            label: `${inv.invoiceCode} — ${inv.status}`,
+                        }))}
+                        isDisabled={!formData.currencyId && !lockedCustomerId}
+                        placeholder={formData.customerId ? "Select invoice…" : "Select a customer first"}
+                        isClearable
+                        styles={{
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                            control: (base) => ({
+                                ...base,
+                                borderRadius: "0.75rem",
+                                borderColor: errors.invoiceId ? "#ef4444" : "#e5e7eb",
+                                padding: "1px",
+                                fontSize: "0.875rem",
+                                boxShadow: "none",
+                                "&:hover": { borderColor: errors.invoiceId ? "#ef4444" : "#3b82f6" },
+                            }),
+                        }}
+                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                    />
                     <FieldError name="invoiceId" />
                 </div>
             )}
 
             <div>
-                <label htmlFor="cn-charges" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="note-charges" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Customer Charges <span className="text-red-500">*</span>
                 </label>
                 <select
-                    id="cn-charges"
+                    id="note-charges"
                     value={formData.customerCharges || ""}
                     onChange={(e) => onChange("customerCharges", e.target.value)}
+                    required
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white"
                 >
                     <option value="">Select…</option>
@@ -231,13 +255,14 @@ export default function CreditNoteFormCore({
             </div>
 
             <div>
-                <label htmlFor="cn-narration" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="note-narration" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Narration <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                    id="cn-narration"
+                    id="note-narration"
                     value={formData.narration || ""}
                     onChange={(e) => onChange("narration", e.target.value)}
+                    required
                     rows={2}
                     placeholder="narration…"
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
@@ -246,59 +271,94 @@ export default function CreditNoteFormCore({
             </div>
 
             <div>
-                <label htmlFor="cn-total-amount" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="note-total-amount" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Total Amount <span className="text-red-500">*</span>
                 </label>
-                <input
-                    id="cn-total-amount"
+                <FormattedNumberInput
+                    id="note-total-amount"
+                    min="0"
                     step="0.0001"
                     value={formData.totalAmount ?? ""}
-                    onChange={(e) => onChange("totalAmount", e.target.value)}
+                    onChange={(e) => onChange("totalAmount", limitPriceDecimals(e.target.value))}
                     placeholder="0.0000"
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                    className="no-spinner w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                 />
                 <FieldError name="totalAmount" />
             </div>
 
             <div>
-                <label htmlFor="cn-tax-calc" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="note-tax-calc" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Tax Calculation <span className="text-red-500">*</span>
                 </label>
-                <select
-                    id="cn-tax-calc"
-                    value={formData.taxCalculation || "NA"}
-                    onChange={(e) => {
-                        onChange("taxCalculation", e.target.value);
-                        if (e.target.value === "NA") onChange("taxGroupId", "");
+                <Select
+                    instanceId="note-tax-calc-select"
+                    name="taxCalculation"
+                    value={formData.taxCalculation ? {
+                        value: formData.taxCalculation,
+                        label: TAX_CALC_OPTIONS.find(o => o.value === formData.taxCalculation)?.label || formData.taxCalculation
+                    } : null}
+                    onChange={(selected) => {
+                        const val = selected ? selected.value : "NA";
+                        onChange("taxCalculation", val);
+                        if (val === "NA") onChange("taxGroupId", "");
                     }}
-                    required
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white"
-                >
-                    {TAX_CALC_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                </select>
+                    options={TAX_CALC_OPTIONS}
+                    placeholder="Select…"
+                    isClearable={false}
+                    styles={{
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                        control: (base) => ({
+                            ...base,
+                            borderRadius: "0.75rem",
+                            borderColor: "#e5e7eb",
+                            padding: "1px",
+                            fontSize: "0.875rem",
+                            boxShadow: "none",
+                            "&:hover": { borderColor: "#3b82f6" },
+                        }),
+                    }}
+                    menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                />
             </div>
 
             {needsTaxGroup && (
                 <div>
-                    <label htmlFor="cn-tax-group" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label htmlFor="note-tax-group" className="block text-sm font-medium text-gray-700 mb-1.5">
                         Tax Group <span className="text-red-500">*</span>
                     </label>
-                    <select
-                        id="cn-tax-group"
-                        value={formData.taxGroupId || ""}
-                        onChange={(e) => onChange("taxGroupId", e.target.value)}
-                        required
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white"
-                    >
-                        <option value="">Select tax group…</option>
-                        {taxGroups.map((tg) => (
-                            <option key={tg.taxId} value={tg.taxId}>
-                                {tg.taxName} ({tg.taxValue}%)
-                            </option>
-                        ))}
-                    </select>
+                    <Select
+                        instanceId="note-tax-group-select"
+                        name="taxGroupId"
+                        value={formData.taxGroupId ? {
+                            value: String(formData.taxGroupId),
+                            label: taxGroups.find(tg => String(tg.taxId) === String(formData.taxGroupId)) ? (() => {
+                                const tg = taxGroups.find(tg => String(tg.taxId) === String(formData.taxGroupId));
+                                return `${tg.taxName} (${tg.taxValue}%)`;
+                            })() : ""
+                        } : null}
+                        onChange={(selected) => {
+                            onChange("taxGroupId", selected ? selected.value : "");
+                        }}
+                        options={taxGroups.map((tg) => ({
+                            value: String(tg.taxId),
+                            label: `${tg.taxName} (${tg.taxValue}%)`,
+                        }))}
+                        placeholder="Select tax group…"
+                        isClearable
+                        styles={{
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                            control: (base) => ({
+                                ...base,
+                                borderRadius: "0.75rem",
+                                borderColor: errors.taxGroupId ? "#ef4444" : "#e5e7eb",
+                                padding: "1px",
+                                fontSize: "0.875rem",
+                                boxShadow: "none",
+                                "&:hover": { borderColor: errors.taxGroupId ? "#ef4444" : "#3b82f6" },
+                            }),
+                        }}
+                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                    />
                     <FieldError name="taxGroupId" />
                 </div>
             )}

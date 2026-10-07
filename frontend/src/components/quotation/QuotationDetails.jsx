@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -105,7 +105,7 @@ export default function QuotationDetails({ id }) {
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
 
-    const fetchDetails = useCallback(async () => {
+    const fetchDetails = async () => {
         try {
             setLoading(true);
             const res = await fetch("/relayapi", {
@@ -125,9 +125,9 @@ export default function QuotationDetails({ id }) {
         } finally {
             setLoading(false);
         }
-    }, [id]);
+    };
 
-    useEffect(() => { fetchDetails(); }, [fetchDetails]);
+    useEffect(() => { fetchDetails(); }, [id]);
 
     const handleStatusUpdate = async (newStatus) => {
         const label = newStatus === "CONFIRMED" ? "Confirm" : newStatus === "SUBMITTED" ? "Submit" : newStatus;

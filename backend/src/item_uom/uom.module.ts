@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { UomController } from "./uom.controller";
 import { UomService } from "./service/uom.service";
+import { UomListService } from "./service/uom.list.service";
 import { UomEntity } from "./entity/uom.entity";
 
 @Module({
@@ -21,7 +22,7 @@ import { UomEntity } from "./entity/uom.entity";
     ]),
   ],
   controllers: [UomController],
-  providers: [UomService, Filter, CodeGeneratorService],
-  exports: [TypeOrmModule, UomService],
+  providers: [UomService, UomListService, Filter, CodeGeneratorService],
+  exports: [TypeOrmModule, UomService, UomListService],
 })
 export class UomModule {}

@@ -26,6 +26,7 @@ import { VaultModule } from 'src/vault/vault.module';
 import { ModSettings } from 'src/user/entity/mod.settings';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './service/invoice.service';
+import { InvoiceListService } from './service/invoice.list.service';
 import { InvoicePdfService } from './invoice.pdf.service';
 
 @Module({
@@ -55,7 +56,7 @@ import { InvoicePdfService } from './invoice.pdf.service';
     VaultModule,
   ],
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoicePdfService, Filter, FileTransfer, CodeGeneratorService],
-  exports: [TypeOrmModule, InvoiceService],
+  providers: [InvoiceService, InvoiceListService, InvoicePdfService, Filter, FileTransfer, CodeGeneratorService],
+  exports: [TypeOrmModule, InvoiceService, InvoiceListService],
 })
 export class InvoiceModule {}

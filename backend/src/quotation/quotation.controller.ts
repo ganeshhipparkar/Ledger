@@ -19,6 +19,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { QuotationService } from './quotation.service';
+import { QuotationListService } from './quotation.list.service';
 import { QuotationPdfService } from './quotation.pdf.service';
 import {
   QuotationDto,
@@ -31,6 +32,7 @@ import { encryptResponse } from 'src/utilities/crypto';
 export class QuotationContorller {
   constructor(
     private readonly quotationService: QuotationService,
+    private readonly quotationListService: QuotationListService,
     private readonly quotationPdfService: QuotationPdfService,
   ) {}
 
@@ -38,7 +40,7 @@ export class QuotationContorller {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('quotationList')
   async quotationList(@Req() req: any, @Body() body: QuotationListDto) {
-    const result = await this.quotationService.quotationList(body, req);
+    const result = await this.quotationListService.quotationList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -46,7 +48,7 @@ export class QuotationContorller {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('quotationView')
   async getQuotationDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.quotationService.getQuotationDetails(
+    const result = await this.quotationListService.getQuotationDetails(
       Number(id),
       req,
     );

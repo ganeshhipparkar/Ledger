@@ -15,11 +15,15 @@ import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import { PermissionsGuard, RequirePermission } from 'src/utilities/permissions.guard';
 import { encryptResponse } from 'src/utilities/crypto';
 import { CreditNoteService } from './service/credit.note.service';
+import { CreditNoteListService } from './service/credit.note.list.service';
 import { CreditNoteDto, CreditNoteListDto } from './dto/credit.note.dto';
 
 @Controller('credit-note')
 export class CreditNoteController {
-  constructor(private readonly creditNoteService: CreditNoteService) {}
+  constructor(
+    private readonly creditNoteService: CreditNoteService,
+    private readonly creditNoteListService: CreditNoteListService,
+  ) {}
 
   @Post('credit-note-add')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
@@ -35,7 +39,7 @@ export class CreditNoteController {
     @Body() body: CreditNoteDto,
     @UploadedFiles() files: { attachments?: Express.Multer.File[] },
   ) {
-    const result = await this.creditNoteService.insertCreditNote(body, req, files);
+     const result = await this.creditNoteService.insertCreditNote(body, req, files);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -43,7 +47,7 @@ export class CreditNoteController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('creditNoteList')
   async creditNoteList(@Req() req: any, @Body() body: CreditNoteListDto) {
-    const result = await this.creditNoteService.creditNoteList(body, req);
+    const result = await this.creditNoteListService.creditNoteList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -51,7 +55,7 @@ export class CreditNoteController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('creditNoteView')
   async creditNoteDetails(@Req() req: any, @Param('id') id: string) {
-    const result = await this.creditNoteService.creditNoteDetails(Number(id), req);
+    const result = await this.creditNoteListService.creditNoteDetails(Number(id), req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -63,7 +67,18 @@ export class CreditNoteController {
     @Param('customerId') customerId: string,
     @Param('currencyId') currencyId: string,
   ) {
-    const result = await this.creditNoteService.invoicesByCustomer(Number(customerId), Number(currencyId), req);
+    const result = await this.creditNoteListService.invoicesByCustomer(Number(customerId), Number(currencyId), req);
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Get('invoice-items/:invoiceId')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('creditNoteAdd')
+  async invoiceItems(
+    @Req() req: any,
+    @Param('invoiceId') invoiceId: string,
+  ) {
+    const result = await this.creditNoteListService.invoiceItems(Number(invoiceId), req);
     return { encrypted: encryptResponse(result) };
   }
 }

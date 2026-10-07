@@ -14,6 +14,7 @@ import {
   RequirePermission,
 } from 'src/utilities/permissions.guard';
 import { ManufacturerService } from './service/manufacturer.service';
+import { ManufacturerListService } from './service/manufacturer.list.service';
 import {
   manufacturerListDto,
   ManufacturerDto,
@@ -23,13 +24,16 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('manufacturer')
 export class ManufacturerContorller {
-  constructor(private readonly manufacturerService: ManufacturerService) {}
+  constructor(
+    private readonly manufacturerService: ManufacturerService,
+    private readonly manufacturerListService: ManufacturerListService,
+  ) {}
 
   @Post('manufacturer-list')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('manufacturerList')
   async manufacturerList(@Req() req: any, @Body() body: manufacturerListDto) {
-    const result = await this.manufacturerService.manufacturerList(body, req);
+    const result = await this.manufacturerListService.manufacturerList(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -37,7 +41,7 @@ export class ManufacturerContorller {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('manufacturerView')
   async getManufacturer(@Req() req: any, @Param('id') id: string) {
-    const result = await this.manufacturerService.getManufacturerDetails(
+    const result = await this.manufacturerListService.getManufacturerDetails(
       Number(id),
       req,
     );

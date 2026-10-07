@@ -48,149 +48,6 @@ export class ItemService {
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
 
-  async itemList(param: ItemListDto, req?: any) {
-    let return_data: any = {};
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const queryBuilder = this.itemEntity.createQueryBuilder('item');
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds = req?.scopedCompanyIds || [
-          authCtx.activeCompanyId,
-        ];
-        if (scopedCompanyIds.length > 0) {
-          queryBuilder.andWhere('item.companyId IN (:...scopedCompanyIds)', {
-            scopedCompanyIds,
-          });
-        } else {
-          return {
-            success: 1,
-            message: 'Items fetched successfully',
-            total: 0,
-            data: [],
-          };
-        }
-      }
-
-      const queryString = await this.filter.makeFilterString(
-        param.filters,
-        'item',
-        {},
-        param.condition === 'Any' ? 'Any' : 'All',
-      );
-      if (queryString && queryString !== '') {
-        queryBuilder.andWhere(queryString);
-      }
-
-      const [skip, limit] = (await this.filter.calcPages(
-        param,
-        this.itemEntity,
-      )) as [number, number];
-
-      queryBuilder.leftJoinAndSelect('item.company', 'company');
-      queryBuilder.leftJoinAndSelect('item.category', 'category');
-      queryBuilder.leftJoinAndSelect('item.manufacturer', 'manufacturer');
-      queryBuilder.leftJoinAndSelect('item.brand', 'brand');
-      queryBuilder.leftJoinAndSelect('item.itemUomRel', 'itemUomRel');
-      queryBuilder.leftJoinAndSelect('item.packageRel', 'packageRel');
-      queryBuilder.leftJoinAndSelect('item.currency', 'currency');
-      queryBuilder.leftJoinAndSelect('item.images', 'images');
-      queryBuilder.skip(skip).take(limit);
-      queryBuilder.orderBy('item.itemName', 'ASC');
-
-      const [data, total] = await queryBuilder.getManyAndCount();
-
-      const formattedData = data.map((item) => {
-        const primaryImg = item.images?.find((img) => img.isParent === 0);
-        return {
-          ...item,
-          companyName: item.company?.companyName ?? null,
-          categoryName: item.category?.itemCategoryName ?? null,
-          manufacturerName: item.manufacturer?.manufacturerName ?? null,
-          brandName: item.brand?.brandName ?? null,
-          itemUomName: item.itemUomRel?.uomName ?? null,
-          packageName: item.packageRel?.packageName ?? null,
-          currencyName: item.currency?.name ?? null,
-          currencyCode: item.currency?.code ?? null,
-          currencySymbol: item.currency?.symbol ?? null,
-          primaryImage: primaryImg ? primaryImg.itemImageUrl : null,
-        };
-      });
-
-      return_data = {
-        success: 1,
-        message: 'Items fetched successfully',
-        total,
-        data: formattedData,
-      };
-    } catch (err: any) {
-      return_data = { success: 0, message: err.message };
-    }
-    return return_data;
-  }
-
-  async getItemDetails(id: number, req?: any) {
-    const authCtx = await resolveAuthContext(req, this.ucgEntity);
-    const item = await this.itemEntity.findOne({
-      where: { itemId: id },
-      relations: [
-        'company',
-        'category',
-        'manufacturer',
-        'brand',
-        'itemUomRel',
-        'packageRel',
-        'currency',
-        'images',
-      ],
-    });
-    if (!item) {
-      throw new NotFoundException('Item not found');
-    }
-
-    const baseCurrency = await this.currencyEntity.findOne({
-      where :{code:process.env.CURRENCY_CONVERSION || "INR"}
-    })
-
-    if (!authCtx.isSuperAdmin) {
-      const scopedCompanyIds = req?.scopedCompanyIds || [
-        authCtx.activeCompanyId,
-      ];
-      if (!scopedCompanyIds.includes(Number(item.companyId))) {
-        throw new ForbiddenException(
-          'Access denied: item belongs to another company',
-        );
-      }
-    }
-
-    const addedByUser = item.addedBy
-      ? await this.userEntity.findOne({ where: { userId: item.addedBy } })
-      : null;
-    const updatedByUser = item.updatedBy
-      ? await this.userEntity.findOne({ where: { userId: item.updatedBy } })
-      : null;
-
-    const primaryImg = item.images?.find((img) => img.isParent === 0);
-
-    return {
-      ...item,
-      companyName: item.company?.companyName ?? null,
-      categoryName: item.category?.itemCategoryName ?? null,
-      manufacturerName: item.manufacturer?.manufacturerName ?? null,
-      brandName: item.brand?.brandName ?? null,
-      itemUomName: item.itemUomRel?.uomName ?? null,
-      packageName: item.packageRel?.packageName ?? null,
-      currencyName: item.currency?.name ?? null,
-      currencyCode: item.currency?.code ?? null,
-      currencySymbol: item.currency?.symbol ?? null,
-      primaryImage: primaryImg ? primaryImg.itemImageUrl : null,
-      addedByName: addedByUser?.name ?? null,
-      updatedByName: updatedByUser?.name ?? null,
-      baseCurrencySymbol:baseCurrency?.symbol ?? null,
-      baseCurrencyCode : baseCurrency?.symbol ?? null
-    };
-  }
-
   async insertItem(params: ItemDto, req?: any, itemImages?: Express.Multer.File[]) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -281,7 +138,6 @@ export class ItemService {
           const file = itemImages[idx];
           const filename = file.filename || file.originalname;
           await this.fileTransfer.fileTransfer(filename, insertId, 'item');
-
 
           const itemImageUrl = `/upload/item/${insertId}/${filename}`;
           const isParent = idx === 0 ? 0 : insertId;
@@ -410,8 +266,6 @@ export class ItemService {
         await this.itemEntity.update({ itemId }, queryParams);
       }
 
-
-
       // Append new images 
       if (itemImages && itemImages.length > 0) {
         const existingPrimary = await this.itemImageEntity.findOne({
@@ -423,7 +277,6 @@ export class ItemService {
           const file = itemImages[idx];
           const filename = file.filename || file.originalname;
           await this.fileTransfer.fileTransfer(filename, itemId, 'item');
-
 
           const itemImageUrl = `/upload/item/${itemId}/${filename}`;
 

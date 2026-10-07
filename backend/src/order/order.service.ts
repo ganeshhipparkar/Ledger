@@ -102,7 +102,6 @@ export class OrderService {
   @Inject()
   private readonly codeGeneratorService!: CodeGeneratorService;
 
-
   private resolvePerformer(req: any, fallbackId?: number) {
     const performerId: number | undefined = req?.user?.isImpersonation
       ? req?.user?.userId
@@ -112,7 +111,6 @@ export class OrderService {
       : (req?.user?.email ?? req?.user?.impersonatorEmail);
     return { performerId, performerEmail };
   }
-
 
   private toValidNumber(val: any, fallback: number = 0): number {
     if (val === undefined || val === null || val === '') return fallback;
@@ -132,7 +130,6 @@ export class OrderService {
     const n = Number(val);
     return isNaN(n) ? undefined : n;
   }
-
 
   private async validateTaxGroups(
     items: OrderItemInputDto[],
@@ -165,7 +162,6 @@ export class OrderService {
     }
     return { valid: true, rateMap };
   }
-
 
   private computeItemAmounts(
     item: OrderItemInputDto,
@@ -251,7 +247,6 @@ export class OrderService {
     };
   }
 
-
   private validateDates(orderDate?: string, deliveryDate?: string): string | null {
     if (orderDate) {
       const order = new Date(orderDate);
@@ -267,7 +262,6 @@ export class OrderService {
     return null;
   }
 
-
   private assertOrderActionable(
     order: OrderEntity,
     allowedStatuses: string[],
@@ -279,164 +273,6 @@ export class OrderService {
       return `Cannot ${operation} an order with status: ${order.status}`;
     return null;
   }
-
-
-  async orderList(param: OrderListDto, req?: any) {
-    let return_data: any = {};
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgEntity);
-      const queryBuilder = this.orderRepo.createQueryBuilder('order');
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds =
-          req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (scopedCompanyIds.length > 0) {
-          queryBuilder.andWhere(
-            'order.companyId IN (:...scopedCompanyIds)',
-            { scopedCompanyIds },
-          );
-        } else {
-          return {
-            success: 1,
-            message: 'Orders fetched successfully',
-            total: 0,
-            data: [],
-          };
-        }
-      }
-
-      const queryString = await this.filter.makeFilterString(
-        param.filters,
-        'order',
-        {
-          customerName: 'customer',
-          companyName: 'company',
-        },
-        param.condition === 'Any' ? 'Any' : 'All',
-      );
-      if (queryString && queryString !== '') {
-        queryBuilder.andWhere(queryString);
-      }
-
-      const [skip, limit] = (await this.filter.calcPages(
-        param,
-        this.orderRepo,
-      )) as [number, number];
-
-      queryBuilder
-        .leftJoinAndSelect('order.customer', 'customer')
-        .leftJoinAndSelect('order.currency', 'currency')
-        .leftJoinAndSelect('order.company', 'company')
-        .leftJoinAndSelect('order.salesPerson', 'salesPerson')
-        .leftJoinAndSelect('order.bankBook', 'bankBook')
-        .skip(skip)
-        .take(limit)
-        .orderBy('order.addedDate', 'DESC');
-
-      const [data, total] = await queryBuilder.getManyAndCount();
-
-      const addedByIds = Array.from(
-        new Set(data.map((o) => o.addedBy).filter(Boolean)),
-      );
-      const userMap = new Map<number, string>();
-      if (addedByIds.length > 0) {
-        const users = await this.userEntity.find({
-          where: { userId: In(addedByIds) },
-          select: ['userId', 'name'],
-        });
-        users.forEach((u) => userMap.set(u.userId, u.name));
-      }
-
-      const formattedData = data.map((o) => ({
-        ...o,
-        customerName: o.customer?.customerName ?? null,
-        currencyCode: o.currency?.code ?? null,
-        companyName: o.company?.companyName ?? null,
-        salesPersonName: o.salesPerson?.name ?? null,
-        bankBookName: o.bankBook?.accountNumber ?? null,
-        addedByName: o.addedBy ? (userMap.get(o.addedBy) ?? null) : null,
-      }));
-
-      return_data = {
-        success: 1,
-        message: 'Orders fetched successfully',
-        total,
-        data: formattedData,
-      };
-    } catch (err: any) {
-      return_data = { success: 0, message: err.message };
-    }
-    return return_data;
-  }
-
-
-  async getOrderDetails(id: number, req?: any) {
-    const authCtx = await resolveAuthContext(req, this.ucgEntity);
-
-    const order = await this.orderRepo.findOne({
-      where: { orderId: id },
-      relations: [
-        'customer',
-        'currency',
-        'company',
-        'bankBook',
-        'salesPerson',
-        'contactPerson',
-        'termsConditions',
-        'orderItems',
-        'orderItems.item',
-        'orderItems.discounts',
-        'orderItems.extraCharges',
-        'discounts',
-        'extraCharges',
-        'attachments',
-      ],
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
-    if (!authCtx.isSuperAdmin) {
-      const scopedCompanyIds =
-        req?.scopedCompanyIds || [authCtx.activeCompanyId];
-      if (!scopedCompanyIds.includes(Number(order.companyId))) {
-        throw new ForbiddenException(
-          'Access denied: order belongs to another company',
-        );
-      }
-    }
-
-    const addedByUser = order.addedBy
-      ? await this.userEntity.findOne({ where: { userId: order.addedBy } })
-      : null;
-    const updatedByUser = order.updatedBy
-      ? await this.userEntity.findOne({ where: { userId: order.updatedBy } })
-      : null;
-
-    const allTaxGroups = await this.taxGroupRepo.find({ where: { companyId: Number(order.companyId) } });
-    const taxGroupMap = new Map(allTaxGroups.map(tg => [tg.taxCode, tg.taxId]));
-    const orderItems = order.orderItems?.map(item => ({
-      ...item,
-      taxId: item.taxGroup ? (taxGroupMap.get(item.taxGroup) ?? null) : null,
-    })) || [];
-
-    return {
-      ...order,
-      orderItems,
-      termsConditionsFileUrl: order.termsConditionsFile ?? null,
-      customerName: order.customer?.customerName ?? null,
-      currencyCode: order.currency?.code ?? null,
-      currencySymbol: (order.currency as any)?.symbol ?? null,
-      companyName: order.company?.companyName ?? null,
-      salesPersonName: order.salesPerson?.name ?? null,
-      contactPersonName: order.contactPerson?.name ?? null,
-      bankBookName: order.bankBook?.accountNumber ?? null,
-      addedByName: addedByUser?.name ?? null,
-      updatedByName: updatedByUser?.name ?? null,
-    };
-  }
-
 
   async insertOrder(
     body: OrderDto,
@@ -693,7 +529,6 @@ export class OrderService {
       }
     }
   }
-
 
   async updateOrder(
     body: OrderUpdateDto & { updatedBy?: number },
@@ -1056,7 +891,6 @@ export class OrderService {
     }
   }
 
-
   async submitOrder(orderId: number, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -1158,7 +992,6 @@ export class OrderService {
     }
   }
 
-
   async markAsDelivered(orderId: number, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -1218,7 +1051,6 @@ export class OrderService {
     }
   }
 
-
   async closeOrder(orderId: number, req?: any) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
@@ -1270,7 +1102,6 @@ export class OrderService {
       return { success: 0, message: err.message };
     }
   }
-
 
   async updateOrderPrice(body: OrderUpdatePriceDto, req?: any) {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -1565,7 +1396,6 @@ export class OrderService {
       return { success: 0, message: err.message };
     }
   }
-
 
   async deleteOrderTermsFile(orderId: number, req: any) {
     try {

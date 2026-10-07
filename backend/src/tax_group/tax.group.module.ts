@@ -8,6 +8,7 @@ import { Filter } from 'src/utilities/filter';
 import { CodeGeneratorService } from 'src/utilities/code-generator.service';
 import { TaxGroupController } from './tax.group.controller';
 import { TaxGroupService } from './tax.group.service';
+import { TaxGroupListService } from './tax.group.list.service';
 import { taxGroupEntity } from './entity/tax.group.entity';
 
 @Module({
@@ -21,7 +22,7 @@ import { taxGroupEntity } from './entity/tax.group.entity';
     ]),
   ],
   controllers: [TaxGroupController],
-  providers: [TaxGroupService, Filter, CodeGeneratorService],
+  providers: [TaxGroupService, TaxGroupListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class TaxGroupModule {}

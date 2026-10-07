@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BankController } from "./bank.controller";
 import { BankMasterService } from "./service/bank.service";
+import { BankMasterListService } from "./service/bank.list.service";
 import { BankMasterEntity } from "./entity/bank.master.entity";
 
 @Module({
@@ -21,7 +22,7 @@ import { BankMasterEntity } from "./entity/bank.master.entity";
     ]),
   ],
   controllers: [BankController],
-  providers: [BankMasterService, Filter, CodeGeneratorService],
+  providers: [BankMasterService, BankMasterListService, Filter, CodeGeneratorService],
   exports: [TypeOrmModule],
 })
 export class BankMasterModule {}

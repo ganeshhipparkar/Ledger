@@ -8,6 +8,7 @@ import { Filter } from "src/utilities/filter";
 import { CodeGeneratorService } from "src/utilities/code-generator.service";
 import { BrandController } from "./brand.controller";
 import { BrandService } from "./service/brand.service";
+import { BrandListService } from "./service/brand.list.service";
 import { BrandEntity } from "./entity/brand.entity";
 import { ItemEntity } from "src/item/entity/item.entity";
 
@@ -23,7 +24,7 @@ import { ItemEntity } from "src/item/entity/item.entity";
     ]),
   ],
   controllers: [BrandController],
-  providers: [BrandService, Filter, CodeGeneratorService],
-  exports: [TypeOrmModule, BrandService],
+  providers: [BrandService, BrandListService, Filter, CodeGeneratorService],
+  exports: [TypeOrmModule, BrandService, BrandListService],
 })
 export class BrandModule {}

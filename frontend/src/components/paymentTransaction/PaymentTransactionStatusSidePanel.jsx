@@ -28,8 +28,8 @@ export default function PaymentTransactionStatusSidePanel({
     const title = isApprove
         ? "Approve Payment Transaction"
         : isCancelApproved
-            ? "Cancel Approved Payment"
-            : "Cancel Payment Transaction";
+            ? "Revert Approved Payment"
+            : "Revert Payment Transaction";
 
     const endpoint = isApprove
         ? "payment-transaction-approve"
@@ -182,8 +182,8 @@ export default function PaymentTransactionStatusSidePanel({
                                     : isApprove
                                         ? "Approve"
                                         : isCancelApproved
-                                            ? "Cancel Payment"
-                                            : "Cancel Transaction"}
+                                            ? "Revert Payment"
+                                            : "Revert Transaction"}
                             </button>
                         </div>
                     </form>

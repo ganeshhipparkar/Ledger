@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GroupController } from './group.controller';
 import { GroupService } from './service/group.service';
+import { GroupListService } from './service/group.list.service';
 import { FileTransfer } from 'src/utilities/file.transfer';
 import { Filter } from 'src/utilities/filter';
 import { Mailer } from 'src/utilities/mailer';
@@ -23,7 +24,7 @@ import { GroupEntity } from './entity/group.entity';
     ]),
   ],
   controllers: [GroupController],
-  providers: [GroupService, Filter, Mailer, FileTransfer],
+  providers: [GroupService, GroupListService, Filter, Mailer, FileTransfer],
   exports: [TypeOrmModule],
 })
 export class GroupModule {}

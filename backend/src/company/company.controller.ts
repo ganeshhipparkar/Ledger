@@ -14,6 +14,7 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/packages/config/multer.config';
 import { CompanyService } from './service/company.service';
+import { CompanyListService } from './service/company.list.service';
 import {
   CompanyDto,
   CompanyUpdateDto,
@@ -28,7 +29,10 @@ import { encryptResponse } from 'src/utilities/crypto';
 
 @Controller('company')
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService) {}
+  constructor(
+    private readonly companyService: CompanyService,
+    private readonly companyListService: CompanyListService,
+  ) {}
   @Get()
   async hello() {
     return 'hello';
@@ -99,7 +103,7 @@ export class CompanyController {
   @RequirePermission('companyList')
   @UseInterceptors(FileInterceptor('companyFile', multerConfig))
   async getCompanys(@Req() req, @Body() body: getCompanyListDto) {
-    const result = await this.companyService.getCompanies(body, req);
+    const result = await this.companyListService.getCompanies(body, req);
     return { encrypted: encryptResponse(result) };
   }
 
@@ -107,14 +111,14 @@ export class CompanyController {
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('companyView')
   async getCompany(@Req() req, @Param('id') param) {
-    const result = await this.companyService.getCompany(param, req);
+    const result = await this.companyListService.getCompany(param, req);
     return { encrypted: encryptResponse(result) };
   }
 
   @Get('currency-list')
   @UseGuards(AuthGuard('jwt'))
   async getCurrencies(@Req() req) {
-    const result = await this.companyService.getCurrencies(req);
+    const result = await this.companyListService.getCurrencies(req);
     return { encrypted: encryptResponse(result) };
   }
 }

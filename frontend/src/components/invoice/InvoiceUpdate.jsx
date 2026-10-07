@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -267,10 +267,10 @@ export default function InvoiceUpdate({ id }) {
 
 
 
-    const setFormField = useCallback((key, value) => {
+    const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
         if (errors[key]) setErrors((prev) => { const e = { ...prev }; delete e[key]; return e; });
-    }, [errors]);
+    };
 
 
     useEffect(() => {
@@ -1087,14 +1087,14 @@ export default function InvoiceUpdate({ id }) {
                     >
                         {loading ? "Saving…" : "Save as Draft"}
                     </button>
-                    <button
+                    {/* <button
                         type="button"
                         onClick={() => handleSubmit(true)}
                         disabled={loading}
                         className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         {loading ? "Submitting…" : "Submit"}
-                    </button>
+                    </button> */}
                 </div>
             </div>
         </div>
