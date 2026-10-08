@@ -369,6 +369,7 @@ export default function InvoiceList() {
                                 onRegeneratePdf={handleRegeneratePdf}
                                 onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
                                 onAddCreditNote={(inv) => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: inv })}
+                                onAddDebitNote={(inv) => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: inv })}
                                 onCustomerClick={(id) => setSelectedCustomerId(id)}
                                 onAddedByClick={(id) => setSelectedUserId(id)}
                                 onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
@@ -395,6 +396,7 @@ export default function InvoiceList() {
                                     onRegeneratePdf={handleRegeneratePdf}
                                     onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
                                     onAddCreditNote={(inv) => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: inv })}
+                                    onAddDebitNote={(inv) => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: inv })}
                                     onCustomerClick={(id) => setSelectedCustomerId(id)}
                                     onAddedByClick={(id) => setSelectedUserId(id)}
                                     onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
@@ -480,7 +482,7 @@ export default function InvoiceList() {
     );
 }
 
-function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onAddCreditNote, onCustomerClick, onAddedByClick, onInvoiceClick, isOpen, onToggle, paymentMode }) {
+function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onRegeneratePdf, onUpdateDueDate, onAddCreditNote, onAddDebitNote, onCustomerClick, onAddedByClick, onInvoiceClick, isOpen, onToggle, paymentMode }) {
     const router = useRouter();
     const fmtDate = (d) => formatDisplayDate(d);
     const fmtAmt = (n, sym) => n != null ? `${sym ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`.trim() : "—";
@@ -535,9 +537,11 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                     const primaryAction = [
                                         { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Edit" },
                                         { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Submit" },
+                                        { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Delete" },
                                         { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
                                         { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
-                                        { show: can?.("invoiceView"), label: "View" },
+                                        { show: q.status !== "DRAFT" && can?.("creditNoteAdd"), label: "Add Credit Note" },
+                                        { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" }
                                     ].find((a) => a.show) ?? { label: "View" };
                                     const primaryLabel = primaryAction.label;
 
@@ -568,23 +572,11 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                         <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate(q); }}>Update Due Date</DropdownMenuItem>
                                     </>
                                 )}
-                                {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
+                                {q.status !== "DRAFT" && can?.("creditNoteAdd") && (
                                     <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
                                 )}
-                                {q.invoicePdfPath && (
-                                    <>
-                                        <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"); }}>
-                                            <span className="w-full h-full px-4 py-2">View PDF</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={async (e) => { e.stopPropagation(); try { await downloadFile(q.invoicePdfPath, `Invoice_${q.invoiceCode}.pdf`); } catch { toast.error("Failed to download PDF", { position: "top-right" }); } }}>
-                                            <span className="w-full h-full px-4 py-2">Download PDF</span>
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {can?.("invoiceUpdate") && q.status !== "DRAFT" && (
-                                    <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf(q.invoiceId); }}>
-                                        <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
-                                    </DropdownMenuItem>
+                                {q.status !== "DRAFT" && can?.("debitNoteAdd") && (
+                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddDebitNote?.(q); }}>Add Debit Note</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>

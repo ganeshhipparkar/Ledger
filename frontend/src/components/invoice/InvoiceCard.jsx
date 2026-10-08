@@ -43,6 +43,7 @@ export default function InvoiceCard({
     onRegeneratePdf,
     onUpdateDueDate,
     onAddCreditNote,
+    onAddDebitNote,
     onCustomerClick,
     onAddedByClick,
     onInvoiceClick,
@@ -70,40 +71,17 @@ export default function InvoiceCard({
                         </span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-gray-100 p-1">
-                        {q.status === "DRAFT" && can?.("invoiceUpdate") && (
-                            <>
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}?edit=true`); }}>Edit</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onSubmit?.(q.invoiceId); }}>Submit</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); onDelete?.(q.invoiceId); }}>Delete</DropdownMenuItem>
-                            </>
+                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}#summary`); }}>Summary</DropdownMenuItem>
+                        {can?.("paymentTransactionList") && (
+                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}#payments`); }}>Payments</DropdownMenuItem>
                         )}
-                        {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
-                            <>
-                                {paymentMode === "MANUAL" && (
-                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid?.(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate?.(q); }}>Update Due Date</DropdownMenuItem>
-                            </>
+                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}#activity`); }}>Activity</DropdownMenuItem>
+                        {can?.("creditNoteList") && (
+                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}#creditNotes`); }}>Credit Note</DropdownMenuItem>
                         )}
-                        {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && can?.("creditNoteAdd") && (
-                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
+                        {can?.("debitNoteList") && (
+                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}#debitNotes`); }}>Debit Note</DropdownMenuItem>
                         )}
-                        {/* {q.invoicePdfPath && (
-                            <>
-                                <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${API_BASE}${q.invoicePdfPath}`, "_blank"); }}>
-                                    <span className="w-full h-full px-4 py-2">View PDF</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={async (e) => { e.stopPropagation(); try { await downloadFile(q.invoicePdfPath, `Invoice_${q.invoiceCode}.pdf`); } catch { toast.error("Failed to download PDF", { position: "top-right" }); } }}>
-                                    <span className="w-full h-full px-4 py-2">Download PDF</span>
-                                </DropdownMenuItem>
-                            </>
-                        )} */}
-                        {/* {can?.("invoiceUpdate") && q.status !== "DRAFT" && (
-                            <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.invoiceId); }}>
-                                <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
-                            </DropdownMenuItem>
-                        )} */}
-                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}`); }}>View Details</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -153,9 +131,11 @@ export default function InvoiceCard({
                                             const primaryAction = [
                                                 { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Edit" },
                                                 { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Submit" },
+                                                { show: q.status === "DRAFT" && can?.("invoiceUpdate"), label: "Delete" },
                                                 { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
                                                 { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
-                                                { show: can?.("invoiceView"), label: "View" },
+                                                { show: q.status !== "DRAFT" && can?.("creditNoteAdd"), label: "Add Credit Note" },
+                                                { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" }
                                             ].find((a) => a.show) ?? { label: "View" };
                                             const primaryLabel = primaryAction.label;
                                             return <span className="truncate whitespace-nowrap overflow-hidden">{primaryLabel}</span>;
@@ -173,26 +153,18 @@ export default function InvoiceCard({
                                     )}
                                     {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
                                         <>
-                                            <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid?.(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                            {paymentMode === "MANUAL" && (
+                                                <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onMarkPaid?.(q.invoiceId); }}>Mark as Paid</DropdownMenuItem>
+                                            )}
                                             <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onUpdateDueDate?.(q); }}>Update Due Date</DropdownMenuItem>
                                         </>
                                     )}
-                                    {/* {q.invoicePdfPath && (
-                                        <>
-                                            <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); window.open(`${API_BASE}${q.invoicePdfPath}`, "_blank"); }}>
-                                                <span className="w-full h-full px-4 py-2">View PDF</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={async (e) => { e.stopPropagation(); try { await downloadFile(q.invoicePdfPath, `Invoice_${q.invoiceCode}.pdf`); } catch { toast.error("Failed to download PDF", { position: "top-right" }); } }}>
-                                                <span className="w-full h-full px-4 py-2">Download PDF</span>
-                                            </DropdownMenuItem>
-                                        </>
-                                    )} */}
-                                    {/* {can?.("invoiceUpdate") && q.status !== "DRAFT" && (
-                                        <DropdownMenuItem className="cursor-pointer text-sm text-gray-700 hover:bg-gray-100 p-0" onClick={(e) => { e.stopPropagation(); onRegeneratePdf?.(q.invoiceId); }}>
-                                            <span className="w-full h-full px-4 py-2">Regenerate PDF</span>
-                                        </DropdownMenuItem>
-                                    )} */}
-                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/invoice/${q.invoiceId}`); }}>View Details</DropdownMenuItem>
+                                    {q.status !== "DRAFT" && can?.("creditNoteAdd") && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddCreditNote?.(q); }}>Add Credit Note</DropdownMenuItem>
+                                    )}
+                                    {q.status !== "DRAFT" && can?.("debitNoteAdd") && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddDebitNote?.(q); }}>Add Debit Note</DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

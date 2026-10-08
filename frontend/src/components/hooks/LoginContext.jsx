@@ -18,7 +18,9 @@ export default function LoginContext({ children }) {
         customers: "grid",
         "payment-transactions": "table",
         "quotation-list": "grid",
-        "order-list": "grid"
+        "order-list": "grid",
+        "invoice-list": "grid",
+        invoice: "grid"
     });
 
     const setViewModeForPage = (page, mode) => {

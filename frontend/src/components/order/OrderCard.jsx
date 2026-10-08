@@ -120,7 +120,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/order/${q.orderId}?tab=summary`);
+                                router.push(`/order/${q.orderId}#summary`);
                             }}
                         >
                             Summary
@@ -129,7 +129,7 @@ export default function OrderCard({ order: q, onStatusUpdate, onUpdatePrice, can
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/order/${q.orderId}?tab=activity`);
+                                router.push(`/order/${q.orderId}#activity`);
                             }}
                         >
                             Activity

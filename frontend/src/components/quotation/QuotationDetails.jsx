@@ -2,7 +2,7 @@
 import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
@@ -85,19 +85,27 @@ export default function QuotationDetails({ id }) {
         : 4;
 
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { can } = useContext(loginContext) || {};
 
     const [quotation, setQuotation] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
 
+    const VALID_TABS = ["summary", "versions", "activity"];
     useEffect(() => {
-        const tab = searchParams.get("tab");
-        if (tab && ["summary", "versions", "activity"].includes(tab)) {
-            setActiveTab(tab);
-        }
-    }, [searchParams]);
+        const apply = () => {
+            const h = window.location.hash.replace("#", "");
+            setActiveTab(VALID_TABS.includes(h) ? h : "summary");
+        };
+        apply();
+        window.addEventListener("hashchange", apply);
+        return () => window.removeEventListener("hashchange", apply);
+    }, []);
+
+    const changeTab = (key) => {
+        setActiveTab(key);
+        window.history.replaceState(null, "", `#${key}`);
+    };
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
     const [selectedCustomerPanelId, setSelectedCustomerPanelId] = useState(null);
@@ -380,7 +388,7 @@ export default function QuotationDetails({ id }) {
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => setActiveTab(key)}
+                                    onClick={() => changeTab(key)}
                                     className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition cursor-pointer ${activeTab === key
                                         ? "bg-blue-600 text-white"
                                         : "text-gray-600 hover:bg-gray-50"

@@ -2,14 +2,14 @@
 import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet
+    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet, FileMinus, FilePlus
 } from "lucide-react";
 import InvoicePaymentsTab from "./InvoicePaymentsTab";
 import Header from "../Header";
@@ -32,6 +32,7 @@ import NoteAddPanel from "../notes/NoteAddPanel";
 import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
 import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
 import { getCreditNoteMode } from "@/lib/creditNoteMode";
+
 import { FaRegFilePdf } from "react-icons/fa";
 import { STATUS_COLORS, STATUS_LABELS } from "./InvoiceList";
 import InvoiceDueDatePanel from "./InvoiceDueDatePanel";
@@ -62,7 +63,80 @@ const NAV_ITEMS = [
     { key: "summary", label: "Summary", Icon: LayoutList },
     { key: "payments", label: "Payments", Icon: Wallet, permission: "paymentTransactionList" },
     { key: "activity", label: "Activity", Icon: Activity },
+    { key: "creditNotes", label: "Credit Note", Icon: FileMinus, permission: "creditNoteList" },
+    { key: "debitNotes", label: "Debit Note", Icon: FilePlus, permission: "debitNoteList" },
 ];
+
+function EmbeddedTable({ endpoint, module, invoiceId, columns, renderRow, emptyMessage }) {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint,
+                        module,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        filters: [{ key: "invoiceId", value: invoiceId, operator: "eq" }],
+                        limit: 100,
+                        page: 1
+                    }),
+                });
+                const payload = await res.json();
+                const json = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                setData(json.data || []);
+            } catch (err) {
+                console.error(err);
+                setData([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (invoiceId) fetchData();
+    }, [invoiceId, endpoint, module]);
+
+    if (loading) {
+        return (
+            <div className="rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center py-10">
+                <Loader label="Loading..." />
+            </div>
+        );
+    }
+
+    if (!data.length) {
+        return (
+            <div className="rounded-2xl bg-white p-6 shadow-sm text-center text-gray-500 py-10">
+                {emptyMessage}
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden border border-gray-100">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                        <tr>
+                            {columns.map((c, i) => (
+                                <th key={i} className="px-6 py-4">{c}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                        {data.map(renderRow)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
 
 export default function InvoiceDetails({ id }) {
     const qtyDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10))
@@ -73,19 +147,27 @@ export default function InvoiceDetails({ id }) {
         : 4;
 
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { can, displayUser } = useContext(loginContext) || {};
 
     const [invoice, setInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
 
+    const VALID_TABS = ["summary", "payments", "activity", "creditNotes", "debitNotes"];
     useEffect(() => {
-        const tab = searchParams.get("tab");
-        if (tab && ["summary", "payments", "activity"].includes(tab)) {
-            setActiveTab(tab);
-        }
-    }, [searchParams]);
+        const apply = () => {
+            const h = window.location.hash.replace("#", "");
+            setActiveTab(VALID_TABS.includes(h) ? h : "summary");
+        };
+        apply();
+        window.addEventListener("hashchange", apply);
+        return () => window.removeEventListener("hashchange", apply);
+    }, []);
+
+    const changeTab = (key) => {
+        setActiveTab(key);
+        window.history.replaceState(null, "", `#${key}`);
+    };
 
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
     const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
@@ -380,7 +462,7 @@ export default function InvoiceDetails({ id }) {
                             {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
                         {NAV_ITEMS.filter(item => !item.permission || (can && can(item.permission)) || displayUser?.isSuperAdmin).map(({ key, label, Icon }) => (
-                            <button key={key} type="button" onClick={() => setActiveTab(key)} className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition cursor-pointer ${activeTab === key ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+                            <button key={key} type="button" onClick={() => changeTab(key)} className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition cursor-pointer ${activeTab === key ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
                                 <Icon className="h-4 w-4 shrink-0" />
                                 {sidebarExpanded && <span className="flex items-center gap-1.5 truncate">{label}</span>}
                             </button>
@@ -561,6 +643,44 @@ export default function InvoiceDetails({ id }) {
                         <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
                             <ActivityTimeline targetType="INVOICE" targetId={id} />
                         </div>
+                    )}
+                    {activeTab === "creditNotes" && (
+                        <EmbeddedTable
+                            endpoint="credit-note-list"
+                            module="credit-note"
+                            invoiceId={id}
+                            emptyMessage="No credit notes found for this invoice."
+                            columns={["Credit Note Code", "Date", "Final Amount", "Status"]}
+                            renderRow={(q, i) => (
+                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/credit-note/${q.id}`)}>
+                                    <td className="px-6 py-4 font-medium text-blue-600">{q.creditNoteCode || "-"}</td>
+                                    <td className="px-6 py-4">{fmtDate(q.addedDate)}</td>
+                                    <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                    <td className="px-6 py-4">
+                                        <StatusBadge status={q.status} />
+                                    </td>
+                                </tr>
+                            )}
+                        />
+                    )}
+                    {activeTab === "debitNotes" && (
+                        <EmbeddedTable
+                            endpoint="debit-note-list"
+                            module="debit-note"
+                            invoiceId={id}
+                            emptyMessage="No debit notes found for this invoice."
+                            columns={["Debit Note Code", "Date", "Final Amount", "Status"]}
+                            renderRow={(q, i) => (
+                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/debit-note/${q.id}`)}>
+                                    <td className="px-6 py-4 font-medium text-blue-600">{q.debitNoteCode || "-"}</td>
+                                    <td className="px-6 py-4">{fmtDate(q.addedDate)}</td>
+                                    <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
+                                    <td className="px-6 py-4">
+                                        <StatusBadge status={q.status} />
+                                    </td>
+                                </tr>
+                            )}
+                        />
                     )}
                 </div>
             </div>

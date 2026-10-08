@@ -82,7 +82,7 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/quotation/${q.quotationId}?tab=summary`);
+                                router.push(`/quotation/${q.quotationId}#summary`);
                             }}
                         >
                             Summary
@@ -91,7 +91,7 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/quotation/${q.quotationId}?tab=versions`);
+                                router.push(`/quotation/${q.quotationId}#versions`);
                             }}
                         >
                             Versions
@@ -100,7 +100,7 @@ export default function QuotationCard({ quotation: q, onStatusUpdate, can, onCus
                             className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/quotation/${q.quotationId}?tab=activity`);
+                                router.push(`/quotation/${q.quotationId}#activity`);
                             }}
                         >
                             Activity

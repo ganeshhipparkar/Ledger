@@ -170,38 +170,37 @@ export class VaultService {
     applyInvoiceStrategy(qb, strategy);
 
       const invoices = await qb.getMany();
-      console.log(invoices,"all invoices")
 
-    // for (const invoice of invoices) {
-    //   if (Number(vault.totalAmount) <= 0) {
-    //     break;
-    //   }
+    for (const invoice of invoices) {
+      if (Number(vault.totalAmount) <= 0) {
+        break;
+      }
 
-    //   const remainingToPay = Number(invoice.finalAmount) - Number(invoice.amountPaid || 0);
-    //   if (remainingToPay <= 0) continue;
+      const remainingToPay = Number(invoice.finalAmount) - Number(invoice.amountPaid || 0);
+      if (remainingToPay <= 0) continue;
 
-    //   const vaultResult = await this.deductAutomatic(
-    //     invoice.invoiceId,
-    //     customerId,
-    //     currencyId,
-    //     companyId,
-    //     remainingToPay,
-    //     strategy,
-    //     queryRunner
-    //   );
+      const vaultResult = await this.deductAutomatic(
+        invoice.invoiceId,
+        customerId,
+        currencyId,
+        companyId,
+        remainingToPay,
+        strategy,
+        queryRunner
+      );
 
-    //   if (vaultResult.result === 'PAID' || vaultResult.result === 'PARTIAL') {
-    //     const finalStatus = vaultResult.result === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
-    //     const newAmountPaid = Number(invoice.amountPaid || 0) + vaultResult.amountPaid;
+      if (vaultResult.result === 'PAID' || vaultResult.result === 'PARTIAL') {
+        const finalStatus = vaultResult.result === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+        const newAmountPaid = Number(invoice.amountPaid || 0) + vaultResult.amountPaid;
 
-    //     await manager.update(InvoiceEntity, { invoiceId: invoice.invoiceId }, {
-    //       status: finalStatus,
-    //       amountPaid: newAmountPaid,
-    //     });
+        await manager.update(InvoiceEntity, { invoiceId: invoice.invoiceId }, {
+          status: finalStatus,
+          amountPaid: newAmountPaid,
+        });
 
-    //     vault.totalAmount = Number(vault.totalAmount) - vaultResult.amountPaid;
-    //   }
-    // }
+        vault.totalAmount = Number(vault.totalAmount) - vaultResult.amountPaid;
+      }
+    }
   }
 
   async reverseCredit(
