@@ -26,6 +26,11 @@ import { PaymentTransactionEntity } from 'src/payment_transaction/entity/payment
 import { InvoiceEntity } from 'src/invoice/entity/invoice.entity';
 import { ModSettings } from 'src/user/entity/mod.settings';
 
+export enum AllowManualInvoicing {
+  YES = 'YES',
+  NO = 'NO',
+}
+
 @Entity('company')
 export class CompanyEntity {
   @PrimaryGeneratedColumn()
@@ -63,6 +68,13 @@ export class CompanyEntity {
 
   @Column()
   status!: string;
+
+  @Column({
+    type: 'enum',
+    enum: AllowManualInvoicing,
+    default: AllowManualInvoicing.YES,
+  })
+  allowManualInvoicing!: string;
 
   @Column()
   AddressLineOne!: string;

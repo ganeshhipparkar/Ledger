@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
+import ActionButtonGroup from "../shared/ActionButtonGroup";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
@@ -275,10 +276,10 @@ export default function OrderDetails({ id }) {
     };
 
     const InfoCard = ({ label, value, badge, mono }) => (
-        <div className="flex flex-col border border-gray-100 bg-gray-50/50 rounded-xl p-3 min-w-[140px]">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
-            <div className="mt-1 flex items-center gap-2">
-                <span className={`text-sm ${mono ? "font-mono font-bold text-blue-600" : "font-medium text-gray-800 break-all"}`}>
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm w-full min-w-0">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide truncate">{label}</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className={`text-sm font-semibold text-gray-800 ${mono ? "font-mono font-bold text-blue-600" : ""} truncate`}>
                     {value || "—"}
                 </span>
                 {badge && (
@@ -297,120 +298,59 @@ export default function OrderDetails({ id }) {
         </div>
     );
 
-    let actionBlock = null;
+    let allAvailable = [];
     if (q.orderStatus === "OPEN" || !q.orderStatus) {
         if (q.status === "DRAFT" && can?.("orderUpdate") !== false) {
-            actionBlock = (
-                <div className="flex gap-2">
-                    <button
-                        type="button"
-                        onClick={() => handleStatusUpdate("SUBMIT")}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition cursor-pointer shadow-sm"
-                    >
-                        <CheckCircle className="h-4 w-4" /> Submit Order
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => router.push(`/order/${id}?edit=true`)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition border border-amber-200 cursor-pointer"
-                    >
-                        <Edit2 className="h-4 w-4" /> Edit
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleStatusUpdate("DELETE")}
-                        className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition border border-red-200 cursor-pointer"
-                    >
-                        <Trash2 className="h-4 w-4" /> Delete
-                    </button>
-                </div>
-            );
+            allAvailable.push({ id: "submit", label: "Submit Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("SUBMIT"), variant: "blue" });
+            allAvailable.push({ id: "edit", label: "Edit", icon: <Edit2 className="h-4 w-4" />, onClick: () => router.push(`/order/${id}?edit=true`), variant: "amber" });
+            allAvailable.push({ id: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("DELETE"), textClass: "text-red-600 hover:bg-red-50", isDestructive: true });
         } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
-            actionBlock = (
-                <div className="flex gap-2 items-center">
-                    <div className="flex rounded-full overflow-hidden border border-green-500">
-                        <button
-                            type="button"
-                            onClick={() => handleStatusUpdate("MARK_DELIVERED")}
-                            className="px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 transition cursor-pointer border-r border-green-200"
-                        >
-                            Mark as Delivered
-                        </button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <div className="px-3 bg-white text-green-700 hover:bg-green-50 transition cursor-pointer flex items-center justify-center">
-                                    <ChevronDown className="h-4 w-4" />
-                                </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem className="cursor-pointer" onClick={() => setPricePanelOpen(true)}>Update Price</DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer text-red-600 hover:bg-red-50" onClick={() => handleStatusUpdate("CANCEL")}>Cancel Order</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-            );
+            allAvailable.push({ id: "markDelivered", label: "Mark as Delivered", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("MARK_DELIVERED"), variant: "green" });
+            allAvailable.push({ id: "updatePrice", label: "Update Price", icon: <Edit2 className="h-4 w-4" />, onClick: () => setPricePanelOpen(true) });
+            allAvailable.push({ id: "cancel", label: "Cancel Order", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("CANCEL"), textClass: "text-red-600 hover:bg-red-50", isDestructive: true });
         } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate")) {
-            actionBlock = (
-                <div className="flex gap-2 items-center">
-                    {q.invoicePdfPath && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")}
-                                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
-                                title="View Invoice PDF"
-                            >
-                                <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={async (e) => {
-                                    e.stopPropagation();
-                                    try {
-                                        await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
-                                    } catch (err) {
-                                        toast.error("Failed to download invoice", { position: "top-right" });
-                                    }
-                                }}
-                                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
-                                title="Download Invoice PDF"
-                            >
-                                <Download className="h-4 w-4" />
-                            </button>
-                        </>
-                    )}
-                    {can?.("orderUpdate") && (
-                        <button
-                            type="button"
-                            onClick={handleRegeneratePdf}
-                            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
-                            title="Regenerate Invoice PDF"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                        </button>
-                    )}
-                    {can?.("invoiceAdd") && (
-                        <button
-                            type="button"
-                            onClick={() => router.push(`/add-invoice?fromOrder=${id}`)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition border border-gray-200 cursor-pointer shadow-sm"
-                        >
-                            <FileText className="h-4 w-4" /> Convert to Invoice
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => handleStatusUpdate("CLOSE")}
-                        className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition border border-gray-500 cursor-pointer"
-                    >
-                        Close Order
-                    </button>
-                </div>
-            );
+            if (can?.("invoiceAdd")) {
+                allAvailable.push({ id: "convertToInvoice", label: "Convert to Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?fromOrder=${id}`) });
+            }
+            allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
+            if (q.invoicePdfPath) {
+                allAvailable.push({ id: "viewInvoicePdf", label: "View Invoice PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank") });
+                allAvailable.push({
+                    id: "downloadInvoicePdf", label: "Download Invoice PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
+                        e.stopPropagation();
+                        try {
+                            await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                        } catch (err) {
+                            toast.error("Failed to download invoice", { position: "top-right" });
+                        }
+                    }
+                });
+            }
+            if (can?.("orderUpdate")) {
+                allAvailable.push({ id: "regenerateInvoicePdf", label: "Regenerate Invoice PDF", icon: <RefreshCw className="h-4 w-4" />, onClick: handleRegeneratePdf });
+            }
         }
     }
+
+    const plainCandidates = [];
+    let splitMainActionId = null;
+    const dropdownOrder = [];
+
+    let nonDestructiveCount = 0;
+    allAvailable.forEach(action => {
+        if (action.isDestructive) {
+            dropdownOrder.push(action.id);
+        } else {
+            nonDestructiveCount++;
+            if (nonDestructiveCount <= 2) {
+                plainCandidates.push(action.id);
+            } else if (nonDestructiveCount === 3) {
+                splitMainActionId = action.id;
+            } else {
+                dropdownOrder.push(action.id);
+            }
+        }
+    });
 
     return (
         <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
@@ -422,36 +362,39 @@ export default function OrderDetails({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/order-list" className="cursor-pointer hover:text-blue-600">Orders</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">{"Order"}</span>
+                    <span className="text-gray-800">Order</span>
                 </nav>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-1 mt-2">
+                    <h1 className="text-2xl font-semibold text-[#1f2937]">Order</h1>
+
+                    <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                        <ActionButtonGroup
+                            allAvailable={allAvailable}
+                            plainCandidates={plainCandidates}
+                            splitCandidateIds={splitMainActionId ? [splitMainActionId] : []}
+                            dropdownOrder={dropdownOrder}
+                        />
+                    </div>
+                </div>
             </div>
 
             <div className="px-6 pb-3">
-                <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 flex-1">
-                            <InfoCard label="Order No." value={q.orderCode ?? `#${id}`} mono />
-                            <InfoCard
-                                label="Customer"
-                                value={q.customerId ? (
-                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
-                                        {q.customerName ?? "—"}
-                                    </span>
-                                ) : (
-                                    q.customerName ?? "—"
-                                )}
-                                badge={q.currencyCode}
-                            />
-                            <InfoCard label="Order Date" value={fmtDate(q.orderDate)} />
-                            <InfoCard label="Delivery Date" value={fmtDate(q.deliveryDate)} />
-                            <InfoCard label="Status" value={<StatusBadge status={q.status} orderStatus={q.orderStatus} />} />
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start lg:justify-end">
-                            {actionBlock}
-                        </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <InfoCard label="Order No." value={q.orderCode ?? `#${id}`} mono />
+                    <InfoCard
+                        label="Customer"
+                        value={q.customerId ? (
+                            <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
+                                {q.customerName ?? "—"}
+                            </span>
+                        ) : (
+                            q.customerName ?? "—"
+                        )}
+                        badge={q.currencyCode}
+                    />
+                    <InfoCard label="Order Date" value={fmtDate(q.orderDate)} />
+                    <InfoCard label="Delivery Date" value={fmtDate(q.deliveryDate)} />
+                    <InfoCard label="Status" value={<StatusBadge status={q.status} orderStatus={q.orderStatus} />} />
                 </div>
             </div>
 

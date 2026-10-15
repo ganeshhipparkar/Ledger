@@ -9,7 +9,7 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function DebitNoteCard({ debitNote: cn, onCustomerClick }) {
+export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewClick }) {
     const initials = getInitials(cn.debitNoteCode || "-");
     const sym = cn.currencyCode;
 
@@ -20,12 +20,13 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick }) {
                     <span className="text-blue-600">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
-                    <Link
-                        href={`/debit-note/${cn.id}`}
-                        className="font-semibold text-lg truncate cursor-pointer hover:underline text-[#3563e9] block"
+                    <button
+                        type="button"
+                        onClick={() => onViewClick?.(cn.id)}
+                        className="font-semibold text-lg truncate cursor-pointer hover:underline text-[#3563e9] block text-left bg-transparent border-none p-0"
                     >
                         {cn.debitNoteCode || "-"}
-                    </Link>
+                    </button>
                     <div className="text-sm text-gray-600 break-all mt-1">
                         <span
                             className="text-blue-600 hover:underline cursor-pointer"
@@ -97,6 +98,16 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick }) {
                     <span className="font-medium">Final Amount:</span>{" "}
                     <span className="font-semibold text-gray-800">{fmtAmount(cn.finalAmount, sym)}</span>
                 </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                <button
+                    type="button"
+                    onClick={() => onViewClick?.(cn.id)}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                    View Details
+                </button>
             </div>
 
         </div>

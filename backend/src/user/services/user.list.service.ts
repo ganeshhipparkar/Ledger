@@ -156,7 +156,7 @@ export class UserListService {
           userFile: true, createdAt: true, updatedDate: true,
           userCompanyGroups: {
             id: true, companyId: true, groupId: true, is_parent: true,
-            company: { companyName: true },
+            company: { companyName: true, allowManualInvoicing: true },
             group: { groupName: true, groupCode: true },
           },
         },
@@ -214,6 +214,7 @@ export class UserListService {
         id: ucg.id,
         companyId: ucg.companyId,
         companyName: ucg.company?.companyName ?? null,
+        allowManualInvoicing: ucg.company?.allowManualInvoicing ?? 'YES',
         groupId: ucg.groupId,
         groupName: ucg.group?.groupName ?? null,
         groupCode: ucg.group?.groupCode ?? null,

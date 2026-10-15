@@ -287,6 +287,7 @@ export default function InvoiceList() {
         onAddDebitNote: (invoice) => {
             handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice });
         },
+        onCopyInvoice: (invoiceId) => router.push(`/add-invoice?cloneFrom=${invoiceId}`),
         onCustomerClick: (id) => setSelectedCustomerId(id),
         onAddedByClick: (id) => setSelectedUserId(id),
         onInvoiceClick: (id) => setSelectedInvoiceIdForPanel(id),
@@ -397,6 +398,7 @@ export default function InvoiceList() {
                                     onUpdateDueDate={(inv) => setDueDateInvoice(inv)}
                                     onAddCreditNote={(inv) => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: inv })}
                                     onAddDebitNote={(inv) => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: inv })}
+                                    onCopyInvoice={(invoiceId) => router.push(`/add-invoice?cloneFrom=${invoiceId}`)}
                                     onCustomerClick={(id) => setSelectedCustomerId(id)}
                                     onAddedByClick={(id) => setSelectedUserId(id)}
                                     onInvoiceClick={(id) => setSelectedInvoiceIdForPanel(id)}
@@ -541,7 +543,8 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                         { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
                                         { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
                                         { show: q.status !== "DRAFT" && can?.("creditNoteAdd"), label: "Add Credit Note" },
-                                        { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" }
+                                        { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" },
+                                        { show: q.status !== "DRAFT" && can?.("invoiceAdd"), label: "Copy Invoice" }
                                     ].find((a) => a.show) ?? { label: "View" };
                                     const primaryLabel = primaryAction.label;
 
@@ -577,6 +580,9 @@ function InvoiceListRow({ invoice: q, can, onSubmit, onMarkPaid, onDelete, onReg
                                 )}
                                 {q.status !== "DRAFT" && can?.("debitNoteAdd") && (
                                     <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddDebitNote?.(q); }}>Add Debit Note</DropdownMenuItem>
+                                )}
+                                {q.status !== "DRAFT" && can?.("invoiceAdd") && (
+                                    <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); router.push(`/add-invoice?cloneFrom=${q.invoiceId}`); }}>Copy Invoice</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>

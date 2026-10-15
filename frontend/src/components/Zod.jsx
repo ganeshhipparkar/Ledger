@@ -154,9 +154,13 @@ export const CompanyUpdateSchema = z.object({
     AddressLineOne: z.string().
         min(1, "please enter Address Line 1.")
         .min(2, "Address Line should be more than 2 letters"),
-    status: z.enum(["active", "inactive"], {
-        errorMap: () => ({ message: "Please Select a valid Status." }),
-    }),
+    status: z.preprocess(
+        (val) => (typeof val === "string" ? val.toLowerCase() : val),
+        z.enum(["active", "inactive"], {
+            errorMap: () => ({ message: "Please Select a valid Status." }),
+        })
+    ),
+    allowManualInvoicing: z.enum(["YES", "NO"]).default("YES").optional(),
     companyFile: z.any()
         .optional()
         .refine((file) => {
@@ -833,12 +837,20 @@ export const OrderFormSchema = z.object({
     deliveryState: z.string().min(1, "Place of Delivery required."),
     deliveryType: z.string().min(1, "Delivery Type required."),
     invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
-    invoiceAutoApproval: z.string().min(1, "Invoice Auto Approval required."),
+    invoiceAutoApproval: z.string().optional().default("NO"),
     bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
     placeOfSupply: z.string().optional(),
     vatWithheld: z.enum(["YES", "NO"]).default("NO"),
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person is required."),
     items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
+}).superRefine((data, ctx) => {
+    if (data.invoiceGenerationOn && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invoice Auto Approval required.",
+            path: ["invoiceAutoApproval"],
+        });
+    }
 });
 
 export const OrderUpdateFormSchema = z.object({
@@ -854,12 +866,20 @@ export const OrderUpdateFormSchema = z.object({
     deliveryState: z.string().min(1, "Place of Delivery required."),
     deliveryType: z.string().min(1, "Delivery Type required."),
     invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
-    invoiceAutoApproval: z.string().min(1, "Invoice Auto Approval required."),
+    invoiceAutoApproval: z.string().optional().default("NO"),
     bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
     placeOfSupply: z.string().optional(),
     vatWithheld: z.enum(["YES", "NO"]).default("NO"),
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person required."),
     items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
+}).superRefine((data, ctx) => {
+    if (data.invoiceGenerationOn && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invoice Auto Approval required.",
+            path: ["invoiceAutoApproval"],
+        });
+    }
 });
 
 const InvoiceItemRowSchema = z.object({

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
+import ActionButtonGroup from "../shared/ActionButtonGroup";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
@@ -224,6 +225,71 @@ export default function QuotationDetails({ id }) {
         finalAmount: q.finalAmount,
     };
 
+    let allAvailable = [];
+    if (isLatestVersion) {
+        if (q.status === "DRAFT" && can?.("quotationUpdate")) {
+            allAvailable.push({ id: "edit", label: "Edit", icon: <Edit2 className="h-4 w-4" />, onClick: () => router.push(`/quotation/${id}?edit=true`), variant: "amber" });
+            allAvailable.push({ id: "submit", label: "Submit", icon: <ClipboardList className="h-4 w-4" />, onClick: () => handleStatusUpdate("SUBMITTED"), variant: "blue" });
+            if (can?.("quotationAdd")) {
+                allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
+            }
+        } else if (q.status === "SUBMITTED" && can?.("quotationUpdate")) {
+            allAvailable.push({ id: "changeQuotation", label: "Change Quotation", icon: <RefreshCw className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?changeFrom=${id}`), variant: "outline" });
+            allAvailable.push({ id: "confirm", label: "Confirm", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CONFIRMED"), variant: "green" });
+            if (can?.("quotationAdd")) {
+                allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
+            }
+        } else if (q.status === "CONFIRMED") {
+            if (can?.("orderAdd")) {
+                allAvailable.push({ id: "convertToOrder", label: "Convert to Order", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-order?quotationId=${id}`), variant: "outline" });
+            }
+            if (can?.("invoiceAdd")) {
+                allAvailable.push({ id: "convertToInvoice", label: "Convert to Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?fromQuotation=${id}`), variant: "outline" });
+            }
+            if (q.invoicePdfPath) {
+                allAvailable.push({ id: "viewPdf", label: "View PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"), variant: "outline" });
+                allAvailable.push({ id: "downloadPdf", label: "Download PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
+                    } catch (err) {
+                        toast.error("Failed to download invoice", { position: "top-right" });
+                    }
+                }, variant: "outline" });
+            }
+            if (can?.("quotationUpdate")) {
+                allAvailable.push({ id: "regeneratePdf", label: "Regenerate PDF", icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf, variant: "outline" });
+            }
+            if (can?.("quotationAdd")) {
+                allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
+            }
+        } else {
+            if (can?.("quotationAdd")) {
+                allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
+            }
+        }
+    }
+
+    const plainCandidates = [];
+    let splitMainActionId = null;
+    const dropdownOrder = [];
+    
+    let nonDestructiveCount = 0;
+    allAvailable.forEach(action => {
+        if (action.isDestructive) {
+            dropdownOrder.push(action.id);
+        } else {
+            nonDestructiveCount++;
+            if (nonDestructiveCount <= 2) {
+                plainCandidates.push(action.id);
+            } else if (nonDestructiveCount === 3) {
+                splitMainActionId = action.id;
+            } else {
+                dropdownOrder.push(action.id);
+            }
+        }
+    });
+
     return (
         <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
             <Header page="quotation-details" />
@@ -234,139 +300,39 @@ export default function QuotationDetails({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/quotation-list" className="cursor-pointer hover:text-blue-600">Quotations</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">{"Quotation"}</span>
-
+                    <span className="text-gray-800">Quotation</span>
                 </nav>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-1 mt-2">
-                    <h1 className="text-2xl font-semibold text-[#1f2937]">
-                        {"Quotation"}
-                    </h1>
+                    <h1 className="text-2xl font-semibold text-[#1f2937]">Quotation</h1>
+                    
+                    <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                        <ActionButtonGroup 
+                            allAvailable={allAvailable} 
+                            plainCandidates={plainCandidates} 
+                            splitCandidateIds={splitMainActionId ? [splitMainActionId] : []} 
+                            dropdownOrder={dropdownOrder} 
+                        />
+                    </div>
                 </div>
-
             </div>
 
             <div className="px-6 pb-3">
-                <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 flex-1">
-                            <InfoCard label="Quotation No." value={q.quotationCode || "-"} mono />
-                            <InfoCard
-                                label="Customer"
-                                value={q.customerId ? (
-                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
-                                        {q.customerName ?? "—"}
-                                    </span>
-                                ) : (
-                                    q.customerName ?? "—"
-                                )}
-                                badge={q.currencyCode}
-                            />
-                            <InfoCard label="Issue Date" value={fmtDate(q.issueDate)} />
-                            <InfoCard label="Expiry Date" value={fmtDate(q.expiryDate)} />
-                            <InfoCard label="Status" value={<StatusBadge status={q.status} />} />
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start lg:justify-end">
-                            {isLatestVersion && (
-                                <>
-                                    {q.status === "DRAFT" && can?.("quotationUpdate") && (
-                                        <>
-                                            <ActionBtn
-                                                onClick={() => router.push(`/quotation/${id}?edit=true`)}
-                                                icon={<Edit2 className="h-4 w-4" />}
-                                                label="Edit"
-                                                variant="amber"
-                                            />
-                                            <ActionBtn
-                                                onClick={() => handleStatusUpdate("SUBMITTED")}
-                                                icon={<ClipboardList className="h-4 w-4" />}
-                                                label="Submit"
-                                                variant="blue"
-                                            />
-                                        </>
-                                    )}
-                                    {q.status === "SUBMITTED" && can?.("quotationUpdate") && (
-                                        <>
-                                            <ActionBtn
-                                                onClick={() => router.push(`/add-quotation?changeFrom=${id}`)}
-                                                icon={<RefreshCw className="h-4 w-4" />}
-                                                label="Change Quotation"
-                                                variant="outline"
-                                            />
-                                            <ActionBtn
-                                                onClick={() => handleStatusUpdate("CONFIRMED")}
-                                                icon={<CheckCircle className="h-4 w-4" />}
-                                                label="Confirm"
-                                                variant="green"
-                                            />
-                                        </>
-                                    )}
-                                    {q.status === "CONFIRMED" && can?.("orderAdd") && (
-                                        <ActionBtn
-                                            onClick={() => router.push(`/add-order?quotationId=${id}`)}
-                                            icon={<Copy className="h-4 w-4" />}
-                                            label="Convert to Order"
-                                            variant="outline"
-                                        />
-                                    )}
-                                    {q.status === "CONFIRMED" && can?.("invoiceAdd") && (
-                                        <ActionBtn
-                                            onClick={() => router.push(`/add-invoice?fromQuotation=${id}`)}
-                                            icon={<FileText className="h-4 w-4" />}
-                                            label="Convert to Invoice"
-                                            variant="outline"
-                                        />
-                                    )}
-                                    {q.status === "CONFIRMED" && (
-                                        <>
-                                            {q.invoicePdfPath && (
-                                                <>
-                                                    <ActionBtn
-                                                        onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")}
-                                                        icon={<Eye className="h-4 w-4" />}
-                                                        title="View PDF"
-                                                        variant="outline"
-                                                    />
-                                                    <ActionBtn
-                                                        onClick={async (e) => {
-                                                            e.stopPropagation();
-                                                            try {
-                                                                await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
-                                                            } catch (err) {
-                                                                toast.error("Failed to download invoice", { position: "top-right" });
-                                                            }
-                                                        }}
-                                                        icon={<Download className="h-4 w-4" />}
-                                                        title="Download PDF"
-                                                        label=""
-                                                        variant="outline"
-                                                    />
-                                                </>
-                                            )}
-                                            {can?.("quotationUpdate") && (
-                                                <ActionBtn
-                                                    onClick={handleRegeneratePdf}
-                                                    icon={<FaRegFilePdf className="h-4 w-4" />}
-                                                    title="Regenerate PDF"
-                                                    label=""
-                                                    variant="outline"
-                                                />
-                                            )}
-                                        </>
-                                    )}
-                                    {can?.("quotationAdd") && (
-                                        <ActionBtn
-                                            onClick={() => router.push(`/add-quotation?cloneFrom=${id}`)}
-                                            icon={<Copy className="h-4 w-4" />}
-                                            label="Clone Quotation"
-                                            variant="outline"
-                                        />
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <InfoCard label="Quotation No." value={q.quotationCode || "-"} mono />
+                    <InfoCard
+                        label="Customer"
+                        value={q.customerId ? (
+                            <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
+                                {q.customerName ?? "—"}
+                            </span>
+                        ) : (
+                            q.customerName ?? "—"
+                        )}
+                        badge={q.currencyCode}
+                    />
+                    <InfoCard label="Issue Date" value={fmtDate(q.issueDate)} />
+                    <InfoCard label="Expiry Date" value={fmtDate(q.expiryDate)} />
+                    <InfoCard label="Status" value={<StatusBadge status={q.status} />} />
                 </div>
             </div>
 
@@ -674,7 +640,7 @@ export default function QuotationDetails({ id }) {
 
 function InfoCard({ label, value, mono = false, badge }) {
     return (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 w-full min-w-0">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm w-full min-w-0">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide truncate">{label}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`text-sm font-semibold text-gray-800 ${mono ? "font-mono" : ""} truncate`}>{value}</span>

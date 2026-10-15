@@ -218,7 +218,7 @@ export class InvoiceListService {
     };
   }
 
-  async getInvoicePayments(id: number, req?: any) {
+  async getInvoicePayments(id: number, req?: any, params?: any) {
     const authCtx = await resolveAuthContext(req, this.ucgEntity);
     const invoice = await this.invoiceRepo.findOne({
       where: { invoiceId: id },
@@ -238,7 +238,7 @@ export class InvoiceListService {
       }
     }
 
-    const { data, totalApplied } = await this.vaultService.getPaymentsForInvoice(id);
+    const { data, total, totalApplied } = await this.vaultService.getPaymentsForInvoice(id, params);
     return {
       success: 1,
       currencyCode: invoice.currency?.code ?? null,
@@ -246,6 +246,7 @@ export class InvoiceListService {
       finalAmount: Number(invoice.finalAmount),
       amountPaid: Number(invoice.amountPaid),
       totalApplied,
+      total: total ?? (data?.length || 0),
       data,
     };
   }

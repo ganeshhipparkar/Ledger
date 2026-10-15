@@ -106,7 +106,7 @@ export class CompanyListService {
           state: true, city: true, postalCode: true, AddressLineOne: true,
           ownerName: true, ownerEmail: true, ownerPhone: true, ownerDialCode: true,
           status: true, addedBy: true, updatedBy: true, createdAt: true,
-          updatedDate: true, parentCompanyId: true,
+          updatedDate: true, parentCompanyId: true, allowManualInvoicing: true,
           parentCompany: { companyName: true },
         },
       });

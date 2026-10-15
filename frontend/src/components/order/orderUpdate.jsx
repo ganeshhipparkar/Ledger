@@ -3,7 +3,7 @@ import Link from "next/link";
 import Select from "react-select";
 import { limitDecimals } from "@/lib/utils";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -23,6 +23,11 @@ import TermsConditionsWidget from "../quotation/TermsConditionsWidget";
 
 const MySwal = withReactContent(Swal);
 
+const ALL_INVOICE_GENERATION_OPTIONS = [
+    { value: "ORDER_LEVEL", label: "Order Level" },
+    { value: "DELIVERY_LEVEL", label: "Delivery Level" },
+];
+
 function formatDateForInput(dateStr) {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -34,6 +39,76 @@ export default function OrderUpdate({ id }) {
     const router = useRouter();
     const { activeAssignment } = useContext(loginContext) || {};
     const companyId = activeAssignment?.companyId;
+
+    const [orderCompanyId, setOrderCompanyId] = useState(null);
+    const effectiveCompanyId = orderCompanyId || companyId;
+
+    const [allowManualInvoicing, setAllowManualInvoicing] = useState(
+        activeAssignment?.companyId === effectiveCompanyId && activeAssignment?.allowManualInvoicing
+            ? activeAssignment.allowManualInvoicing
+            : null
+    );
+    const [isLoadingManualInvoicing, setIsLoadingManualInvoicing] = useState(
+        !(activeAssignment?.companyId === effectiveCompanyId && activeAssignment?.allowManualInvoicing)
+    );
+
+    useEffect(() => {
+        if (!effectiveCompanyId) return;
+
+        if (activeAssignment?.companyId === effectiveCompanyId && activeAssignment?.allowManualInvoicing) {
+            setAllowManualInvoicing(activeAssignment.allowManualInvoicing);
+            setIsLoadingManualInvoicing(false);
+        } else {
+            setIsLoadingManualInvoicing(true);
+        }
+
+        let isMounted = true;
+        fetch("/relayapi", {
+            method: "GET",
+            headers: {
+                ...authHeaders(),
+                endpoint: `company-details/${effectiveCompanyId}`,
+                module: "company",
+            },
+        })
+            .then((r) => r.json())
+            .then((resJson) => {
+                if (!isMounted) return;
+                const data = resJson?.encrypted ? decryptResponse(resJson.encrypted) : resJson;
+                if (data?.companyId && data?.allowManualInvoicing) {
+                    setAllowManualInvoicing(data.allowManualInvoicing);
+                } else if (activeAssignment?.companyId === effectiveCompanyId && activeAssignment?.allowManualInvoicing) {
+                    setAllowManualInvoicing(activeAssignment.allowManualInvoicing);
+                } else {
+                    setAllowManualInvoicing("FAILED");
+                }
+            })
+            .catch(() => {
+                if (!isMounted) return;
+                if (activeAssignment?.companyId === effectiveCompanyId && activeAssignment?.allowManualInvoicing) {
+                    setAllowManualInvoicing(activeAssignment.allowManualInvoicing);
+                } else {
+                    setAllowManualInvoicing("FAILED");
+                }
+            })
+            .finally(() => {
+                if (isMounted) setIsLoadingManualInvoicing(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [effectiveCompanyId, activeAssignment?.companyId, activeAssignment?.allowManualInvoicing]);
+
+    const invoiceGenerationOptions = useMemo(() => {
+        if (isLoadingManualInvoicing) {
+            return [{ value: "DELIVERY_LEVEL", label: "Delivery Level" }];
+        }
+        if (allowManualInvoicing === "NO") {
+            return [{ value: "DELIVERY_LEVEL", label: "Delivery Level" }];
+        }
+        return ALL_INVOICE_GENERATION_OPTIONS;
+    }, [isLoadingManualInvoicing, allowManualInvoicing]);
 
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -62,6 +137,12 @@ export default function OrderUpdate({ id }) {
     const [itemErrors, setItemErrors] = useState({});
     const [submitAttempted, setSubmitAttempted] = useState(false);
     const [totals, setTotals] = useState({});
+
+    const invoiceGenerationError =
+        errors.invoiceGenerationOn ||
+        (allowManualInvoicing === "NO" && formData.invoiceGenerationOn === "ORDER_LEVEL"
+            ? "Order Level is not allowed for this company. Please select Delivery Level."
+            : null);
 
     const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
@@ -103,6 +184,10 @@ export default function OrderUpdate({ id }) {
                     router.push("/order-list");
                     setLoadState("denied");
                     return;
+                }
+
+                if (data.companyId) {
+                    setOrderCompanyId(data.companyId);
                 }
 
                 const rate = parseFloat(data.currencyConversionRate) || 1;
@@ -281,19 +366,24 @@ export default function OrderUpdate({ id }) {
         setSubmitAttempted(true);
         const payloadToValidate = { ...formData, items, orderId: parseInt(id) };
         const parseRes = OrderUpdateFormSchema.safeParse(payloadToValidate);
-        if (!parseRes.success) {
+        if (!parseRes.success || (allowManualInvoicing === "NO" && formData.invoiceGenerationOn === "ORDER_LEVEL")) {
             const fieldErrors = {};
             const itemErrors = {};
-            parseRes.error.issues.forEach((err) => {
-                if (err.path[0] === "items" && typeof err.path[1] === "number") {
-                    const idx = err.path[1];
-                    const field = err.path[2];
-                    itemErrors[idx] = { ...(itemErrors[idx] || {}), [field]: err.message };
-                } else {
-                    const field = err.path[0];
-                    if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
-                }
-            });
+            if (!parseRes.success) {
+                parseRes.error.issues.forEach((err) => {
+                    if (err.path[0] === "items" && typeof err.path[1] === "number") {
+                        const idx = err.path[1];
+                        const field = err.path[2];
+                        itemErrors[idx] = { ...(itemErrors[idx] || {}), [field]: err.message };
+                    } else {
+                        const field = err.path[0];
+                        if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+                    }
+                });
+            }
+            if (allowManualInvoicing === "NO" && formData.invoiceGenerationOn === "ORDER_LEVEL") {
+                fieldErrors.invoiceGenerationOn = "Order Level is not allowed for this company. Please select Delivery Level.";
+            }
             setErrors(fieldErrors);
             setItemErrors(itemErrors);
             // toast.error("Please resolve the validation errors before proceeding.", { position: "top-right" });
@@ -348,7 +438,7 @@ export default function OrderUpdate({ id }) {
             fd.append("deliveryState", formData.deliveryState);
             fd.append("deliveryType", formData.deliveryType);
             fd.append("invoiceGenerationOn", formData.invoiceGenerationOn);
-            fd.append("invoiceAutoApproval", formData.invoiceAutoApproval);
+            fd.append("invoiceAutoApproval", formData.invoiceAutoApproval || "NO");
             fd.append("status", targetStatus);
             fd.append("vatWithheld", formData.vatWithheld);
             fd.append("currencyConversionRate", String(formData.currencyConversionRate));
@@ -782,17 +872,21 @@ export default function OrderUpdate({ id }) {
                                 Invoice Generation On <span className="text-red-500">*</span>
                             </label>
                             <Select
+                                instanceId="invoice-generation-on-select"
                                 value={formData.invoiceGenerationOn ? {
-                                    value: formData.invoiceGenerationOn, label: [
-                                        { value: "ORDER_LEVEL", label: "Order Level" },
-                                        { value: "DELIVERY_LEVEL", label: "Delivery Level" }
-                                    ].find(o => String(o.value) === String(formData.invoiceGenerationOn))?.label || formData.invoiceGenerationOn
+                                    value: formData.invoiceGenerationOn, label: ALL_INVOICE_GENERATION_OPTIONS.find(o => String(o.value) === String(formData.invoiceGenerationOn))?.label || formData.invoiceGenerationOn
                                 } : null}
-                                onChange={(selected) => setFormField("invoiceGenerationOn", selected ? selected.value : "")}
-                                options={[
-                                    { value: "ORDER_LEVEL", label: "Order Level" },
-                                    { value: "DELIVERY_LEVEL", label: "Delivery Level" }
-                                ]}
+                                onChange={(selected) => {
+                                    const val = selected ? selected.value : "";
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        invoiceGenerationOn: val,
+                                        invoiceAutoApproval: val ? (prev.invoiceAutoApproval || "NO") : "NO",
+                                    }));
+                                    if (errors.invoiceGenerationOn) setErrors((prev) => ({ ...prev, invoiceGenerationOn: null }));
+                                    if (!val && errors.invoiceAutoApproval) setErrors((prev) => ({ ...prev, invoiceAutoApproval: null }));
+                                }}
+                                options={invoiceGenerationOptions}
                                 isClearable
 
                                 placeholder="-- Select --"
@@ -802,17 +896,57 @@ export default function OrderUpdate({ id }) {
                                     control: (base) => ({
                                         ...base,
                                         borderRadius: "0.75rem",
-                                        borderColor: errors.invoiceGenerationOn ? "#ef4444" : "#d1d5db",
+                                        borderColor: invoiceGenerationError ? "#ef4444" : "#d1d5db",
                                         padding: "1px",
                                         fontSize: "0.875rem",
                                         boxShadow: "none",
-                                        "&:hover": { borderColor: errors.invoiceGenerationOn ? "#ef4444" : "#3b82f6" },
+                                        "&:hover": { borderColor: invoiceGenerationError ? "#ef4444" : "#3b82f6" },
                                     }),
                                 }}
                                 menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                             />
-                            {errors.invoiceGenerationOn && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceGenerationOn}</p>}
+                            {invoiceGenerationError && <p className="text-red-500 text-xs mt-1 font-medium">{invoiceGenerationError}</p>}
                         </div>
+
+                        {formData.invoiceGenerationOn && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                    Invoice Auto Approval <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    instanceId="invoice-auto-approval-select"
+                                    value={formData.invoiceAutoApproval ? {
+                                        value: formData.invoiceAutoApproval, label: [
+                                            { value: "NO", label: "No" },
+                                            { value: "YES", label: "Yes" }
+                                        ].find(o => String(o.value) === String(formData.invoiceAutoApproval))?.label || formData.invoiceAutoApproval
+                                    } : null}
+                                    onChange={(selected) => setFormField("invoiceAutoApproval", selected ? selected.value : "")}
+                                    options={[
+                                        { value: "NO", label: "No" },
+                                        { value: "YES", label: "Yes" }
+                                    ]}
+                                    isClearable
+
+                                    placeholder="No"
+                                    classNamePrefix="react-select"
+                                    styles={{
+                                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                        control: (base) => ({
+                                            ...base,
+                                            borderRadius: "0.75rem",
+                                            borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#d1d5db",
+                                            padding: "1px",
+                                            fontSize: "0.875rem",
+                                            boxShadow: "none",
+                                            "&:hover": { borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#3b82f6" },
+                                        }),
+                                    }}
+                                    menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                />
+                                {errors.invoiceAutoApproval && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceAutoApproval}</p>}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -970,42 +1104,6 @@ export default function OrderUpdate({ id }) {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                        Invoice Auto Approval <span className="text-red-500">*</span>
-                                    </label>
-                                    <Select
-                                        value={formData.invoiceAutoApproval ? {
-                                            value: formData.invoiceAutoApproval, label: [
-                                                { value: "NO", label: "No" },
-                                                { value: "YES", label: "Yes" }
-                                            ].find(o => String(o.value) === String(formData.invoiceAutoApproval))?.label || formData.invoiceAutoApproval
-                                        } : null}
-                                        onChange={(selected) => setFormField("invoiceAutoApproval", selected ? selected.value : "")}
-                                        options={[
-                                            { value: "NO", label: "No" },
-                                            { value: "YES", label: "Yes" }
-                                        ]}
-                                        isClearable
-
-                                        placeholder="No"
-                                        classNamePrefix="react-select"
-                                        styles={{
-                                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                                            control: (base) => ({
-                                                ...base,
-                                                borderRadius: "0.75rem",
-                                                borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#d1d5db",
-                                                padding: "1px",
-                                                fontSize: "0.875rem",
-                                                boxShadow: "none",
-                                                "&:hover": { borderColor: errors.invoiceAutoApproval ? "#ef4444" : "#3b82f6" },
-                                            }),
-                                        }}
-                                        menuPortalTarget={typeof window !== "undefined" ? document.body : null}
-                                    />
-                                    {errors.invoiceAutoApproval && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceAutoApproval}</p>}
-                                </div>
 
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">

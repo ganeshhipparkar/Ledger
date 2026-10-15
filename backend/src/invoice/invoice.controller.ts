@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UploadedFiles,
   UseGuards,
@@ -188,8 +189,24 @@ export class InvoiceController {
   @Get('invoice-payments/:id')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('invoiceView')
-  async getInvoicePayments(@Param('id') id: number, @Req() req: any) {
-    const result = await this.invoiceListService.getInvoicePayments(id, req);
+  async getInvoicePayments(
+    @Param('id') id: number,
+    @Query() query: any,
+    @Req() req: any,
+  ) {
+    const result = await this.invoiceListService.getInvoicePayments(Number(id), req, query);
+    return { encrypted: encryptResponse(result) };
+  }
+
+  @Post('invoice-payments/:id')
+  @UseGuards(AuthGuard('jwt'), PermissionsGuard)
+  @RequirePermission('invoiceView')
+  async getInvoicePaymentsPost(
+    @Param('id') id: number,
+    @Body() body: any,
+    @Req() req: any,
+  ) {
+    const result = await this.invoiceListService.getInvoicePayments(Number(id), req, body);
     return { encrypted: encryptResponse(result) };
   }
 }

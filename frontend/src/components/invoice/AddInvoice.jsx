@@ -95,6 +95,8 @@ export default function AddInvoice() {
 
     const fromQuotationId = searchParams.get("fromQuotation");
     const fromOrderId = searchParams.get("fromOrder");
+    const cloneFromId = searchParams.get("cloneFrom");
+    const isCloneMode = !!cloneFromId;
     const companyId = activeAssignment?.companyId;
     const oneMonthAgo = getOneMonthAgo();
 
@@ -147,7 +149,8 @@ export default function AddInvoice() {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [lockedCustomer, setLockedCustomer] = useState(false);
-    const [prefillLoading, setPrefillLoading] = useState(!!fromQuotationId || !!fromOrderId);
+    const [lockedCurrency, setLockedCurrency] = useState(false);
+    const [prefillLoading, setPrefillLoading] = useState(!!fromQuotationId || !!fromOrderId || !!cloneFromId);
 
     const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
@@ -272,6 +275,151 @@ export default function AddInvoice() {
         if (fromQuotationId) loadSourceIntoForm("QUOTATION", fromQuotationId, true);
         else if (fromOrderId) loadSourceIntoForm("ORDER", fromOrderId, true);
     }, [fromQuotationId, fromOrderId]);
+
+    useEffect(() => {
+        if (!cloneFromId) return;
+        (async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "GET",
+                    headers: { ...authHeaders(), endpoint: `invoice-details/${cloneFromId}`, module: "invoice" },
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+
+                if (!data?.invoiceId) {
+                    setPrefillLoading(false);
+                    return;
+                }
+
+                if (data.status === "DRAFT") {
+                    toast.error("Only non-draft invoices can be copied.", { position: "top-right" });
+                    router.replace(`/invoice/${cloneFromId}`);
+                    setPrefillLoading(false);
+                    return;
+                }
+
+                const rate = parseFloat(data.currencyConversionRate) || 1;
+
+                if (data.customerId) {
+                    const custRes = await fetch("/relayapi", {
+                        method: "GET",
+                        headers: { ...authHeaders(), endpoint: `customer-details/${data.customerId}`, module: "customer" },
+                    });
+                    const custPayload = await custRes.json();
+                    const custData = custPayload.encrypted ? decryptResponse(custPayload.encrypted) : custPayload;
+                    setCurrencies(custData?.currencies ?? []);
+                }
+
+                setFormData((prev) => ({
+                    ...prev,
+                    customerId: String(data.customerId ?? ""),
+                    customerLabel: data.customerName ?? "",
+                    currencyId: String(data.currencyId ?? ""),
+                    currencyCode: data.currencyCode ?? "",
+                    currencySymbol: data.currencySymbol ?? "",
+                    currencyConversionRate: rate,
+                    vatWithheld: data.vatWithheld ?? "NO",
+                    businessTerms: data.businessTerms ?? "",
+                    paymentType: data.paymentType ?? "CREDIT",
+                    discountApplicable: data.discountApplicable ?? "ON_EACH_DELIVERY",
+                    deliveryTerms: data.deliveryTerms ?? "",
+                    salesPersonId: String(data.salesPersonId ?? ""),
+                    salesPersonLabel: data.salesPersonName ?? "",
+                    contactPersonId: data.contactPersonId ? String(data.contactPersonId) : "",
+                    contactPersonLabel: data.contactPersonName ?? "",
+                    shippingState: data.shippingState ?? "",
+                    billingState: data.billingState ?? "",
+                    deliveryState: data.deliveryState ?? "",
+                    deliveryType: data.deliveryType ?? "",
+                    bankBookId: data.bankBookId ? String(data.bankBookId) : "",
+                    bankBookLabel: data.bankBookName ?? "",
+                    remarks: data.remarks ?? "",
+                    termsConditionsId: data.termsConditionsId ?? null,
+                    termsConditionsText: data.termsConditionsText ?? "",
+                    invoiceFor: "",
+                    sourceOrderId: "",
+                    sourceOrderLabel: "",
+                    sourceQuotationId: "",
+                    sourceQuotationLabel: "",
+                }));
+
+                const rawHeaderDisc = data.invoiceDiscounts || data.discounts || [];
+                if (rawHeaderDisc.length) {
+                    setInvoiceDiscounts(rawHeaderDisc.map((d) => ({
+                        id: d.invoiceDiscountId || d.id,
+                        description: d.discountDescription || d.description || "",
+                        amount: parseFloat(d.discountPrice ?? d.amount) || 0,
+                        discountDescription: d.discountDescription || d.description || "",
+                        discountPrice: parseFloat(d.discountPrice ?? d.amount) || 0,
+                    })));
+                }
+
+                const rawHeaderEC = data.invoiceExtraCharges || data.extraCharges || [];
+                if (rawHeaderEC.length) {
+                    setInvoiceExtraCharges(rawHeaderEC.map((ec) => ({
+                        id: ec.invoiceExtraChargeId || ec.id,
+                        description: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                        amount: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                        extraChargesDescription: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                        extraChargesPrice: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                    })));
+                }
+
+                if (data.invoiceItems?.length) {
+                    setItems(data.invoiceItems.map((it) => {
+                        const unitPriceVal = parseFloat(it.unitPrice) || 0;
+                        const basePrice = parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
+                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation ?? "N/A");
+                        const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
+                        const loadedTaxable = parseFloat(it.taxableAmount) || 0;
+                        const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
+                        const derivedTaxRate = parseFloat(it.taxRate) || (isTaxableLoad && loadedTaxable > 0 ? (loadedTaxAmt / loadedTaxable) * 100 : 0);
+
+                        return computeItem({
+                            _id: Math.random().toString(36).substr(2, 9),
+                            itemId: String(it.itemId ?? it.item?.itemId ?? it.id ?? ""),
+                            itemLabel: it.item?.itemName ?? it.item?.itemCode ?? it.description ?? "",
+                            description: it.description ?? "",
+                            isDecimalAllowed: true,
+                            baseCurrencyPrice: basePrice,
+                            quantity: limitDecimals(String(it.quantity ?? "")),
+                            unitPrice: unitPriceVal,
+                            taxCalculation: loadedTaxCalc,
+                            taxGroup: it.taxGroup ?? "",
+                            taxGroupLabel: it.taxGroup ?? "",
+                            taxRate: derivedTaxRate,
+                            taxAmount: loadedTaxAmt,
+                            taxableAmount: loadedTaxable,
+                            totalAmount: parseFloat(it.totalAmount) || 0,
+                            finalAmount: parseFloat(it.finalAmount) || 0,
+                            discounts: (it.discounts || []).map((d) => ({
+                                id: d.invoiceDiscountId || d.id,
+                                description: d.discountDescription || d.description || "",
+                                amount: parseFloat(d.discountPrice ?? d.amount) || 0,
+                                discountDescription: d.discountDescription || d.description || "",
+                                discountPrice: parseFloat(d.discountPrice ?? d.amount) || 0,
+                            })),
+                            extraCharges: (it.extraCharges || []).map((ec) => ({
+                                id: ec.invoiceExtraChargeId || ec.id,
+                                description: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                                amount: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                                extraChargesDescription: ec.extraChargesDescription || ec.extraChargeDescription || ec.description || "",
+                                extraChargesPrice: parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0,
+                            })),
+                        });
+                    }));
+                }
+
+                setLockedCustomer(true);
+                setLockedCurrency(true);
+            } catch (err) {
+                toast.error("Failed to load source invoice for copy: " + err.message, { position: "top-right" });
+            } finally {
+                setPrefillLoading(false);
+            }
+        })();
+    }, [cloneFromId]);
 
     useEffect(() => {
         if (!companyId) return;
@@ -541,9 +689,17 @@ export default function AddInvoice() {
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
 
             if (data?.success === 1) {
-                const invoiceId = data?.invoiceId ?? data?.data?.invoiceId;
+                const invoiceId = data?.invoiceId ?? data?.data?.invoiceId ?? data?.data?.insertData;
+                const isAutoApproved = data?.autoApproved === true || data?.data?.autoApproved === true;
+                const isAutoApprovalFalse = data?.autoApproved === false || data?.data?.autoApproved === false;
+                const autoApprovalMsg = data?.autoApprovalMessage || data?.data?.autoApprovalMessage;
 
                 if (submitAfterCreate && invoiceId) {
+                    if (isAutoApproved) {
+                        toast.success("Invoice created and approved automatically.", { position: "top-right" });
+                        router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
+                        return;
+                    }
                     const subRes = await fetch("/relayapi", {
                         method: "PUT",
                         headers: { ...authHeaders(), endpoint: `invoice-submit/${invoiceId}`, module: "invoice" },
@@ -558,7 +714,13 @@ export default function AddInvoice() {
                         router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
                     }
                 } else {
-                    toast.success("Invoice saved as draft.", { position: "top-right" });
+                    if (isAutoApproved) {
+                        toast.success("Invoice created and approved automatically.", { position: "top-right" });
+                    } else if (isAutoApprovalFalse && autoApprovalMsg) {
+                        toast.warning(autoApprovalMsg, { position: "top-right" });
+                    } else {
+                        toast.success("Invoice saved as draft.", { position: "top-right" });
+                    }
                     router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
                 }
             } else {
@@ -579,6 +741,8 @@ export default function AddInvoice() {
         ? bankBooks.filter((b) => String(b.currencyId) === String(formData.currencyId))
         : bankBooks;
 
+    const modeTitle = isCloneMode ? "Copy Invoice" : "Invoice";
+
     return (
         <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
             <Header page="add-invoice" />
@@ -589,12 +753,12 @@ export default function AddInvoice() {
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/invoice-list" className="cursor-pointer hover:text-blue-600">Invoices</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Invoice</span>
+                    <span className="text-gray-800">{modeTitle}</span>
                 </nav>
             </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 px-6 pt-4">
                 <h1 className="text-2xl font-semibold text-[#1f2937]">
-                    {"Invoice"}
+                    {modeTitle}
                 </h1>
             </div>
 
@@ -701,12 +865,18 @@ export default function AddInvoice() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Exchange Rate {formData.currencyCode && <span className="text-gray-400">({formData.currencyCode})</span>}
                             </label>
-                            <FormattedNumberInput
-                                id="invoice-conversion-rate"
-                                value={String(limitPriceDecimals(formData.currencyConversionRate ?? 1))}
-                                onChange={(e) => handleExchangeRateChange(limitPriceDecimals(e.target.value))}
-                                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 ${errors.currencyConversionRate ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
-                            />
+                            {lockedCurrency ? (
+                                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium">
+                                    {formData.currencyCode || "—"}
+                                </div>
+                            ) : (
+                                <FormattedNumberInput
+                                    id="invoice-conversion-rate"
+                                    value={String(limitPriceDecimals(formData.currencyConversionRate ?? 1))}
+                                    onChange={(e) => handleExchangeRateChange(limitPriceDecimals(e.target.value))}
+                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 ${errors.currencyConversionRate ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+                                />
+                            )}
                             {errors.currencyConversionRate && <p className="text-red-500 text-xs mt-1">{errors.currencyConversionRate}</p>}
                         </div>
 
@@ -1031,7 +1201,7 @@ export default function AddInvoice() {
                         disabled={loading}
                         className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
                     >
-                        {loading ? "Saving…" : "Save as Draft"}
+                        {loading ? "Saving…" : isCloneMode ? "Save Copy as Draft" : "Save as Draft"}
                     </button>
                     {/* <button
                         type="button"

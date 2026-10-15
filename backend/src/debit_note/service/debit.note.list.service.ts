@@ -100,6 +100,7 @@ export class DebitNoteListService {
         {
           customerName: 'customer',
           companyName: 'company',
+          invoiceCode: 'invoice',
         },
         param.condition === 'Any' ? 'Any' : 'All',
       );

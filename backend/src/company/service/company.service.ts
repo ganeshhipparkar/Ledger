@@ -81,6 +81,7 @@ export class CompanyService {
       if (params.companyName) queryParams.companyName = params.companyName;
       if (params.companyCode) queryParams.companyCode = params.companyCode;
       if (params.status) queryParams.status = params.status;
+      queryParams.allowManualInvoicing = params.allowManualInvoicing || 'YES';
       if (params.email) queryParams.email = params.email;
       if (params.website) queryParams.website = params.website;
       if (params.dialCode) queryParams.dialCode = Number(params.dialCode);
@@ -329,6 +330,8 @@ export class CompanyService {
       if (params.companyLocation)
         queryParams.companyLocation = params.companyLocation;
       if (params.status) queryParams.status = params.status;
+      if (params.allowManualInvoicing !== undefined)
+        queryParams.allowManualInvoicing = params.allowManualInvoicing;
       if (params.email) queryParams.email = params.email;
       if (params.website) queryParams.website = params.website;
       if (params.dialCode) queryParams.dialCode = Number(params.dialCode);

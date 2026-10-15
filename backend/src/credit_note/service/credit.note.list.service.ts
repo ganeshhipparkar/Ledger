@@ -102,6 +102,7 @@ export class CreditNoteListService {
         {
           customerName: 'customer',
           companyName: 'company',
+          invoiceCode: 'invoice',
         },
         param.condition === 'Any' ? 'Any' : 'All',
       );

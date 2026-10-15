@@ -112,14 +112,19 @@ export class PaymentTransactionController {
   @Put('payment-transaction-approve')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('paymentTransactionUpdate')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'attachment', maxCount: 1 }], attachmentMulterConfig),
+  )
   async approvePaymentTransaction(
     @Req() req: any,
     @Body() body: PaymentTransactionStatusDto,
+    @UploadedFiles() files?: { attachment?: Express.Multer.File[] },
   ) {
     const result =
       await this.paymentTransactionService.approvePaymentTransaction(
         body,
         req,
+        files,
       );
     return { encrypted: encryptResponse(result) };
   }
@@ -127,14 +132,19 @@ export class PaymentTransactionController {
   @Put('payment-transaction-cancel')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('paymentTransactionUpdate')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'attachment', maxCount: 1 }], attachmentMulterConfig),
+  )
   async cancelPaymentTransaction(
     @Req() req: any,
     @Body() body: PaymentTransactionStatusDto,
+    @UploadedFiles() files?: { attachment?: Express.Multer.File[] },
   ) {
     const result =
       await this.paymentTransactionService.cancelPaymentTransaction(
         body,
         req,
+        files,
       );
     return { encrypted: encryptResponse(result) };
   }
@@ -142,14 +152,19 @@ export class PaymentTransactionController {
   @Put('payment-transaction-cancel-approved')
   @UseGuards(AuthGuard('jwt'), PermissionsGuard)
   @RequirePermission('paymentTransactionUpdate')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'attachment', maxCount: 1 }], attachmentMulterConfig),
+  )
   async cancelApprovedPaymentTransaction(
     @Req() req: any,
     @Body() body: PaymentTransactionStatusDto,
+    @UploadedFiles() files?: { attachment?: Express.Multer.File[] },
   ) {
     const result =
       await this.paymentTransactionService.cancelApprovedPaymentTransaction(
         body,
         req,
+        files,
       );
     return { encrypted: encryptResponse(result) };
   }

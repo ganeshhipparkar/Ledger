@@ -56,10 +56,24 @@ export class PaymentTransactionListService {
         }
       }
 
+      queryBuilder.leftJoinAndSelect('paymentTransaction.customer', 'customer');
+      queryBuilder.leftJoinAndSelect('paymentTransaction.currency', 'currency');
+      queryBuilder.leftJoinAndSelect('paymentTransaction.bankBook', 'bankBook');
+      queryBuilder.leftJoinAndSelect('paymentTransaction.company', 'company');
+      queryBuilder.leftJoinAndSelect(
+        'paymentTransaction.attachments',
+        'attachments',
+      );
+
       const queryString = await this.filter.makeFilterString(
         param.filters,
         'paymentTransaction',
-        {},
+        {
+          bankBookName: 'bankBook',
+          customerName: 'customer',
+          companyName: 'company',
+          currencyCode: 'currency',
+        },
         param.condition === 'Any' ? 'Any' : 'All',
       );
       if (queryString && queryString !== '') {
@@ -71,14 +85,6 @@ export class PaymentTransactionListService {
         this.paymentTransactionRepo,
       )) as [number, number];
 
-      queryBuilder.leftJoinAndSelect('paymentTransaction.customer', 'customer');
-      queryBuilder.leftJoinAndSelect('paymentTransaction.currency', 'currency');
-      queryBuilder.leftJoinAndSelect('paymentTransaction.bankBook', 'bankBook');
-      queryBuilder.leftJoinAndSelect('paymentTransaction.company', 'company');
-      queryBuilder.leftJoinAndSelect(
-        'paymentTransaction.attachments',
-        'attachments',
-      );
       queryBuilder.skip(skip).take(limit);
       queryBuilder.orderBy('paymentTransaction.paymentTransactionId', 'DESC');
 

@@ -68,8 +68,8 @@ export enum InvoiceGenerationOn {
 }
 
 export enum InvoiceAutoApproval {
-  YES = 'YES',
   NO = 'NO',
+  YES = 'YES',
 }
 
 export enum PlaceOfSupply { 
@@ -274,6 +274,7 @@ export class OrderEntity {
   @Column({
     type: 'enum',
     enum: InvoiceAutoApproval,
+    default: InvoiceAutoApproval.NO,
   })
   invoiceAutoApproval!: string;
 

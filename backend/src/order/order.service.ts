@@ -17,6 +17,7 @@ import { OrderPdfService } from './order.pdf.service';
 import { resolveAuthContext } from 'src/utilities/auth-helper';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
 import { UserEntity } from 'src/user/entity/user.entity';
+import { CompanyEntity } from 'src/company/entity/company.entity';
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import {
@@ -90,6 +91,9 @@ export class OrderService {
 
     @InjectRepository(taxGroupEntity)
     private readonly taxGroupRepo: Repository<taxGroupEntity>,
+
+    @InjectRepository(CompanyEntity)
+    private readonly companyRepo: Repository<CompanyEntity>,
 
     private readonly filter: Filter,
     private readonly fileTransfer: FileTransfer,
@@ -300,6 +304,19 @@ export class OrderService {
 
       const dateError = this.validateDates(body.orderDate, body.deliveryDate);
       if (dateError) return { success: 0, message: dateError };
+
+      if (body.invoiceGenerationOn === 'ORDER_LEVEL') {
+        const company = await this.companyRepo.findOne({
+          where: { companyId: Number(body.companyId) },
+          select: ['companyId', 'allowManualInvoicing'],
+        });
+        if (company && company.allowManualInvoicing === 'NO') {
+          return {
+            success: 0,
+            message: 'Order Level invoice generation is not allowed for this company',
+          };
+        }
+      }
 
       const taxResult = await this.validateTaxGroups(
         body.orderItems,
@@ -621,6 +638,23 @@ export class OrderService {
       const effectiveCompanyId = body.companyId
         ? Number(body.companyId)
         : Number(existing.companyId);
+
+      if (
+        body.invoiceGenerationOn !== undefined &&
+        body.invoiceGenerationOn !== existing.invoiceGenerationOn &&
+        body.invoiceGenerationOn === 'ORDER_LEVEL'
+      ) {
+        const company = await this.companyRepo.findOne({
+          where: { companyId: effectiveCompanyId },
+          select: ['companyId', 'allowManualInvoicing'],
+        });
+        if (company && company.allowManualInvoicing === 'NO') {
+          return {
+            success: 0,
+            message: 'Order Level invoice generation is not allowed for this company',
+          };
+        }
+      }
 
       let computedItems: ComputedItemAmounts[] | null = null;
       let totals: ComputedOrderTotals | null = null;

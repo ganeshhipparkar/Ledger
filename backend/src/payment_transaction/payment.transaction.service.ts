@@ -356,7 +356,7 @@ export class PaymentTransactionService {
     }
   }
 
-  async approvePaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+  async approvePaymentTransaction(dto: PaymentTransactionStatusDto, req: any, files?: { attachment?: Express.Multer.File[] }) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const existing = await this.paymentTransactionRepo.findOne({
@@ -394,6 +394,18 @@ export class PaymentTransactionService {
       existing.statusRemarks = dto.remarks.trim();
       existing.updatedBy = performerId ? Number(performerId) : undefined;
       existing.updatedDate = new Date();
+
+      let uploadedAttachmentUrl: string | undefined;
+      if (files?.attachment && files.attachment.length > 0) {
+        const file = files.attachment[0];
+        await this.fileTransfer.fileTransferPaymentTransaction(
+          file.filename,
+          existing.paymentTransactionId,
+          { subfolder: 'status-attachments' }
+        );
+        uploadedAttachmentUrl = `/upload/payment_transaction/${existing.paymentTransactionId}/status-attachments/${file.filename}`;
+        existing.statusAttachmentUrl = uploadedAttachmentUrl;
+      }
 
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -444,6 +456,7 @@ export class PaymentTransactionService {
           companyId: existing.companyId,
           paymentTransactionId: dto.paymentTransactionId,
           remarks: dto.remarks,
+          statusAttachmentUrl: uploadedAttachmentUrl,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
@@ -458,7 +471,7 @@ export class PaymentTransactionService {
     }
   }
 
-  async cancelPaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+  async cancelPaymentTransaction(dto: PaymentTransactionStatusDto, req: any, files?: { attachment?: Express.Multer.File[] }) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const existing = await this.paymentTransactionRepo.findOne({
@@ -497,6 +510,18 @@ export class PaymentTransactionService {
       existing.updatedBy = performerId ? Number(performerId) : undefined;
       existing.updatedDate = new Date();
 
+      let uploadedAttachmentUrl: string | undefined;
+      if (files?.attachment && files.attachment.length > 0) {
+        const file = files.attachment[0];
+        await this.fileTransfer.fileTransferPaymentTransaction(
+          file.filename,
+          existing.paymentTransactionId,
+          { subfolder: 'status-attachments' }
+        );
+        uploadedAttachmentUrl = `/upload/payment_transaction/${existing.paymentTransactionId}/status-attachments/${file.filename}`;
+        existing.statusAttachmentUrl = uploadedAttachmentUrl;
+      }
+
       await this.paymentTransactionRepo.save(existing);
 
       this.eventEmitter.emit('activity.log', {
@@ -514,6 +539,7 @@ export class PaymentTransactionService {
           companyId: existing.companyId,
           paymentTransactionId: dto.paymentTransactionId,
           remarks: dto.remarks,
+          statusAttachmentUrl: uploadedAttachmentUrl,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},
@@ -528,7 +554,7 @@ export class PaymentTransactionService {
     }
   }
 
-  async cancelApprovedPaymentTransaction(dto: PaymentTransactionStatusDto, req: any) {
+  async cancelApprovedPaymentTransaction(dto: PaymentTransactionStatusDto, req: any, files?: { attachment?: Express.Multer.File[] }) {
     try {
       const authCtx = await resolveAuthContext(req, this.ucgEntity);
       const existing = await this.paymentTransactionRepo.findOne({
@@ -562,6 +588,17 @@ export class PaymentTransactionService {
         ? req?.user?.email
         : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
+      let uploadedAttachmentUrl: string | undefined;
+      if (files?.attachment && files.attachment.length > 0) {
+        const file = files.attachment[0];
+        await this.fileTransfer.fileTransferPaymentTransaction(
+          file.filename,
+          existing.paymentTransactionId,
+          { subfolder: 'status-attachments' }
+        );
+        uploadedAttachmentUrl = `/upload/payment_transaction/${existing.paymentTransactionId}/status-attachments/${file.filename}`;
+      }
+
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
       await queryRunner.startTransaction();
@@ -569,6 +606,9 @@ export class PaymentTransactionService {
       try {
         existing.status = PaymentTransactionStatus.CANCELLED;
         existing.statusRemarks = dto.remarks.trim();
+        if (uploadedAttachmentUrl) {
+          existing.statusAttachmentUrl = uploadedAttachmentUrl;
+        }
         existing.updatedBy = performerId ? Number(performerId) : undefined;
         existing.updatedDate = new Date();
         await queryRunner.manager.save(existing);
@@ -612,6 +652,7 @@ export class PaymentTransactionService {
           companyId: existing.companyId,
           paymentTransactionId: dto.paymentTransactionId,
           remarks: dto.remarks,
+          statusAttachmentUrl: uploadedAttachmentUrl,
           impersonated: !!req?.user?.isImpersonation,
         },
         metadata: {},

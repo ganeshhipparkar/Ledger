@@ -344,7 +344,7 @@ export class VaultService {
     return { data, totalApplied };
   }
 
-  async getPaymentsForInvoice(invoiceId: number) {
+  async getPaymentsForInvoice(invoiceId: number, params?: any) {
     const rawData = await this.ledgerRepo
       .createQueryBuilder('ledger')
       .leftJoin('ledger.paymentTransaction', 'payment')
@@ -369,7 +369,7 @@ export class VaultService {
       .getRawMany();
 
     let totalApplied = 0;
-    const data = rawData.map(row => {
+    const allRows = rawData.map(row => {
       const amountApplied = Number(row.amountApplied);
       totalApplied += amountApplied;
       return {
@@ -384,6 +384,49 @@ export class VaultService {
       };
     });
 
-    return { data, totalApplied };
+    allRows.sort((a, b) => (Number(b.paymentTransactionId) || 0) - (Number(a.paymentTransactionId) || 0));
+
+    let filters = params?.filters;
+    if (typeof filters === 'string') {
+      try {
+        filters = JSON.parse(filters);
+      } catch {
+        filters = [];
+      }
+    }
+
+    let filteredRows = allRows;
+    if (Array.isArray(filters) && filters.length > 0) {
+      filteredRows = allRows.filter((row) => {
+        for (const f of filters) {
+          if (!f || !f.key || f.value === undefined || f.value === null || f.value === '') continue;
+          let key = f.key;
+          if (key === 'mode') key = 'paymentMode';
+          const rowVal = String((row as any)[key] ?? '').toLowerCase();
+          const filterVal = String(f.value).trim().toLowerCase();
+          if (filterVal === '') continue;
+
+          if (f.operator === 'eq' || f.operator === 'equal') {
+            if (rowVal !== filterVal) return false;
+          } else {
+            if (!rowVal.includes(filterVal)) return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    const total = filteredRows.length;
+    let paginatedData = filteredRows;
+    if (params?.page !== undefined || params?.limit !== undefined) {
+      let page = Number(params?.page) || 1;
+      let limit = Number(params?.limit) || 10;
+      if (page < 1) page = 1;
+      if (limit < 1) limit = 10;
+      const startIndex = (page - 1) * limit;
+      paginatedData = filteredRows.slice(startIndex, startIndex + limit);
+    }
+
+    return { data: paginatedData, total, totalApplied };
   }
 }

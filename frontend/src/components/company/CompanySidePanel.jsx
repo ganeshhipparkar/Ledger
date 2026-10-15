@@ -59,6 +59,7 @@ export default function CompanySidePanel({ companyId, onClose, onMoreDetails }) 
                 rows: [
                     { label: "Location", value: company.companyLocation || "N/A" },
                     { label: "Website", value: websiteValue },
+                    { label: "Allow Manual Invoicing", value: company.allowManualInvoicing === "NO" ? "No" : "Yes" },
                 ],
             },
             {

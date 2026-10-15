@@ -1,19 +1,29 @@
 "use client";
 import Link from "next/link";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
-    ChevronLeft, ChevronRight, Edit2, CheckCircle,
+    ChevronLeft, ChevronRight, Edit2, CheckCircle, ChevronDown,
     RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet, FileMinus, FilePlus
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import InvoicePaymentsTab from "./InvoicePaymentsTab";
 import Header from "../Header";
 import Loader from "../ui/Loader";
+import AppPagination from "../ui/AppPagination";
+import TabFilterPanel from "../common/TabFilterPanel";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
+import ActionButtonGroup from "../shared/ActionButtonGroup";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
@@ -32,6 +42,9 @@ import NoteAddPanel from "../notes/NoteAddPanel";
 import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
 import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
 import { getCreditNoteMode } from "@/lib/creditNoteMode";
+import { creditNoteSidePanelConfig } from "../creditNote/configs/creditNoteSidePanel.config";
+import { debitNoteSidePanelConfig } from "../debitNote/configs/debitNoteSidePanel.config";
+import { paymentTransactionSidePanelConfig } from "../paymentTransaction/configs/paymentTransactionSidePanelConfig";
 
 import { FaRegFilePdf } from "react-icons/fa";
 import { STATUS_COLORS, STATUS_LABELS } from "./InvoiceList";
@@ -67,14 +80,114 @@ const NAV_ITEMS = [
     { key: "debitNotes", label: "Debit Note", Icon: FilePlus, permission: "debitNoteList" },
 ];
 
-function EmbeddedTable({ endpoint, module, invoiceId, columns, renderRow, emptyMessage }) {
+const CREDIT_NOTE_FILTER_FIELDS = [
+    { id: "creditNoteCode", label: "Credit Note Code" },
+    {
+        id: "status",
+        label: "Status",
+        options: [
+            { value: "", label: "All Statuses" },
+            { value: "SUBMITTED", label: "Submitted" },
+        ],
+    },
+];
+
+const DEBIT_NOTE_FILTER_FIELDS = [
+    { id: "debitNoteCode", label: "Debit Note Code" },
+    {
+        id: "status",
+        label: "Status",
+        options: [
+            { value: "", label: "All Statuses" },
+            { value: "SUBMITTED", label: "Submitted" },
+        ],
+    },
+];
+
+function EmbeddedTable({ endpoint, module, invoiceId, columns, renderRow, emptyMessage, fieldsConfig = [] }) {
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [isFetching, setIsFetching] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+
+    const initialFilters = useMemo(() => {
+        const obj = {};
+        (fieldsConfig || []).forEach((f) => {
+            obj[f.id] = "";
+        });
+        return obj;
+    }, [fieldsConfig]);
+
+    const [filterValues, setFilterValues] = useState(initialFilters);
+    const [debouncedFilters, setDebouncedFilters] = useState(initialFilters);
+    const debounceRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, []);
+
+    const handleFilterChange = (key, value) => {
+        setPage(1);
+        setFilterValues((prev) => {
+            const next = { ...prev, [key]: value };
+            clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => {
+                setDebouncedFilters(next);
+            }, 400);
+            return next;
+        });
+    };
+
+    const handleReset = () => {
+        setPage(1);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        const obj = {};
+        (fieldsConfig || []).forEach((f) => {
+            obj[f.id] = "";
+        });
+        setFilterValues(obj);
+        setDebouncedFilters(obj);
+    };
+
+    const handleLimitChange = (e) => {
+        const newLimit = Number(e.target.value);
+        setLimit(newLimit);
+        setPage(1);
+    };
+
+    const hasActiveFilters = useMemo(() => {
+        return (
+            Object.values(filterValues).some((v) => typeof v === "string" && v.trim() !== "") ||
+            Object.values(debouncedFilters).some((v) => typeof v === "string" && v.trim() !== "")
+        );
+    }, [filterValues, debouncedFilters]);
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true);
+            setIsFetching(true);
             try {
+                const apiFilters = [
+                    { key: "invoiceId", value: invoiceId, operator: "eq" }
+                ];
+
+                for (const key in debouncedFilters) {
+                    const val = debouncedFilters[key];
+                    if (val && typeof val === "string" && val.trim() !== "") {
+                        apiFilters.push({
+                            key,
+                            operator: key === "status" ? "eq" : "contains",
+                            value: val.trim(),
+                        });
+                    }
+                }
+
                 const res = await fetch("/relayapi", {
                     method: "POST",
                     headers: {
@@ -84,56 +197,148 @@ function EmbeddedTable({ endpoint, module, invoiceId, columns, renderRow, emptyM
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        filters: [{ key: "invoiceId", value: invoiceId, operator: "eq" }],
-                        limit: 100,
-                        page: 1
+                        filters: apiFilters,
+                        condition: "All",
+                        limit,
+                        page,
                     }),
                 });
                 const payload = await res.json();
                 const json = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-                setData(json.data || []);
+                const records = json.data || [];
+                const total = Number(json.total ?? records.length ?? 0);
+
+                if (page > 1 && records.length === 0) {
+                    setPage((prev) => Math.max(1, prev - 1));
+                    return;
+                }
+
+                setData(records);
+                setTotalRecords(total);
+                setTotalPages(Math.ceil(total / limit) || 1);
             } catch (err) {
                 console.error(err);
                 setData([]);
+                setTotalRecords(0);
+                setTotalPages(1);
             } finally {
-                setLoading(false);
+                setInitialLoading(false);
+                setIsFetching(false);
             }
         };
+
         if (invoiceId) fetchData();
-    }, [invoiceId, endpoint, module]);
-
-    if (loading) {
-        return (
-            <div className="rounded-2xl bg-white p-6 shadow-sm flex items-center justify-center py-10">
-                <Loader label="Loading..." />
-            </div>
-        );
-    }
-
-    if (!data.length) {
-        return (
-            <div className="rounded-2xl bg-white p-6 shadow-sm text-center text-gray-500 py-10">
-                {emptyMessage}
-            </div>
-        );
-    }
+    }, [invoiceId, endpoint, module, debouncedFilters, page, limit]);
 
     return (
-        <div className="rounded-2xl bg-white shadow-sm overflow-hidden border border-gray-100">
-            <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                        <tr>
-                            {columns.map((c, i) => (
-                                <th key={i} className="px-6 py-4">{c}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-gray-700">
-                        {data.map(renderRow)}
-                    </tbody>
-                </table>
+        <div className="w-full rounded-2xl bg-white shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[70vh] max-h-[70vh] lg:h-[calc(100vh-270px)] lg:max-h-[calc(100vh-270px)] min-h-[420px]">
+            {/* Pinned Toolbar at top */}
+            <div className="flex-shrink-0 px-5 py-3 border-b border-gray-100 flex items-center justify-end bg-white">
+                <button
+                    type="button"
+                    onClick={() => setIsFilterOpen((prev) => !prev)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-medium transition shadow-sm cursor-pointer ${
+                        hasActiveFilters
+                            ? "border-blue-500 bg-blue-50 text-blue-600 ring-2 ring-blue-500/20"
+                            : isFilterOpen
+                                ? "border-blue-400 bg-blue-50 text-blue-600"
+                                : "border-gray-200 bg-white text-gray-600 hover:text-blue-600 hover:border-blue-300 hover:bg-gray-50"
+                    }`}
+                    title="Filters"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z" />
+                    </svg>
+                    <span>Filters</span>
+                    {hasActiveFilters && (
+                        <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
+                    )}
+                </button>
             </div>
+
+            {/* Middle: Scrollable table rows or Loading / Empty state */}
+            {initialLoading ? (
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center">
+                    <Loader label="Loading..." />
+                </div>
+            ) : data.length === 0 ? (
+                hasActiveFilters ? (
+                    <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-8 text-center">
+                        <p className="text-gray-700 font-semibold text-base">No results match your filters</p>
+                        <p className="text-gray-400 text-sm mt-1">Try clearing or adjusting your filters to find what you are looking for.</p>
+                        <button
+                            type="button"
+                            onClick={handleReset}
+                            className="mt-4 inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 cursor-pointer transition"
+                        >
+                            Reset Filters
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center text-gray-500">
+                        {emptyMessage}
+                    </div>
+                )
+            ) : (
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative max-h-full">
+                    {isFetching && (
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-20 flex items-center justify-center transition-opacity">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm border border-gray-200 text-xs font-medium text-gray-600">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                    )}
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead className="sticky top-0 z-10 bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                            <tr>
+                                {columns.map((c, i) => (
+                                    <th key={i} className="px-6 py-4 bg-gray-50">{c}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-700">
+                            {data.map(renderRow)}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Pinned Pagination at the bottom */}
+            {totalRecords > 0 && (
+                <div className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-3 border-t border-gray-100 bg-white">
+                    <p className="text-sm text-gray-500">
+                        {`Viewing ${(page - 1) * limit + 1}–${Math.min(page * limit, totalRecords)} of ${totalRecords}`}
+                    </p>
+                    <div className="flex items-center gap-3">
+                        <AppPagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            onPageChange={(p) => setPage(p)}
+                        />
+                        <select
+                            value={limit}
+                            onChange={handleLimitChange}
+                            className="rounded-xl border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-600 outline-none focus:border-blue-500 cursor-pointer"
+                        >
+                            {PAGE_SIZE_OPTIONS.map((s) => (
+                                <option key={s} value={s}>
+                                    {s}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            )}
+
+            <TabFilterPanel
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                fieldsConfig={fieldsConfig}
+                filters={filterValues}
+                onChange={handleFilterChange}
+                onReset={handleReset}
+            />
         </div>
     );
 }
@@ -179,6 +384,9 @@ export default function InvoiceDetails({ id }) {
     const [creditNoteInvoice, setCreditNoteInvoice] = useState(null);
     const [debitNoteInvoice, setDebitNoteInvoice] = useState(null);
     const [paymentMode, setPaymentMode] = useState("AUTOMATIC");
+    const [selectedCreditNoteId, setSelectedCreditNoteId] = useState(null);
+    const [selectedDebitNoteId, setSelectedDebitNoteId] = useState(null);
+    const [selectedPaymentTransactionId, setSelectedPaymentTransactionId] = useState(null);
 
     useEffect(() => {
         const fetchPaymentMode = async () => {
@@ -380,78 +588,88 @@ export default function InvoiceDetails({ id }) {
                 </nav>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-1 mt-2">
                     <h1 className="text-2xl font-semibold text-[#1f2937]">Invoice</h1>
+
+                    <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                        {(() => {
+                            const allAvailable = [];
+
+                            if (q.status === "DRAFT" && can?.("invoiceUpdate")) {
+                                allAvailable.push({ id: "edit", label: "Edit", icon: <Edit2 className="h-4 w-4" />, onClick: () => router.push(`/invoice/${id}?edit=true`), variant: "amber" });
+                            }
+                            if (q.status === "DRAFT" && can?.("invoiceUpdate")) {
+                                allAvailable.push({ id: "submit", label: "Submit", icon: <ClipboardList className="h-4 w-4" />, onClick: handleSubmitInvoice, variant: "blue" });
+                            }
+                            if ((q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate")) {
+                                allAvailable.push({ id: "updateDueDate", label: "Update Due Date", icon: <RefreshCw className="h-4 w-4" />, onClick: () => setDueDateInvoice(q), variant: "outline" });
+                            }
+                            if ((q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && paymentMode === "MANUAL") {
+                                allAvailable.push({ id: "markPaid", label: "Mark as Paid", icon: <CheckCircle className="h-4 w-4" />, onClick: handleMarkPaid, variant: "outline" });
+                            }
+                            if (q.status !== "DRAFT" && can?.("invoiceAdd")) {
+                                allAvailable.push({ id: "copyInvoice", label: "Copy Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?cloneFrom=${q.invoiceId}`), variant: "outline" });
+                            }
+                            if (q.status !== "DRAFT" && q.invoicePdfPath) {
+                                allAvailable.push({ id: "viewPdf", label: "View PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"), variant: "outline" });
+                            }
+                            if (q.status !== "DRAFT" && q.invoicePdfPath) {
+                                allAvailable.push({
+                                    id: "downloadPdf", label: "Download PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                            await downloadFile(q.invoicePdfPath, `Invoice_${q.invoiceCode ?? q.invoiceId}.pdf`);
+                                        } catch {
+                                            toast.error("Failed to download PDF", { position: "top-right" });
+                                        }
+                                    }, variant: "outline"
+                                });
+                            }
+                            if (q.status !== "DRAFT" && can?.("creditNoteAdd")) {
+                                allAvailable.push({ id: "addCreditNote", label: "Add Credit Note", icon: <FileText className="h-4 w-4" />, onClick: () => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: q }) });
+                            }
+                            if (q.status !== "DRAFT" && can?.("debitNoteAdd")) {
+                                allAvailable.push({ id: "addDebitNote", label: "Add Debit Note", icon: <FileText className="h-4 w-4" />, onClick: () => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: q }) });
+                            }
+                            if (q.status !== "DRAFT" && can?.("invoiceUpdate")) {
+                                allAvailable.push({ id: "regeneratePdf", label: "Regenerate PDF", icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf });
+                            }
+                            if (q.status === "DRAFT" && can?.("invoiceUpdate")) {
+                                allAvailable.push({ id: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("DELETE"), textClass: "text-red-600 hover:bg-red-50" });
+                            }
+
+                            if (allAvailable.length === 0) return null;
+
+                            const plainCandidates = ["edit", "submit", "updateDueDate", "markPaid", "copyInvoice", "viewPdf", "downloadPdf"];
+                            const splitCandidateIds = ["addCreditNote", "addDebitNote"];
+                            const dropdownOrder = ["addDebitNote", "copyInvoice", "viewPdf", "downloadPdf", "regeneratePdf", "delete"];
+
+                            return (
+                                <ActionButtonGroup
+                                    allAvailable={allAvailable}
+                                    plainCandidates={plainCandidates}
+                                    splitCandidateIds={splitCandidateIds}
+                                    dropdownOrder={dropdownOrder}
+                                />
+                            );
+                        })()}
+                    </div>
                 </div>
             </div>
 
             <div className="px-6 pb-3">
-                <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 flex-1">
-                            <InfoCard label="Invoice No." value={q.invoiceCode || "-"} mono />
-                            <InfoCard
-                                label="Customer"
-                                value={q.customerId ? (
-                                    <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
-                                        {q.customerName ?? "—"}
-                                    </span>
-                                ) : (q.customerName ?? "—")}
-                                badge={q.currencyCode}
-                            />
-                            <InfoCard label="Invoice Date" value={fmtDate(q.invoiceDate)} />
-                            <InfoCard label="Exchange Date" value={fmtDate(q.deliveryDate)} />
-                            <InfoCard label="Status" value={<StatusBadge status={q.status} />} />
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start lg:justify-end">
-                            {q.status === "DRAFT" && can?.("invoiceUpdate") && (
-                                <>
-                                    <ActionBtn onClick={() => router.push(`/invoice/${id}?edit=true`)} icon={<Edit2 className="h-4 w-4" />} label="Edit" variant="amber" />
-                                    <ActionBtn onClick={handleSubmitInvoice} icon={<ClipboardList className="h-4 w-4" />} label="Submit" variant="blue" />
-                                    <ActionBtn onClick={() => handleStatusUpdate("DELETE")} icon={<Trash2 className="h-4 w-4" />} label="Delete" variant="danger" className="border-red-200 text-red-600 hover:bg-red-50" />
-                                </>
-                            )}
-                            {(q.status === "UNPAID" || q.status === "PAID" || q.status === "PARTIALLY_PAID") && (
-                                <>
-                                    {can?.("creditNoteAdd") && (
-                                        <ActionBtn onClick={() => handleCreditNoteAddNavigation({ router, setShowAddPanel: setCreditNoteInvoice, invoice: q })} icon={<FileText className="h-4 w-4" />} label="Add Credit Note" variant="outline" />
-                                    )}
-                                    {can?.("debitNoteAdd") && (
-                                        <ActionBtn onClick={() => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: q })} icon={<FileText className="h-4 w-4" />} label="Add Debit Note" variant="outline" />
-                                    )}
-                                </>
-                            )}
-
-                            {(q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate") && (
-                                <>
-                                    <ActionBtn onClick={() => setDueDateInvoice(q)} icon={<RefreshCw className="h-4 w-4" />} label="Update Due Date" variant="outline" />
-                                    {paymentMode === "MANUAL" && (
-                                        <ActionBtn onClick={handleMarkPaid} icon={<CheckCircle className="h-4 w-4" />} label="Mark as Paid" variant="green" />
-                                    )}
-                                </>
-                            )}
-
-                            {q.status !== "DRAFT" && (
-                                <>
-                                    {q.invoicePdfPath && (
-                                        <>
-                                            <ActionBtn onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank")} icon={<Eye className="h-4 w-4" />} title="View PDF" variant="outline" />
-                                            <ActionBtn onClick={async (e) => {
-                                                e.stopPropagation();
-                                                try {
-                                                    await downloadFile(q.invoicePdfPath, `Invoice_${q.invoiceCode ?? q.invoiceId}.pdf`);
-                                                } catch {
-                                                    toast.error("Failed to download PDF", { position: "top-right" });
-                                                }
-                                            }} icon={<Download className="h-4 w-4" />} title="Download PDF" label="" variant="outline" />
-                                        </>
-                                    )}
-                                    {can?.("invoiceUpdate") && (
-                                        <ActionBtn onClick={handleRegeneratePdf} icon={<FaRegFilePdf className="h-4 w-4" />} title="Regenerate PDF" label="" variant="outline" />
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <InfoCard label="Invoice No." value={q.invoiceCode || "-"} mono />
+                    <InfoCard
+                        label="Customer"
+                        value={q.customerId ? (
+                            <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => setSelectedCustomerPanelId(q.customerId)}>
+                                {q.customerName ?? "—"}
+                            </span>
+                        ) : (q.customerName ?? "—")}
+                        badge={q.currencyCode}
+                    />
+                    <InfoCard label="Invoice Date" value={fmtDate(q.invoiceDate)} />
+                    <InfoCard label="Exchange Date" value={fmtDate(q.deliveryDate)} />
+                    <InfoCard label="Status" value={<StatusBadge status={q.status} />} />
                 </div>
             </div>
 
@@ -637,7 +855,7 @@ export default function InvoiceDetails({ id }) {
                         </div>
                     )}
                     {activeTab === "payments" && (
-                        <InvoicePaymentsTab invoiceId={id} refreshKey={invoice?.amountPaid} />
+                        <InvoicePaymentsTab key="payments" invoiceId={id} refreshKey={invoice?.amountPaid} onSelectPayment={setSelectedPaymentTransactionId} />
                     )}
                     {activeTab === "activity" && (
                         <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
@@ -646,13 +864,15 @@ export default function InvoiceDetails({ id }) {
                     )}
                     {activeTab === "creditNotes" && (
                         <EmbeddedTable
+                            key="creditNotes"
                             endpoint="credit-note-list"
                             module="credit-note"
                             invoiceId={id}
                             emptyMessage="No credit notes found for this invoice."
                             columns={["Credit Note Code", "Date", "Final Amount", "Status"]}
+                            fieldsConfig={CREDIT_NOTE_FILTER_FIELDS}
                             renderRow={(q, i) => (
-                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/credit-note/${q.id}`)}>
+                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => setSelectedCreditNoteId(q.id)}>
                                     <td className="px-6 py-4 font-medium text-blue-600">{q.creditNoteCode || "-"}</td>
                                     <td className="px-6 py-4">{fmtDate(q.addedDate)}</td>
                                     <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
@@ -665,13 +885,15 @@ export default function InvoiceDetails({ id }) {
                     )}
                     {activeTab === "debitNotes" && (
                         <EmbeddedTable
+                            key="debitNotes"
                             endpoint="debit-note-list"
                             module="debit-note"
                             invoiceId={id}
                             emptyMessage="No debit notes found for this invoice."
                             columns={["Debit Note Code", "Date", "Final Amount", "Status"]}
+                            fieldsConfig={DEBIT_NOTE_FILTER_FIELDS}
                             renderRow={(q, i) => (
-                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => router.push(`/debit-note/${q.id}`)}>
+                                <tr key={i} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => setSelectedDebitNoteId(q.id)}>
                                     <td className="px-6 py-4 font-medium text-blue-600">{q.debitNoteCode || "-"}</td>
                                     <td className="px-6 py-4">{fmtDate(q.addedDate)}</td>
                                     <td className="px-6 py-4">{fmtAmount(q.finalAmount, q.currency?.symbol ?? q.currencyCode)}</td>
@@ -721,6 +943,18 @@ export default function InvoiceDetails({ id }) {
                 />,
                 document.body
             )}
+            {selectedCreditNoteId && typeof document !== "undefined" && createPortal(
+                <DetailsSidePanel config={creditNoteSidePanelConfig} id={selectedCreditNoteId} onClose={() => setSelectedCreditNoteId(null)} />,
+                document.body
+            )}
+            {selectedDebitNoteId && typeof document !== "undefined" && createPortal(
+                <DetailsSidePanel config={debitNoteSidePanelConfig} id={selectedDebitNoteId} onClose={() => setSelectedDebitNoteId(null)} />,
+                document.body
+            )}
+            {selectedPaymentTransactionId && typeof document !== "undefined" && createPortal(
+                <DetailsSidePanel config={paymentTransactionSidePanelConfig} id={selectedPaymentTransactionId} onClose={() => setSelectedPaymentTransactionId(null)} />,
+                document.body
+            )}
 
         </div>
     );
@@ -728,7 +962,7 @@ export default function InvoiceDetails({ id }) {
 
 function InfoCard({ label, value, mono = false, badge }) {
     return (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 w-full min-w-0">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm w-full min-w-0">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide truncate">{label}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`text-sm font-semibold text-gray-800 ${mono ? "font-mono" : ""} truncate`}>{value}</span>

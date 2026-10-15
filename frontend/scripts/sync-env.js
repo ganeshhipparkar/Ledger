@@ -17,7 +17,7 @@ async function syncEnv() {
       const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
       settings = JSON.parse(decryptedStr);
     }
-
+    
     const envPath = path.join(__dirname, "..", ".env");
     let envContent = "";
     if (fs.existsSync(envPath)) {

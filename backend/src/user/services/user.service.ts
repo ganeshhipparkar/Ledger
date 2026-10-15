@@ -480,7 +480,7 @@ export class UserService {
         .leftJoin('user.userCompanyGroups', 'ucg')
         .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
         .leftJoin('ucg.company', 'company')
-        .addSelect(['company.companyName', 'company.status'])
+        .addSelect(['company.companyName', 'company.status', 'company.allowManualInvoicing'])
         .leftJoin('ucg.group', 'group')
         .addSelect(['group.groupName', 'group.groupCode', 'group.status'])
         .where('user.email = :login OR user.name = :login', {
@@ -516,6 +516,7 @@ export class UserService {
           id: ucg.id,
           companyId: ucg.companyId,
           companyName: ucg.company?.companyName ?? null,
+          allowManualInvoicing: ucg.company?.allowManualInvoicing ?? 'YES',
           groupId: ucg.groupId,
           groupName: ucg.group?.groupName ?? null,
           groupCode: ucg.group?.groupCode ?? null,
@@ -550,7 +551,7 @@ export class UserService {
         relations: { company: true, group: true },
         select: {
           id: true, userId: true, companyId: true, groupId: true, is_parent: true,
-          company: { companyName: true, status: true },
+          company: { companyName: true, status: true, allowManualInvoicing: true },
           group: { groupName: true, groupCode: true, status: true },
         },
       });
@@ -579,7 +580,7 @@ export class UserService {
         .leftJoin('user.userCompanyGroups', 'ucg')
         .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
         .leftJoin('ucg.company', 'company')
-        .addSelect(['company.companyName'])
+        .addSelect(['company.companyName', 'company.allowManualInvoicing'])
         .leftJoin('ucg.group', 'group')
         .addSelect(['group.groupName', 'group.groupCode'])
         .where('user.userId = :userId', { userId: body.userId })
@@ -611,6 +612,7 @@ export class UserService {
         id: ucg.id,
         companyId: ucg.companyId,
         companyName: ucg.company?.companyName ?? null,
+        allowManualInvoicing: ucg.company?.allowManualInvoicing ?? 'YES',
         groupId: ucg.groupId,
         groupName: ucg.group?.groupName ?? null,
         groupCode: ucg.group?.groupCode ?? null,
@@ -621,6 +623,7 @@ export class UserService {
         id: assignment.id,
         companyId: assignment.companyId,
         companyName: assignment.company?.companyName ?? null,
+        allowManualInvoicing: assignment.company?.allowManualInvoicing ?? 'YES',
         groupId: assignment.groupId,
         groupName: assignment.group?.groupName ?? null,
         groupCode: assignment.group?.groupCode ?? null,
@@ -1039,7 +1042,7 @@ export class UserService {
         .leftJoin('user.userCompanyGroups', 'ucg')
         .addSelect(['ucg.id', 'ucg.companyId', 'ucg.groupId', 'ucg.is_parent'])
         .leftJoin('ucg.company', 'company')
-        .addSelect(['company.companyId', 'company.companyName'])
+        .addSelect(['company.companyId', 'company.companyName', 'company.allowManualInvoicing'])
         .leftJoin('ucg.group', 'group')
         .addSelect(['group.groupName'])
         .where('user.userId = :userId', { userId: targetUserId })
@@ -1123,6 +1126,7 @@ export class UserService {
         id: ucg.id,
         companyId: ucg.companyId,
         companyName: ucg.company?.companyName ?? null,
+        allowManualInvoicing: ucg.company?.allowManualInvoicing ?? 'YES',
         groupId: ucg.groupId,
         groupName: ucg.group?.groupName ?? null,
         is_parent: ucg.is_parent,

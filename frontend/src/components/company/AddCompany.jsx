@@ -33,6 +33,7 @@ export default function AddCompany() {
         companyCode: "",
         AddressLineOne: "",
         status: "active",
+        allowManualInvoicing: "YES",
         email: "",
         website: "",
         dialCode: "",
@@ -608,6 +609,21 @@ export default function AddCompany() {
                                         <option value="Inactive">Inactive</option>
                                     </select>
                                     {errors.status && <p className="mt-1 text-sm text-red-500">{errors.status}</p>}
+                                </div>
+                                <div className="w-full">
+                                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        Allow Manual Invoicing <span className="text-red-500 text-[16px]">*</span>
+                                    </label>
+                                    <select
+                                        name="allowManualInvoicing"
+                                        value={formData.allowManualInvoicing}
+                                        onChange={handleChange}
+                                        className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+                                    >
+                                        <option value="YES">Yes</option>
+                                        <option value="NO">No</option>
+                                    </select>
+                                    {errors.allowManualInvoicing && <p className="mt-1 text-sm text-red-500">{errors.allowManualInvoicing}</p>}
                                 </div>
                             </div>
                         </div>

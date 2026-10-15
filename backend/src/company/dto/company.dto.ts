@@ -11,6 +11,7 @@ import {
   ValidateNested,
   IsArray,
 } from 'class-validator';
+import { AllowManualInvoicing } from '../entity/company.entity';
 
 export enum isStatus {
   ACTIVE = 'active',
@@ -47,6 +48,10 @@ export class CompanyDto {
   @IsString()
   @IsEnum(isStatus)
   status!: string;
+
+  @IsOptional()
+  @IsEnum(AllowManualInvoicing)
+  allowManualInvoicing?: AllowManualInvoicing;
 
   // @IsOptional()
   // @IsString()
@@ -187,6 +192,10 @@ export class CompanyUpdateDto {
   @IsString()
   @IsEnum(isStatus)
   status?: string;
+
+  @IsOptional()
+  @IsEnum(AllowManualInvoicing)
+  allowManualInvoicing?: AllowManualInvoicing;
 
   @IsOptional()
   @IsEmail()

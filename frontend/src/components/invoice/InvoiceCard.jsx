@@ -44,6 +44,7 @@ export default function InvoiceCard({
     onUpdateDueDate,
     onAddCreditNote,
     onAddDebitNote,
+    onCopyInvoice,
     onCustomerClick,
     onAddedByClick,
     onInvoiceClick,
@@ -135,7 +136,8 @@ export default function InvoiceCard({
                                                 { show: paymentMode === "MANUAL" && (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Mark as Paid" },
                                                 { show: (q.status === "UNPAID" || q.status === "PARTIALLY_PAID") && can?.("invoiceUpdate"), label: "Update Due Date" },
                                                 { show: q.status !== "DRAFT" && can?.("creditNoteAdd"), label: "Add Credit Note" },
-                                                { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" }
+                                                { show: q.status !== "DRAFT" && can?.("debitNoteAdd"), label: "Add Debit Note" },
+                                                { show: q.status !== "DRAFT" && can?.("invoiceAdd"), label: "Copy Invoice" }
                                             ].find((a) => a.show) ?? { label: "View" };
                                             const primaryLabel = primaryAction.label;
                                             return <span className="truncate whitespace-nowrap overflow-hidden">{primaryLabel}</span>;
@@ -164,6 +166,9 @@ export default function InvoiceCard({
                                     )}
                                     {q.status !== "DRAFT" && can?.("debitNoteAdd") && (
                                         <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onAddDebitNote?.(q); }}>Add Debit Note</DropdownMenuItem>
+                                    )}
+                                    {q.status !== "DRAFT" && can?.("invoiceAdd") && (
+                                        <DropdownMenuItem className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onCopyInvoice?.(q.invoiceId); }}>Copy Invoice</DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>

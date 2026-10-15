@@ -105,6 +105,9 @@ export class PaymentTransactionEntity {
   statusRemarks?: string;
 
   @Column({ nullable: true })
+  statusAttachmentUrl?: string;
+
+  @Column({ nullable: true })
   addedBy?: number;
 
   @Column({ nullable: true })

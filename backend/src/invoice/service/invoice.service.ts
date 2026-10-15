@@ -24,7 +24,7 @@ import { InvoiceDiscountEntity } from '../entity/invoice.discount.entity';
 import { InvoiceExtraChargeEntity } from '../entity/invoice.extra.charge.entity';
 import { InvoiceAttachmentsEntity } from '../entity/invoice.attachments';
 import { InvoiceDueDateHistoryEntity } from '../entity/invoice.due.date.history.entity';
-import { OrderEntity, OrderStatus, OrderLifecycleStatus } from 'src/order/entity/order.entity';
+import { OrderEntity, OrderStatus, OrderLifecycleStatus, InvoiceAutoApproval } from 'src/order/entity/order.entity';
 import { QuotationEntity, QuotationStatus } from 'src/quotation/entity/quotation.entity';
 import {
   InvoiceDiscountInputDto,
@@ -568,10 +568,79 @@ export class InvoiceService {
         metadata: {},
       });
 
+      let autoApproved = false;
+      let autoApprovalMessage: string | undefined = undefined;
+      let finalStatus: InvoiceStatus = InvoiceStatus.DRAFT;
+
+      const sourceOrderId = this.toOptionalNumber(body.sourceOrderId);
+      const isOrderSource =
+        (body.invoiceFor === InvoiceFor.ORDER ||
+          String(body.invoiceFor).toUpperCase() === 'ORDER') &&
+        !!sourceOrderId;
+
+      if (isOrderSource) {
+        try {
+          const sourceOrder = await this.orderRepo.findOne({
+            where: { orderId: sourceOrderId },
+          });
+
+          if (
+            sourceOrder?.invoiceAutoApproval === InvoiceAutoApproval.YES ||
+            sourceOrder?.invoiceAutoApproval === 'YES'
+          ) {
+            const createdInvoice = await this.invoiceRepo.findOne({
+              where: { invoiceId: insertId },
+            });
+
+            if (createdInvoice) {
+              const approvalResult = await this.executeInvoiceApproval(
+                createdInvoice,
+                authCtx,
+                req,
+                true,
+              );
+
+              if (approvalResult.success === 1) {
+                autoApproved = true;
+                finalStatus = approvalResult.finalStatus || InvoiceStatus.UNPAID;
+              } else {
+                autoApproved = false;
+                autoApprovalMessage = approvalResult.message || 'Auto-approval failed';
+                console.warn(
+                  `[AutoApproval] Order ${sourceOrderId} invoice ${insertId} approval failed:`,
+                  approvalResult.message,
+                );
+              }
+            }
+          }
+        } catch (approvalErr: any) {
+          autoApproved = false;
+          autoApprovalMessage = approvalErr.message || 'Auto-approval error occurred';
+          console.error(
+            `[AutoApproval] Error auto-approving invoice ${insertId} for order ${sourceOrderId}:`,
+            approvalErr,
+          );
+        }
+      }
+
       return {
         success: 1,
-        message: 'Invoice created successfully',
-        data: { insertData: insertId },
+        message: autoApproved
+          ? 'Invoice created and auto-approved successfully'
+          : (autoApprovalMessage
+              ? `Invoice created successfully, but auto-approval failed: ${autoApprovalMessage}`
+              : 'Invoice created successfully'),
+        data: {
+          insertData: insertId,
+          invoiceId: insertId,
+          autoApproved,
+          status: finalStatus,
+          ...(autoApprovalMessage ? { autoApprovalMessage } : {}),
+        },
+        invoiceId: insertId,
+        autoApproved,
+        status: finalStatus,
+        ...(autoApprovalMessage ? { autoApprovalMessage } : {}),
       };
     } catch (err: any) {
       if (queryRunner.isTransactionActive) {
@@ -957,90 +1026,102 @@ export class InvoiceService {
         }
       }
 
-      if (invoice.status !== InvoiceStatus.DRAFT) {
-        return { success: 0, message: 'Only draft invoices can be submitted' };
-      }
-
-      await this.invoiceRepo.update({ invoiceId }, { status: InvoiceStatus.UNPAID });
-
-      let vaultResult: any = null;
-      let finalStatus = InvoiceStatus.UNPAID;
-
-      const mode = (process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase();
-
-      if (mode === 'AUTOMATIC') {
-        const strategy = ((process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO').toUpperCase() as 'FIFO' | 'LIFO';
-
-        const queryRunner = this.dataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-
-        try {
-          vaultResult = await this.vaultService.deductAutomatic(
-            invoice.invoiceId,
-            invoice.customerId,
-            invoice.currencyId,
-            invoice.companyId,
-            Number(invoice.finalAmount || 0),
-            strategy,
-            queryRunner
-          );
-          
-          if (vaultResult.result === 'PAID') finalStatus = InvoiceStatus.PAID;
-          else if (vaultResult.result === 'PARTIAL') finalStatus = InvoiceStatus.PARTIALLY_PAID;
-
-          if (finalStatus !== InvoiceStatus.UNPAID) {
-            await queryRunner.manager.update(InvoiceEntity, { invoiceId }, { 
-              status: finalStatus,
-              amountPaid: vaultResult.amountPaid,
-            });
-          }
-          await queryRunner.commitTransaction();
-        } catch (err) {
-          await queryRunner.rollbackTransaction();
-          throw err;
-        } finally {
-          await queryRunner.release();
-        }
-      }
-
-      this.invoicePdfService
-        .generateAndStoreInvoicePdf(invoiceId)
-        .catch((err: Error) =>
-          console.error(
-            `[PDF] Failed to generate invoice PDF for invoice ${invoiceId}:`,
-            err.message,
-          ),
-        );
-
-      const { performerId, performerEmail } = this.resolvePerformer(req);
-      this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.INVOICE_UPDATE,
-        userId: performerId,
-        companyId: invoice.companyId,
-        actorType: 'USER',
-        targetType: 'INVOICE',
-        targetId: String(invoiceId),
-        executionStatus: 'SUCCESS',
-        severity: 'INFO',
-        parameters: {
-          userEmail: performerEmail,
-          userGroup: authCtx.activeGroupName || 'N/A',
-          invoiceCode: invoice.invoiceCode,
-          transition: `DRAFT→${finalStatus}`,
-          impersonated: !!req?.user?.isImpersonation,
-        },
-        metadata: {},
-      });
-
-      return { 
-        success: 1, 
-        message: 'Invoice submitted successfully',
-        vaultResult 
-      };
+      return await this.executeInvoiceApproval(invoice, authCtx, req, false);
     } catch (err: any) {
       return { success: 0, message: err.message };
     }
+  }
+
+  private async executeInvoiceApproval(
+    invoice: InvoiceEntity,
+    authCtx: any,
+    req?: any,
+    isAutoApproval = false,
+  ) {
+    if (invoice.status !== InvoiceStatus.DRAFT) {
+      return { success: 0, message: 'Only draft invoices can be submitted' };
+    }
+
+    const invoiceId = invoice.invoiceId;
+    await this.invoiceRepo.update({ invoiceId }, { status: InvoiceStatus.UNPAID });
+
+    let vaultResult: any = null;
+    let finalStatus = InvoiceStatus.UNPAID;
+
+    const mode = (process.env.INVOICE_PAYMENT_MODE || 'AUTOMATIC').toUpperCase();
+
+    if (mode === 'AUTOMATIC') {
+      const strategy = ((process.env.INVOICE_PAYMENT_STRATEGY as 'FIFO' | 'LIFO') || 'FIFO').toUpperCase() as 'FIFO' | 'LIFO';
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        vaultResult = await this.vaultService.deductAutomatic(
+          invoice.invoiceId,
+          invoice.customerId,
+          invoice.currencyId,
+          invoice.companyId,
+          Number(invoice.finalAmount || 0),
+          strategy,
+          queryRunner,
+        );
+
+        if (vaultResult.result === 'PAID') finalStatus = InvoiceStatus.PAID;
+        else if (vaultResult.result === 'PARTIAL') finalStatus = InvoiceStatus.PARTIALLY_PAID;
+
+        if (finalStatus !== InvoiceStatus.UNPAID) {
+          await queryRunner.manager.update(InvoiceEntity, { invoiceId }, {
+            status: finalStatus,
+            amountPaid: vaultResult.amountPaid,
+          });
+        }
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    this.invoicePdfService
+      .generateAndStoreInvoicePdf(invoiceId)
+      .catch((err: Error) =>
+        console.error(
+          `[PDF] Failed to generate invoice PDF for invoice ${invoiceId}:`,
+          err.message,
+        ),
+      );
+
+    const { performerId, performerEmail } = this.resolvePerformer(req, invoice.addedBy);
+    this.eventEmitter.emit('activity.log', {
+      activityCode: ActivityCode.INVOICE_UPDATE,
+      userId: performerId,
+      companyId: invoice.companyId,
+      actorType: 'USER',
+      targetType: 'INVOICE',
+      targetId: String(invoiceId),
+      executionStatus: 'SUCCESS',
+      severity: 'INFO',
+      parameters: {
+        userEmail: performerEmail,
+        userGroup: authCtx?.activeGroupName || 'N/A',
+        invoiceCode: invoice.invoiceCode,
+        transition: `DRAFT→${finalStatus}`,
+        impersonated: !!req?.user?.isImpersonation,
+        ...(isAutoApproval ? { autoApproved: true, trigger: 'AUTO_APPROVAL' } : {}),
+      },
+      metadata: isAutoApproval ? { note: 'Auto-approved on order invoice creation' } : {},
+    });
+
+    return {
+      success: 1,
+      message: 'Invoice submitted successfully',
+      vaultResult,
+      finalStatus,
+    };
   }
 
   async markAsPaid(invoiceId: number, body: VaultPaymentBodyDto, req?: any) {

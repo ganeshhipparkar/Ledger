@@ -220,6 +220,10 @@ export default function CompanyDetails({ id }) {
                                                 {company?.currencies?.map((currency) => currency.code).join(", ") || "-"}
                                             </p>
                                         </div>
+                                        <div className="grid grid-cols-2">
+                                            <p className="text-gray-500">Allow Manual Invoicing</p>
+                                            <p className="font-medium text-gray-800">{company.allowManualInvoicing === "NO" ? "No" : "Yes"}</p>
+                                        </div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Website</p><p className="font-medium text-gray-800">{company.website || "N/A"}</p></div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Added By</p><p className="font-medium text-gray-800">{company.addedByName || "-"}</p></div>
                                         <div className="grid grid-cols-2"><p className="text-gray-500">Updated By</p><p className="font-medium text-gray-800">{company.updatedByName || "-"}</p></div>

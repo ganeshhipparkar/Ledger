@@ -17,6 +17,8 @@ import { getInitials } from "@/lib/utils";
 import NoteAddPanel from "../notes/NoteAddPanel";
 import DebitNoteCard from "./DebitNoteCard";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { debitNoteSidePanelConfig } from "./configs/debitNoteSidePanel.config";
 import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -35,7 +37,7 @@ export function DebitNoteStatusBadge({ status }) {
     );
 }
 
-function getDebitNoteTableColumns({ can, onViewClick }) {
+function getDebitNoteTableColumns({ can, onViewClick, onCustomerClick }) {
     return [
         {
             id: "debitNoteCode",
@@ -46,7 +48,7 @@ function getDebitNoteTableColumns({ can, onViewClick }) {
                     <button
                         type="button"
                         onClick={() => onViewClick?.(r.id)}
-                        className="font-semibold text-blue-600 hover:underline text-sm whitespace-nowrap"
+                        className="font-semibold text-blue-600 hover:underline text-sm whitespace-nowrap bg-transparent border-none p-0 cursor-pointer"
                     >
                         {r.debitNoteCode}
                     </button>
@@ -137,26 +139,27 @@ function getDebitNoteTableColumns({ can, onViewClick }) {
                 <span className="text-sm text-gray-600">{row.original.addedByName || "—"}</span>
             ),
         },
-        // {
-        //     id: "actions",
-        //     header: "Actions",
-        //     cell: ({ row }) => {
-        //         const r = row.original;
-        //         return (
-        //             <button
-        //                 type="button"
-        //                 onClick={() => onViewClick?.(r.id)}
-        //                 className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer"
-        //             >
-        //                 View Details
-        //             </button>
-        //         );
-        //     },
-        // },
+        {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }) => {
+                const r = row.original;
+                return (
+                    <button
+                        type="button"
+                        onClick={() => onViewClick?.(r.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer"
+                    >
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        View
+                    </button>
+                );
+            },
+        },
     ];
 }
 
-function DebitNoteListRow({ debitNote: cn, isOpen, onToggle, onCustomerClick }) {
+function DebitNoteListRow({ debitNote: cn, isOpen, onToggle, onCustomerClick, onViewClick }) {
     const sym = cn.currencyCode;
     const fmtAmt = (n, s) => n != null ? `${s ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim() : "—";
     const initials = getInitials(cn.debitNoteCode || "-");
@@ -171,12 +174,13 @@ function DebitNoteListRow({ debitNote: cn, isOpen, onToggle, onCustomerClick }) 
                             <span className="text-white font-bold">{initials}</span>
                         </div>
                         <div className="min-w-0">
-                            <Link
-                                href={`/debit-note/${cn.id}`}
-                                className="text-base font-semibold truncate cursor-pointer hover:underline text-[#3563e9] block"
+                            <button
+                                type="button"
+                                onClick={() => onViewClick?.(cn.id)}
+                                className="text-base font-semibold truncate cursor-pointer hover:underline text-[#3563e9] block text-left bg-transparent border-none p-0"
                             >
                                 {cn.debitNoteCode || "-"}
-                            </Link>
+                            </button>
                             <div className="text-sm text-gray-500 truncate">
                                 <span
                                     className="text-blue-600 hover:underline cursor-pointer"
@@ -207,12 +211,13 @@ function DebitNoteListRow({ debitNote: cn, isOpen, onToggle, onCustomerClick }) 
                         <div className="text-base font-semibold text-gray-800">{fmtAmt(cn.finalAmount, sym)}</div>
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* <Link
-                            href={`/debit-note/${cn.id}`}
+                        <button
+                            type="button"
+                            onClick={() => onViewClick?.(cn.id)}
                             className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
                         >
                             View Details
-                        </Link> */}
+                        </button>
                         <button
                             onClick={onToggle}
                             className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ml-2"
@@ -272,6 +277,7 @@ export default function DebitNoteList() {
 
     const [showAddPanel, setShowAddPanel] = useState(false);
     const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+    const [viewId, setViewId] = useState(null);
 
     const fetchList = useCallback(async (p = page, lim = limit, searchParams = currentFilters) => {
         setError("");
@@ -321,7 +327,7 @@ export default function DebitNoteList() {
 
     const columns = getDebitNoteTableColumns({
         can,
-        onViewClick: (id) => router.push(`/debit-note/${id}`),
+        onViewClick: (id) => setViewId(id),
         onCustomerClick: (id) => setSelectedCustomerId(id),
     });
 
@@ -381,6 +387,7 @@ export default function DebitNoteList() {
                                 isOpen={!!expandedRows[cn.id]}
                                 onToggle={() => toggleRow(cn.id)}
                                 onCustomerClick={(id) => setSelectedCustomerId(id)}
+                                onViewClick={(id) => setViewId(id)}
                             />
                         ))}
                     </div>
@@ -390,7 +397,7 @@ export default function DebitNoteList() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                         {data.length === 0 && <p className="text-center text-gray-400 py-16 col-span-full bg-white rounded-2xl border border-gray-200">No credit notes found.</p>}
                         {data.map((cn) => (
-                            <DebitNoteCard key={cn.id} debitNote={cn} onCustomerClick={(id) => setSelectedCustomerId(id)} />
+                            <DebitNoteCard key={cn.id} debitNote={cn} onCustomerClick={(id) => setSelectedCustomerId(id)} onViewClick={(id) => setViewId(id)} />
                         ))}
                     </div>
                 )}
@@ -427,6 +434,11 @@ export default function DebitNoteList() {
 
             {selectedCustomerId && typeof document !== "undefined" && createPortal(
                 <CustomerSidePanel customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />,
+                document.body
+            )}
+
+            {viewId && typeof document !== "undefined" && createPortal(
+                <DetailsSidePanel config={debitNoteSidePanelConfig} id={viewId} onClose={() => setViewId(null)} />,
                 document.body
             )}
         </div>

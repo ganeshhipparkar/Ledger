@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
+import { X, Paperclip } from "lucide-react";
 
 export default function PaymentTransactionStatusSidePanel({
     isOpen,
@@ -14,6 +15,7 @@ export default function PaymentTransactionStatusSidePanel({
     onSuccess,
 }) {
     const [remarks, setRemarks] = useState("");
+    const [attachment, setAttachment] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -45,6 +47,7 @@ export default function PaymentTransactionStatusSidePanel({
         if (isOpen) {
             setVisible(true);
             setRemarks("");
+            setAttachment(null);
             setError("");
         } else {
             timerRef.current = setTimeout(() => setVisible(false), 300);
@@ -67,18 +70,20 @@ export default function PaymentTransactionStatusSidePanel({
                 Array.isArray(transactionId) ? transactionId[0] : transactionId
             );
 
+            const fd = new FormData();
+            fd.append("paymentTransactionId", String(numericId));
+            fd.append("remarks", remarks.trim());
+            if (attachment) {
+                fd.append("attachment", attachment);
+            }
+
             const res = await fetch("/relayapi", {
                 method: "PUT",
                 headers: {
-                    ...authHeaders(),
                     endpoint,
                     module: "payment-transaction",
-                    "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    paymentTransactionId: numericId,
-                    remarks: remarks.trim(),
-                }),
+                body: fd,
             });
 
             const payload = await res.json();
@@ -159,6 +164,47 @@ export default function PaymentTransactionStatusSidePanel({
                             />
 
                             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Attachment <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+                            </label>
+                            {attachment ? (
+                                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <Paperclip className="h-4 w-4 text-blue-500 shrink-0" />
+                                        <span className="text-sm text-blue-700 truncate font-medium">
+                                            {attachment.name}
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAttachment(null)}
+                                        className="p-1 text-blue-400 hover:text-blue-600 rounded-full hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                setAttachment(e.target.files[0]);
+                                            }
+                                            e.target.value = null;
+                                        }}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    <div className="flex items-center justify-center gap-2 w-full px-3.5 py-3 bg-gray-50 border border-gray-300 border-dashed rounded-xl hover:bg-gray-100 hover:border-gray-400 transition cursor-pointer">
+                                        <Paperclip className="h-4 w-4 text-gray-400" />
+                                        <span className="text-sm text-gray-500 font-medium">Click to upload file</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">

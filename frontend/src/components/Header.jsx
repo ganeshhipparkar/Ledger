@@ -167,20 +167,27 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                                                             { id: "companyName", label: "Company" },
                                                                             { id: "status", label: "Status" }
                                                                         ]
-                                                                        : [
-                                                                            { id: "name", label: "Name" },
-                                                                            { id: "email", label: "Email" },
-                                                                            { id: "phone", label: "Phone" },
-                                                                            { id: "groupName", label: "Group Name" },
-                                                                            { id: "status", label: "Status" }
-                                                                        ];
+                                                                        : page === "invoice-list"
+                                                                            ? [
+                                                                                { id: "invoiceCode", label: "Invoice Code" },
+                                                                                { id: "customerName", label: "Customer" },
+                                                                                { id: "companyName", label: "Company" },
+                                                                                { id: "status", label: "Status" }
+                                                                            ]
+                                                                            : [
+                                                                                { id: "name", label: "Name" },
+                                                                                { id: "email", label: "Email" },
+                                                                                { id: "phone", label: "Phone" },
+                                                                                { id: "groupName", label: "Group Name" },
+                                                                                { id: "status", label: "Status" }
+                                                                            ];
 
     const defaultField = fieldsConfig[0]?.id || "name";
     const isListPage = page === "users" || page === "companies" || page === "currencies" || page === "groups" || page === "items"
         || page === "item-categories" || page === "manufacturers" || page === "brands" || page === "customers"
         || page === "banks" || page === "bank-books" || page === "uoms" || page === "packages"
         || page === "payment-transactions" || page === "terms-conditions" || page === "tax-groups"
-        || page === "quotation-list" || page === "order-list";
+        || page === "quotation-list" || page === "order-list" || page === "invoice-list";
 
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => {
@@ -616,8 +623,19 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                                         className="border border-gray-200 rounded px-2 py-1.5 text-sm outline-none flex-[1.5] text-black"
                                                     >
                                                         <option value="">Select Status</option>
-                                                        <option value="Active">Active</option>
-                                                        <option value="Inactive">Inactive</option>
+                                                        {page === "invoice-list" ? (
+                                                            <>
+                                                                <option value="DRAFT">Draft</option>
+                                                                <option value="UNPAID">Unpaid</option>
+                                                                <option value="PARTIALLY_PAID">Partially Paid</option>
+                                                                <option value="PAID">Paid</option>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <option value="Active">Active</option>
+                                                                <option value="Inactive">Inactive</option>
+                                                            </>
+                                                        )}
                                                     </select>
                                                 ) : (
                                                     <input
@@ -918,10 +936,21 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 text-black bg-white"
                                 >
                                     <option value="">All Statuses</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">
-                                        Inactive
-                                    </option>
+                                    {page === "invoice-list" ? (
+                                        <>
+                                            <option value="DRAFT">Draft</option>
+                                            <option value="UNPAID">Unpaid</option>
+                                            <option value="PARTIALLY_PAID">Partially Paid</option>
+                                            <option value="PAID">Paid</option>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">
+                                                Inactive
+                                            </option>
+                                        </>
+                                    )}
                                 </select>
                             ) : (
                                 <input
