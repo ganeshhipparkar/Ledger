@@ -174,6 +174,14 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                                                                                 { id: "companyName", label: "Company" },
                                                                                 { id: "status", label: "Status" }
                                                                             ]
+                                                                            : page === "delivery-note-list"
+                                                                                ? [
+                                                                                    { id: "deliveryNoteCode", label: "DN Code" },
+                                                                                    { id: "customerName", label: "Customer" },
+                                                                                    { id: "orderCode", label: "Order" },
+                                                                                    { id: "receiverName", label: "Receiver Name" },
+                                                                                    { id: "deliveryDate", label: "Delivery Date" }
+                                                                                ]
                                                                             : [
                                                                                 { id: "name", label: "Name" },
                                                                                 { id: "email", label: "Email" },
@@ -187,7 +195,8 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
         || page === "item-categories" || page === "manufacturers" || page === "brands" || page === "customers"
         || page === "banks" || page === "bank-books" || page === "uoms" || page === "packages"
         || page === "payment-transactions" || page === "terms-conditions" || page === "tax-groups"
-        || page === "quotation-list" || page === "order-list" || page === "invoice-list";
+        || page === "quotation-list" || page === "order-list" || page === "invoice-list"
+        || page === "credit-note-list" || page === "debit-note-list" || page === "delivery-note-list";
 
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => {
@@ -493,6 +502,7 @@ export default function Header({ onSearch, page, viewMode: propViewMode, onViewM
                             "invoice-list": { perm: "invoiceAdd", label: "Add Invoice" },
                             "credit-note-list": { perm: "creditNoteAdd", label: "Add Credit Note" },
                             "debit-note-list": { perm: "debitNoteAdd", label: "Add Debit Note" },
+                            "delivery-note-list": { perm: "deliveryNoteAdd", label: "Add Delivery Note" },
                         };
 
                         const currentAddConfig = addBtnConfigs[page];

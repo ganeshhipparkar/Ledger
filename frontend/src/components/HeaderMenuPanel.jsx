@@ -79,6 +79,7 @@ export default function HeaderMenuPanel({ isOpen, onClose, hasMounted }) {
                 { label: "Invoice", redirectTo: "/invoice-list", show: activePermissions.includes("invoiceList") || isSuper },
                 { label: "Credit Note", redirectTo: "/credit-note-list", show: activePermissions.includes("creditNoteList") || isSuper },
                 { label: "Debit Note", redirectTo: "/debit-note-list", show: activePermissions.includes("debitNoteList") || isSuper },
+                { label: "Delivery Note", redirectTo: "/delivery-note-list", show: activePermissions.includes("deliveryNoteList") || isSuper },
                 {
                     groupLabel: "Order(s)",
                     children: [

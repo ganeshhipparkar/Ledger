@@ -181,10 +181,17 @@ export class OrderListService {
 
     const allTaxGroups = await this.taxGroupRepo.find({ where: { companyId: Number(order.companyId) } });
     const taxGroupMap = new Map(allTaxGroups.map(tg => [tg.taxCode, tg.taxId]));
-    const orderItems = order.orderItems?.map(item => ({
-      ...item,
-      taxId: item.taxGroup ? (taxGroupMap.get(item.taxGroup) ?? null) : null,
-    })) || [];
+    const orderItems = order.orderItems?.map(item => {
+      const deliveredQuantity = Number(item.deliveredQuantity || 0);
+      const requestedQuantity = Number(item.quantity);
+      const pendingQuantity = Math.max(0, requestedQuantity - deliveredQuantity);
+      return {  
+        ...item,
+        deliveredQuantity,
+        pendingQuantity,
+        taxId: item.taxGroup ? (taxGroupMap.get(item.taxGroup) ?? null) : null,
+      };
+    }) || [];
 
     return {
       ...order,

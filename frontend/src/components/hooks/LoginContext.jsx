@@ -20,6 +20,7 @@ export default function LoginContext({ children }) {
         "quotation-list": "grid",
         "order-list": "grid",
         "invoice-list": "grid",
+        "delivery-note-list": "grid",
         invoice: "grid"
     });
 

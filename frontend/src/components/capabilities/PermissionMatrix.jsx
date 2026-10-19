@@ -128,7 +128,12 @@ export const MODULES = [
         key: "debitNote",
         permissions: ["debitNoteList", "debitNoteView", "debitNoteAdd"],
     },
-
+    {
+        section: "Sales",
+        label: "Delivery Note",
+        key: "deliveryNote",
+        permissions: ["deliveryNoteList", "deliveryNoteView", "deliveryNoteAdd"],
+    },
 ];
 
 export const COL_HEADERS = ["List", "View", "Add", "Update"];

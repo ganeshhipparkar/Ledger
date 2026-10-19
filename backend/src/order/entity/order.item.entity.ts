@@ -6,6 +6,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { DeliveryNoteItemEntity } from 'src/delivery_note/entity/delivery.note.item.entity';
 import { ItemEntity } from 'src/item/entity/item.entity';
 import { OrderEntity } from './order.entity';
 import { OrderDiscountEntity } from './order.discount.entity';
@@ -45,6 +46,9 @@ export class OrderItemEntity {
 
   @Column('decimal', { precision: 18, scale: 4 })
   quantity!: number;
+
+  @Column('decimal', { precision: 18, scale: 4, default: '0.0000' })
+  deliveredQuantity!: number;
 
   @Column('decimal', { precision: 18, scale: 4 })
   unitPrice!: number;
@@ -91,4 +95,7 @@ export class OrderItemEntity {
 
   @OneToMany(() => OrderExtraChargeEntity, (ec) => ec.orderItem)
   extraCharges?: OrderExtraChargeEntity[];
+
+  @OneToMany(() => DeliveryNoteItemEntity, (dni) => dni.orderItem)
+  deliveryNoteItems?: DeliveryNoteItemEntity[];
 }

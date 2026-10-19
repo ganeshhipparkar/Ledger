@@ -52,6 +52,9 @@ import { CreditNoteAttachmentsEntity } from 'src/credit_note/entity/credit.note.
 import { DebitNoteEntity } from 'src/debit_note/entity/debit.note.entity';
 import { DebitNoteAttachmentsEntity } from 'src/debit_note/entity/debit.note.attachments.entity';
 import { DebitNoteItemEntity } from 'src/debit_note/entity/debit.note.item.entity';
+import { DeliveryNoteEntity } from 'src/delivery_note/entity/delivery.note.entity';
+import { DeliveryNoteItemEntity } from 'src/delivery_note/entity/delivery.note.item.entity';
+import { DeliveryNoteAttachmentEntity } from 'src/delivery_note/entity/delivery.note.attachments.entity';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: (process.env.DB_CLIENT as 'mysql') ?? 'mysql',
@@ -111,6 +114,9 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     DebitNoteEntity,
     DebitNoteAttachmentsEntity,
     DebitNoteItemEntity,
+    DeliveryNoteEntity,
+    DeliveryNoteItemEntity,
+    DeliveryNoteAttachmentEntity,
   ],
   synchronize: true, 
   migrationsRun: true,

@@ -101,7 +101,8 @@ export default function SiteMap() {
                 { label: "Payment Transaction", redirectTo: "/payment-transaction-list", show: permissions.includes("paymentTransactionList") || superAdmin },
                 { label: "Invoice", redirectTo: "/invoice-list", show: permissions.includes("invoiceList") || superAdmin },
                 { label: "Credit Note", redirectTo: "/credit-note-list", show: permissions.includes("creditNoteList") || superAdmin },
-                { label: "Debit Note", redirectTo: "/debit-note-list", show: permissions.includes("debitNoteList") || superAdmin }
+                { label: "Debit Note", redirectTo: "/debit-note-list", show: permissions.includes("debitNoteList") || superAdmin },
+                { label: "Delivery Note", redirectTo: "/delivery-note-list", show: permissions.includes("deliveryNoteList") || superAdmin }
             ],
         },
         {

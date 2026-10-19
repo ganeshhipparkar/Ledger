@@ -36,6 +36,7 @@ import { InvoiceModule } from './invoice/invoice.module';
 import { ModSettingsModule } from './mod_setting/mod.settings.module';
 import { CreditNoteModule } from './credit_note/credit.note.module';
 import { DebitNoteModule } from './debit_note/debit.note.module';
+import { DeliveryNoteModule } from './delivery_note/delivery.note.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
@@ -99,6 +100,7 @@ import { RedisModule } from './redis/redis.module';
     VaultModule,
     CreditNoteModule,
     DebitNoteModule,
+    DeliveryNoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

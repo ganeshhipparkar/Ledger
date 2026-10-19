@@ -19,6 +19,7 @@ import { OrderDiscountEntity } from './order.discount.entity';
 import { OrderExtraChargeEntity } from './order.extra.charge.entity';
 import { OrderAttachmentsEntity } from './order.attachments';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
+import { DeliveryNoteEntity } from 'src/delivery_note/entity/delivery.note.entity';
 
 export enum OrderStatus {
   DRAFT = 'DRAFT',
@@ -307,4 +308,7 @@ export class OrderEntity {
 
   @OneToMany(() => OrderAttachmentsEntity, (attachment) => attachment.order)
   attachments?: OrderAttachmentsEntity[];
+
+  @OneToMany(() => DeliveryNoteEntity, (deliveryNote) => deliveryNote.order)
+  deliveryNotes?: DeliveryNoteEntity[];
 }

@@ -1105,3 +1105,50 @@ export const DebitNoteInvoiceFormSchema = z.object({
         }
     });
 });
+
+export const DeliveryNoteItemRowSchema = z.object({
+    orderItemId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select an item."),
+    deliverQuantity: z.coerce.number({ invalid_type_error: "Deliver quantity must be a valid number." })
+        .gt(0, "Deliver quantity must be greater than 0.")
+        .refine((val) => {
+            const str = String(val);
+            const decimals = str.includes(".") ? str.split(".")[1].length : 0;
+            return decimals <= 4;
+        }, "Deliver quantity cannot have more than 4 decimal places."),
+    pendingQuantity: z.coerce.number().optional(),
+}).refine((data) => {
+    if (data.pendingQuantity !== undefined && data.deliverQuantity > data.pendingQuantity) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Deliver quantity cannot exceed pending quantity.",
+    path: ["deliverQuantity"],
+});
+
+export const DeliveryNoteFormSchema = z.object({
+    companyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Company is required."),
+    customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
+    orderId: z.union([z.string(), z.number()]).refine(nonEmpty, "Order Number is required."),
+    deliveryDate: z.string().min(1, "Delivery Date is required.").refine((val) => dayjs(val).isValid(), "Valid delivery date is required."),
+    receiverName: z.string().min(1, "Receiver Name is required."),
+    billingAddress: z.string().min(1, "Billing Address is required."),
+    receiverSignature: z.string().optional(),
+    deliveryNoteItems: z.array(DeliveryNoteItemRowSchema).min(1, "At least one item is required."),
+}).superRefine((data, ctx) => {
+    const seen = new Set();
+    data.deliveryNoteItems.forEach((item, idx) => {
+        if (item.orderItemId) {
+            const key = String(item.orderItemId);
+            if (seen.has(key)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Item already selected in another row.",
+                    path: ["deliveryNoteItems", idx, "orderItemId"],
+                });
+            } else {
+                seen.add(key);
+            }
+        }
+    });
+});
