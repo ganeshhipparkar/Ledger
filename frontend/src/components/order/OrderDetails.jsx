@@ -9,7 +9,7 @@ import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye, Download, Activity
+    RefreshCw, Copy, ClipboardList, Paperclip, ChevronDown, Trash2, FileText, Eye, Download, Activity, Truck, Plus
 } from "lucide-react";
 import Header from "../Header";
 import Loader from "../ui/Loader";
@@ -30,6 +30,8 @@ import { ORDER_STATUS_COLORS } from "./OrderCard";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
 import { taxGroupSidePanelConfig } from "../taxGroup/configs/taxGroupSidePanel.config";
+import { deliveryNoteSidePanelConfig } from "../deliveryNote/configs/deliveryNoteSidePanel.config";
+import EmbeddedRelatedTable from "../common/EmbeddedRelatedTable";
 import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
 
@@ -84,6 +86,12 @@ function fmtAmount(n, symbol) {
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
+const DELIVERY_NOTE_FILTER_FIELDS = [
+    { id: "deliveryNoteCode", label: "Delivery Note Code" },
+    { id: "receiverName", label: "Receiver Name" },
+    { id: "deliveryDate", label: "Delivery Date", type: "date", operator: "eq" },
+];
+
 const NAV_ITEMS = [
     { key: "summary", label: "Summary", Icon: LayoutList },
     { key: "activity", label: "Activity", Icon: Activity },
@@ -104,7 +112,7 @@ export default function OrderDetails({ id }) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("summary");
 
-    const VALID_TABS = ["summary", "activity"];
+    const VALID_TABS = ["summary", "deliveryNotes", "activity"];
     useEffect(() => {
         const apply = () => {
             const h = window.location.hash.replace("#", "");
@@ -115,6 +123,12 @@ export default function OrderDetails({ id }) {
         return () => window.removeEventListener("hashchange", apply);
     }, []);
 
+    useEffect(() => {
+        if (order && (order.status === "DRAFT" || !can?.("deliveryNoteList")) && activeTab === "deliveryNotes") {
+            setActiveTab("summary");
+        }
+    }, [order, can, activeTab]);
+
     const changeTab = (key) => {
         setActiveTab(key);
         window.history.replaceState(null, "", `#${key}`);
@@ -124,6 +138,7 @@ export default function OrderDetails({ id }) {
     const [selectedBankBookPanelId, setSelectedBankBookPanelId] = useState(null);
     const [selectedCustomerPanelId, setSelectedCustomerPanelId] = useState(null);
     const [selectedTaxGroupPanelId, setSelectedTaxGroupPanelId] = useState(null);
+    const [selectedDeliveryNoteId, setSelectedDeliveryNoteId] = useState(null);
 
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
@@ -169,11 +184,6 @@ export default function OrderDetails({ id }) {
             confirmText = "Cancel";
             confirmColor = "#dc2626";
             endpoint = `order-cancel/${id}`;
-        } else if (actionType === "MARK_DELIVERED") {
-            title = "Mark this order as delivered?";
-            confirmText = "Mark Delivered";
-            confirmColor = "#16a34a";
-            endpoint = `order-mark-delivered/${id}`;
         } else if (actionType === "CLOSE") {
             title = "Close this order?";
             confirmText = "Close";
@@ -258,6 +268,18 @@ export default function OrderDetails({ id }) {
 
     const q = order;
 
+    const showDeliveryNotes = Boolean(can?.("deliveryNoteList") && q.status !== "DRAFT");
+    const canAddDeliveryNote = Boolean(
+        (q.orderStatus === "OPEN" || !q.orderStatus) &&
+        (q.status === "PLACED" || q.status === "PARTIAL_DELIVERED") &&
+        can?.("deliveryNoteAdd")
+    );
+    const navItems = [
+        { key: "summary", label: "Summary", Icon: LayoutList },
+        ...(showDeliveryNotes ? [{ key: "deliveryNotes", label: "Delivery Notes", Icon: Truck }] : []),
+        { key: "activity", label: "Activity", Icon: Activity },
+    ];
+
     const oDiscount = q.discount ?? q.totalDiscount ?? (q.discounts || q.orderDiscounts || []).reduce((s, d) => s + (parseFloat(d.discountPrice ?? d.amount) || 0), 0);
     const oExtraCharge = q.extraCharge ?? q.totalExtraCharge ?? (q.extraCharges || q.orderExtraCharges || []).reduce((s, ec) => s + (parseFloat(ec.extraChargesPrice ?? ec.extraChargePrice ?? ec.amount) || 0), 0);
 
@@ -304,15 +326,44 @@ export default function OrderDetails({ id }) {
             allAvailable.push({ id: "submit", label: "Submit Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("SUBMIT"), variant: "blue" });
             allAvailable.push({ id: "edit", label: "Edit", icon: <Edit2 className="h-4 w-4" />, onClick: () => router.push(`/order/${id}?edit=true`), variant: "amber" });
             allAvailable.push({ id: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("DELETE"), textClass: "text-red-600 hover:bg-red-50", isDestructive: true });
-        } else if (q.status === "PLACED" && can?.("orderUpdate") !== false) {
-            allAvailable.push({ id: "markDelivered", label: "Mark as Delivered", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("MARK_DELIVERED"), variant: "green" });
-            allAvailable.push({ id: "updatePrice", label: "Update Price", icon: <Edit2 className="h-4 w-4" />, onClick: () => setPricePanelOpen(true) });
-            allAvailable.push({ id: "cancel", label: "Cancel Order", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("CANCEL"), textClass: "text-red-600 hover:bg-red-50", isDestructive: true });
-        } else if ((q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate")) {
+        } else if (q.status === "PLACED") {
+            if (can?.("deliveryNoteAdd")) {
+                allAvailable.push({ id: "addDeliveryNote", label: "Add Delivery Note", icon: <Truck className="h-4 w-4" />, onClick: () => router.push(`/add-delivery-note?fromOrder=${id}`), variant: "blue" });
+            }
+            if (can?.("orderUpdate") !== false) {
+                allAvailable.push({ id: "updatePrice", label: "Update Price", icon: <Edit2 className="h-4 w-4" />, onClick: () => setPricePanelOpen(true) });
+                allAvailable.push({ id: "cancel", label: "Cancel Order", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("CANCEL"), textClass: "text-red-600 hover:bg-red-50", isDestructive: true });
+            }
+        } else if (q.status === "PARTIAL_DELIVERED") {
+            if (can?.("deliveryNoteAdd")) {
+                allAvailable.push({ id: "addDeliveryNote", label: "Add Delivery Note", icon: <Truck className="h-4 w-4" />, onClick: () => router.push(`/add-delivery-note?fromOrder=${id}`), variant: "blue" });
+            }
+            if (can?.("orderUpdate") !== false) {
+                allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
+            }
+            if (q.invoicePdfPath) {
+                allAvailable.push({ id: "viewInvoicePdf", label: "View Invoice PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank") });
+                allAvailable.push({
+                    id: "downloadInvoicePdf", label: "Download Invoice PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
+                        e.stopPropagation();
+                        try {
+                            await downloadFile(q.invoicePdfPath, `Invoice_${q.orderCode ?? q.orderId}.pdf`);
+                        } catch (err) {
+                            toast.error("Failed to download invoice", { position: "top-right" });
+                        }
+                    }
+                });
+            }
+            if (can?.("orderUpdate")) {
+                allAvailable.push({ id: "regenerateInvoicePdf", label: "Regenerate Invoice PDF", icon: <RefreshCw className="h-4 w-4" />, onClick: handleRegeneratePdf });
+            }
+        } else if (q.status === "DELIVERED") {
             if (can?.("invoiceAdd")) {
                 allAvailable.push({ id: "convertToInvoice", label: "Convert to Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?fromOrder=${id}`) });
             }
-            allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
+            if (can?.("orderUpdate") !== false) {
+                allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
+            }
             if (q.invoicePdfPath) {
                 allAvailable.push({ id: "viewInvoicePdf", label: "View Invoice PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank") });
                 allAvailable.push({
@@ -410,7 +461,7 @@ export default function OrderDetails({ id }) {
                             {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
 
-                        {NAV_ITEMS.map(({ key, label, Icon }) => {
+                        {navItems.map(({ key, label, Icon }) => {
                             return (
                                 <button
                                     key={key}
@@ -448,7 +499,7 @@ export default function OrderDetails({ id }) {
                                     <DetailField label="Shipping Address" value={q.shippingState} />
                                     <DetailField label="Billing Address" value={q.billingState} />
                                     <DetailField label="Place Of Delivery" value={q.deliveryState} />
-                                    <DetailField label="Delivery Type" value={q.deliveryType} />
+                                    <DetailField label="Delivery Type" value={q.deliveryType || "—"} />
                                     <DetailField label="Invoice Generation On" value={q.invoiceGenerationOn} />
                                     <DetailField label="Invoice Auto Approval" value={q.invoiceAutoApproval} />
                                     <DetailField label="Added By" value={q.addedByName} />
@@ -638,6 +689,63 @@ export default function OrderDetails({ id }) {
                             </div>
                         </div>
                     )}
+                    {activeTab === "deliveryNotes" && showDeliveryNotes && (
+                        <EmbeddedRelatedTable
+                            key="deliveryNotes"
+                            endpoint="delivery-note-list"
+                            module="delivery-note"
+                            fixedFilters={[{ key: "orderId", value: id, operator: "eq" }]}
+                            emptyMessage="No delivery notes for this order."
+                            columns={[
+                                "Delivery Note Code",
+                                "Delivery Date",
+                                "Receiver Name",
+                                "Added By",
+                                "Added Date",
+                            ]}
+                            fieldsConfig={DELIVERY_NOTE_FILTER_FIELDS}
+                            toolbarActions={
+                                canAddDeliveryNote ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push(`/add-delivery-note?fromOrder=${id}`)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm transition cursor-pointer"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        <span>Add Delivery Note</span>
+                                    </button>
+                                ) : null
+                            }
+                            renderRow={(dn, i) => (
+                                <tr
+                                    key={dn.deliveryNoteId || i}
+                                    className="hover:bg-gray-50 transition-colors"
+                                >
+                                    <td className="px-6 py-4 font-medium text-blue-600">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedDeliveryNoteId(dn.deliveryNoteId)}
+                                            className="font-medium text-blue-600 hover:underline cursor-pointer bg-transparent border-none p-0 text-left"
+                                        >
+                                            {dn.deliveryNoteCode || "—"}
+                                        </button>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                        {fmtDate(dn.deliveryDate)}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                        {dn.receiverName || "—"}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                        {dn.addedByName || "—"}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                        {fmtDate(dn.addedDate)}
+                                    </td>
+                                </tr>
+                            )}
+                        />
+                    )}
                     {activeTab === "activity" && (
                         <div className="max-h-[70vh] overflow-y-auto pr-2 my-4">
                             <ActivityTimeline targetType="ORDER" targetId={id} />
@@ -671,6 +779,13 @@ export default function OrderDetails({ id }) {
                     config={taxGroupSidePanelConfig}
                     id={selectedTaxGroupPanelId}
                     onClose={() => setSelectedTaxGroupPanelId(null)}
+                />
+            )}
+            {selectedDeliveryNoteId && (
+                <DetailsSidePanel
+                    config={deliveryNoteSidePanelConfig}
+                    id={selectedDeliveryNoteId}
+                    onClose={() => setSelectedDeliveryNoteId(null)}
                 />
             )}
             {selectedUserPanelId && typeof document !== "undefined" && createPortal(

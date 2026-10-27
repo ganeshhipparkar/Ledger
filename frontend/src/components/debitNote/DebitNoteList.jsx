@@ -15,27 +15,15 @@ import { createPortal } from "react-dom";
 import { ChevronDown, FileText } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import NoteAddPanel from "../notes/NoteAddPanel";
-import DebitNoteCard from "./DebitNoteCard";
+import NoteCard from "../common/NoteCard";
+import NoteStatusBadge from "../common/NoteStatusBadge";
+import { debitNoteViewConfig } from "./configs/debitNoteView.config";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { debitNoteSidePanelConfig } from "./configs/debitNoteSidePanel.config";
 import { handleDebitNoteAddNavigation } from "@/lib/useDebitNoteNavigation";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-const STATUS_COLORS = {
-    SUBMITTED: "bg-blue-100 text-blue-700 border-blue-200",
-};
-
-export function DebitNoteStatusBadge({ status }) {
-    const cls = STATUS_COLORS[status] ?? "bg-gray-100 text-gray-500 border-gray-200";
-    const label = status ? status.charAt(0) + status.slice(1).toLowerCase() : "—";
-    return (
-        <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold ${cls}`}>
-            {label}
-        </span>
-    );
-}
 
 function getDebitNoteTableColumns({ can, onViewClick, onCustomerClick }) {
     return [
@@ -130,7 +118,7 @@ function getDebitNoteTableColumns({ can, onViewClick, onCustomerClick }) {
         {
             id: "status",
             header: "Status",
-            cell: ({ row }) => <DebitNoteStatusBadge status={row.original.status} />,
+            cell: ({ row }) => <NoteStatusBadge status={row.original.status} />,
         },
         {
             id: "addedByName",
@@ -202,7 +190,7 @@ function DebitNoteListRow({ debitNote: cn, isOpen, onToggle, onCustomerClick, on
 
                 <div>
                     <div className="text-sm text-gray-500 mb-1">Status</div>
-                    <DebitNoteStatusBadge status={cn.status} />
+                    <NoteStatusBadge status={cn.status} />
                 </div>
 
                 <div className="flex items-start justify-between gap-2">
@@ -397,7 +385,7 @@ export default function DebitNoteList() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                         {data.length === 0 && <p className="text-center text-gray-400 py-16 col-span-full bg-white rounded-2xl border border-gray-200">No credit notes found.</p>}
                         {data.map((cn) => (
-                            <DebitNoteCard key={cn.id} debitNote={cn} onCustomerClick={(id) => setSelectedCustomerId(id)} onViewClick={(id) => setViewId(id)} />
+                            <NoteCard key={cn.id} note={cn} config={debitNoteViewConfig} onCustomerClick={(id) => setSelectedCustomerId(id)} onViewClick={(id) => setViewId(id)} />
                         ))}
                     </div>
                 )}

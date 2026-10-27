@@ -100,9 +100,22 @@ export class PaymentTransactionService {
         ? req?.user?.email
         : (req?.user?.email ?? req?.user?.impersonatorEmail);
 
+      const exchangeRate = Number(params.exchangeRate);
+      if (
+        params.exchangeRate === undefined ||
+        params.exchangeRate === null ||
+        isNaN(exchangeRate) ||
+        exchangeRate <= 0
+      ) {
+        return {
+          success: 0,
+          message: 'Exchange rate must be a valid number greater than 0',
+        };
+      }
+
       const baseAmount = Number(
         (
-          Number(params.transactionAmount) * Number(params.exchangeRate)
+          Number(params.transactionAmount) / exchangeRate
         ).toFixed(4),
       );
 
@@ -266,8 +279,20 @@ export class PaymentTransactionService {
           ? queryParams.exchangeRate
           : Number(existing.exchangeRate);
 
+      if (
+        effectiveExchangeRate === undefined ||
+        effectiveExchangeRate === null ||
+        isNaN(effectiveExchangeRate) ||
+        effectiveExchangeRate <= 0
+      ) {
+        return {
+          success: 0,
+          message: 'Exchange rate must be a valid number greater than 0',
+        };
+      }
+
       queryParams.baseAmount = Number(
-        (effectiveTransactionAmount * effectiveExchangeRate).toFixed(4),
+        (effectiveTransactionAmount / effectiveExchangeRate).toFixed(4),
       );
 
       if (performerId) queryParams.updatedBy = Number(performerId);

@@ -119,11 +119,13 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
             enableSorting: false,
             cell: ({ row }) => {
                 const q = row.original;
-                const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
+                const isOpen = (q.orderStatus === "OPEN" || !q.orderStatus) && q.orderStatus !== "CLOSED" && q.status !== "CANCELLED";
+                const canDeliver = isOpen && (q.status === "PLACED" || q.status === "PARTIAL_DELIVERED") && Boolean(can?.("deliveryNoteAdd"));
+                const canInvoice = isOpen && q.status === "DELIVERED" && Boolean(can?.("invoiceAdd"));
                 const hasActions = Boolean(
                     (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
-                    (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false || can?.("invoiceAdd"))) ||
-                    (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false) ||
+                    (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false || canDeliver)) ||
+                    (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && (can?.("orderUpdate") !== false || canDeliver || canInvoice)) ||
                     can?.("orderAdd")
                 );
 
@@ -134,6 +136,7 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                 {(() => {
                                     const primaryAction = [
                                         { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
+                                        { show: canDeliver, label: "Add Delivery Note" },
                                         { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Cancel" },
                                         { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
                                         { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
@@ -167,22 +170,29 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                 {isOpen && q.status === "PLACED" && (
                                     <>
                                         {can?.("orderUpdate") !== false && (
-                                            <>
-                                                <DropdownMenuItem onClick={() => onUpdatePrice?.(q)} className="cursor-pointer text-sm py-2">
-                                                    Update Price
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "MARK_DELIVERED")} className="cursor-pointer text-sm py-2 font-medium text-green-700 hover:bg-green-50">
-                                                    Mark as Delivered
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CANCEL")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
-                                                    Cancel Order
-                                                </DropdownMenuItem>
-                                            </>
+                                            <DropdownMenuItem onClick={() => onUpdatePrice?.(q)} className="cursor-pointer text-sm py-2">
+                                                Update Price
+                                            </DropdownMenuItem>
+                                        )}
+                                        {canDeliver && (
+                                            <DropdownMenuItem onClick={() => window.location.href = `/add-delivery-note?fromOrder=${q.orderId}`} className="cursor-pointer text-sm py-2 font-medium text-blue-600 hover:bg-blue-50">
+                                                Add Delivery Note
+                                            </DropdownMenuItem>
+                                        )}
+                                        {can?.("orderUpdate") !== false && (
+                                            <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CANCEL")} className="cursor-pointer text-sm py-2 text-red-600 hover:bg-red-50">
+                                                Cancel Order
+                                            </DropdownMenuItem>
                                         )}
                                     </>
                                 )}
                                 {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && (
                                     <>
+                                        {canDeliver && (
+                                            <DropdownMenuItem onClick={() => window.location.href = `/add-delivery-note?fromOrder=${q.orderId}`} className="cursor-pointer text-sm py-2 font-medium text-blue-600 hover:bg-blue-50">
+                                                Add Delivery Note
+                                            </DropdownMenuItem>
+                                        )}
                                         {q.invoicePdfPath && (
                                             <>
                                                 <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
@@ -213,7 +223,7 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                                 </DropdownMenuItem>
                                             </>
                                         )}
-                                        {can?.("invoiceAdd") && (
+                                        {canInvoice && (
                                             <DropdownMenuItem onClick={() => window.location.href = `/add-invoice?fromOrder=${q.orderId}`} className="cursor-pointer text-sm py-2">
                                                 Convert to Invoice
                                             </DropdownMenuItem>

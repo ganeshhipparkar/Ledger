@@ -3,12 +3,13 @@
 import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import RouteGuard from "@/components/RouteGuard";
-import DebitNoteDetails from "@/components/debitNote/DebitNoteDetails";
+import NoteDetails from "@/components/common/NoteDetails";
+import { debitNoteViewConfig } from "@/components/debitNote/configs/debitNoteView.config";
 import Loader from "@/components/ui/Loader";
 
 function DebitNotePageInner() {
     const { id } = useParams();
-    return <DebitNoteDetails id={id} />;
+    return <NoteDetails id={id} config={debitNoteViewConfig} />;
 }
 
 export default function DebitNotePage() {

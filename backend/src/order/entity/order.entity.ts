@@ -263,8 +263,9 @@ export class OrderEntity {
   @Column({
     type: 'enum',
     enum: DeliveryType,
+    nullable: true,
   })
-  deliveryType!: string;
+  deliveryType?: string | null;
 
   @Column({
     type: 'enum',

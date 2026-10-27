@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
-import { X, Paperclip } from "lucide-react";
+import MultiFilePicker from "../common/MultiFilePicker";
 
 export default function PaymentTransactionStatusSidePanel({
     isOpen,
@@ -157,7 +157,7 @@ export default function PaymentTransactionStatusSidePanel({
                                         ? "Enter approval remarks..."
                                         : "Enter cancellation remarks..."
                                 }
-                                className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm text-gray-800 outline-none transition ${error
+                                className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-sm text-sm text-gray-800 outline-none transition ${error
                                     ? "border-red-500 focus:border-red-500"
                                     : "border-gray-300 focus:border-blue-500"
                                     }`}
@@ -168,57 +168,29 @@ export default function PaymentTransactionStatusSidePanel({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Attachment <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+                                Attachment <span className="text-xs text-gray-400 font-normal">(Optional)</span>
                             </label>
-                            {attachment ? (
-                                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                                    <div className="flex items-center gap-2 overflow-hidden">
-                                        <Paperclip className="h-4 w-4 text-blue-500 shrink-0" />
-                                        <span className="text-sm text-blue-700 truncate font-medium">
-                                            {attachment.name}
-                                        </span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAttachment(null)}
-                                        className="p-1 text-blue-400 hover:text-blue-600 rounded-full hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
-                                        onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                                setAttachment(e.target.files[0]);
-                                            }
-                                            e.target.value = null;
-                                        }}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                    <div className="flex items-center justify-center gap-2 w-full px-3.5 py-3 bg-gray-50 border border-gray-300 border-dashed rounded-xl hover:bg-gray-100 hover:border-gray-400 transition cursor-pointer">
-                                        <Paperclip className="h-4 w-4 text-gray-400" />
-                                        <span className="text-sm text-gray-500 font-medium">Click to upload file</span>
-                                    </div>
-                                </div>
-                            )}
+                            <MultiFilePicker
+                                accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                                multiple={false}
+                                selectedFiles={attachment ? [attachment] : []}
+                                onFilesChange={(files) => setAttachment(files[0] || null)}
+                                label="Attachment"
+                            />
                         </div>
 
                         <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-sm transition-colors cursor-pointer border"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className={`px-5 py-2 text-sm font-medium text-white rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50 ${isApprove
+                                className={`px-5 py-2 text-sm font-medium text-white rounded-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50 ${isApprove
                                     ? "bg-emerald-600 hover:bg-emerald-700"
                                     : "bg-red-600 hover:bg-red-700"
                                     }`}

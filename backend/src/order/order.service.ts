@@ -21,6 +21,8 @@ import { CompanyEntity } from 'src/company/entity/company.entity';
 import { CurrencyEntity } from 'src/currency/entity/currency.entity';
 import { taxGroupEntity } from 'src/tax_group/entity/tax.group.entity';
 import {
+  InvoiceAutoApproval,
+  InvoiceGenerationOn,
   OrderEntity,
   OrderLifecycleStatus,
   OrderStatus,
@@ -385,9 +387,12 @@ export class OrderService {
         shippingState: body.shippingState,
         billingState: body.billingState,
         deliveryState: body.deliveryState,
-        deliveryType: body.deliveryType,
+        deliveryType: body.deliveryType ?? null,
         invoiceGenerationOn: body.invoiceGenerationOn,
-        invoiceAutoApproval: body.invoiceAutoApproval,
+        invoiceAutoApproval:
+          body.invoiceGenerationOn === InvoiceGenerationOn.DELIVERY_LEVEL
+            ? body.invoiceAutoApproval
+            : InvoiceAutoApproval.NO,
         placeOfSupply: body.placeOfSupply ?? undefined,
         totalAmount: this.toValidNumber(totals.totalAmount, 0),
         taxableAmount: this.toValidNumber(totals.taxableAmount, 0),
@@ -722,11 +727,20 @@ export class OrderService {
       if (body.shippingState !== undefined) patch.shippingState = body.shippingState;
       if (body.billingState !== undefined) patch.billingState = body.billingState;
       if (body.deliveryState !== undefined) patch.deliveryState = body.deliveryState;
-      if (body.deliveryType !== undefined) patch.deliveryType = body.deliveryType;
+      if (body.deliveryType !== undefined)
+        patch.deliveryType = body.deliveryType ?? null;
       if (body.invoiceGenerationOn !== undefined)
         patch.invoiceGenerationOn = body.invoiceGenerationOn;
-      if (body.invoiceAutoApproval !== undefined)
-        patch.invoiceAutoApproval = body.invoiceAutoApproval;
+      const effectiveGenerationOn =
+        body.invoiceGenerationOn !== undefined
+          ? body.invoiceGenerationOn
+          : existing.invoiceGenerationOn;
+      if (effectiveGenerationOn === InvoiceGenerationOn.DELIVERY_LEVEL) {
+        if (body.invoiceAutoApproval !== undefined)
+          patch.invoiceAutoApproval = body.invoiceAutoApproval;
+      } else {
+        patch.invoiceAutoApproval = InvoiceAutoApproval.NO;
+      }
       if (body.placeOfSupply !== undefined)
         patch.placeOfSupply = body.placeOfSupply ?? undefined;
       if (body.status !== undefined) patch.status = body.status;
@@ -1021,65 +1035,6 @@ export class OrderService {
       });
 
       return { success: 1, message: 'Order cancelled successfully' };
-    } catch (err: any) {
-      return { success: 0, message: err.message };
-    }
-  }
-
-  async markAsDelivered(orderId: number, req?: any) {
-    try {
-      const authCtx = await resolveAuthContext(req, this.ucgEntity);
-
-      const order = await this.orderRepo.findOne({ where: { orderId } });
-      if (!order) return { success: 0, message: 'Order not found' };
-
-      if (!authCtx.isSuperAdmin) {
-        const scopedCompanyIds =
-          req?.scopedCompanyIds || [authCtx.activeCompanyId];
-        if (!scopedCompanyIds.includes(Number(order.companyId))) {
-          return {
-            success: 0,
-            message: 'Access denied: order belongs to another company',
-          };
-        }
-      }
-
-      const error = this.assertOrderActionable(
-        order,
-        [OrderStatus.PLACED],
-        'marked as delivered',
-      );
-      if (error) return { success: 0, message: error };
-
-      await this.orderRepo.update({ orderId }, { status: OrderStatus.DELIVERED });
-
-      this.orderPdfService
-        .generateAndStoreInvoicePdf(orderId)
-        .catch((err: Error) =>
-          console.error(`[PDF] Failed to generate invoice for order ${orderId}:`, err.message),
-        );
-
-      const { performerId, performerEmail } = this.resolvePerformer(req);
-      this.eventEmitter.emit('activity.log', {
-        activityCode: ActivityCode.ORDER_UPDATE,
-        userId: performerId,
-        companyId: order.companyId,
-        actorType: 'USER',
-        targetType: 'ORDER',
-        targetId: String(orderId),
-        executionStatus: 'SUCCESS',
-        severity: 'INFO',
-        parameters: {
-          userEmail: performerEmail,
-          userGroup: authCtx.activeGroupName || 'N/A',
-          orderCode: order.orderCode,
-          action: 'markAsDelivered',
-          impersonated: !!req?.user?.isImpersonation,
-        },
-        metadata: {},
-      });
-
-      return { success: 1, message: 'Order marked as delivered successfully' };
     } catch (err: any) {
       return { success: 0, message: err.message };
     }

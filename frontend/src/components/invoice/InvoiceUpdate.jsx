@@ -19,6 +19,7 @@ import TermsConditionsWidget from "../quotation/TermsConditionsWidget";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
+import { STATUS_LABELS } from "./InvoiceList";
 import { computeItem } from "@/lib/itemTaxCalc";
 import { limitDecimals, limitPriceDecimals } from "@/lib/utils";
 import { Country } from "country-state-city";
@@ -91,7 +92,8 @@ function rsStyles(hasError = false) {
 export default function InvoiceUpdate({ id }) {
     const countries = Country.getAllCountries().map(c => ({ value: c.name, label: c.name }));
     const router = useRouter();
-    const { activeAssignment } = useContext(loginContext) || {};
+    const { activeAssignment, can } = useContext(loginContext) || {};
+    const canSave = Boolean(can && can("invoiceUpdate"));
     const companyId = activeAssignment?.companyId;
     const oneMonthAgo = getOneMonthAgo();
 
@@ -121,7 +123,7 @@ export default function InvoiceUpdate({ id }) {
         shippingState: "",
         billingState: "",
         deliveryState: "",
-        deliveryType: "LOCAL",
+        deliveryType: "",
         remarks: "",
         termsConditionsId: null,
         termsConditionsText: "",
@@ -180,7 +182,7 @@ export default function InvoiceUpdate({ id }) {
                     baseCurrencyPrice: parseFloat(it.unitPrice) || 0,
                     quantity: limitDecimals(String(it.quantity || 1)),
                     unitPrice: limitPriceDecimals(String(it.unitPrice || 0)),
-                    taxCalculation: it.taxCalculation || "N/A",
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || "",
                     taxRate: 0,
                     discounts: it.discounts || [],
@@ -207,7 +209,7 @@ export default function InvoiceUpdate({ id }) {
                     baseCurrencyPrice: parseFloat(it.unitPrice) || 0,
                     quantity: limitDecimals(String(it.quantity || 1)),
                     unitPrice: limitPriceDecimals(String(it.unitPrice || 0)),
-                    taxCalculation: it.taxCalculation || "N/A",
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || "",
                     taxRate: 0,
                     discounts: it.discounts || [],
@@ -328,7 +330,7 @@ export default function InvoiceUpdate({ id }) {
                     shippingState: data.shippingState ?? "",
                     billingState: data.billingState ?? "",
                     deliveryState: data.deliveryState ?? "",
-                    deliveryType: data.deliveryType ?? "LOCAL",
+                    deliveryType: data.deliveryType ?? "",
                     remarks: data.remarks ?? "",
                     termsConditionsId: data.termsConditionsId ?? null,
                     termsConditionsText: data.termsConditionsText ?? "",
@@ -377,7 +379,7 @@ export default function InvoiceUpdate({ id }) {
                     setItems(data.invoiceItems.map((it) => {
                         const unitPriceVal = parseFloat(it.unitPrice) || 0;
                         const basePrice = parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
-                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation ?? "N/A");
+                        const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                         const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                         const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                         const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -540,12 +542,12 @@ export default function InvoiceUpdate({ id }) {
             return;
         }
 
-        const confirmTitle = isSubmit ? "Submit Invoice?" : "Save Invoice as Draft?";
+        const confirmTitle = isSubmit ? "Save Invoice?" : "Save Invoice as Draft?";
         const confirmText = isSubmit
-            ? "The invoice will be updated and submitted. A PDF will be generated."
+            ? "The invoice will be saved and its status set automatically according to the payment settings."
             : "Save this invoice as a draft. You can submit it later.";
-        const confirmBtn = isSubmit ? "Submit" : "Save as Draft";
-        const confirmColor = isSubmit ? "#060607" : "#2563eb";
+        const confirmBtn = isSubmit ? "Save" : "Save as Draft";
+        const confirmColor = isSubmit ? "#2563eb" : "#2563eb";
 
         const confirm = await MySwal.fire({ title: confirmTitle, text: confirmText, icon: "question", showCancelButton: true, confirmButtonText: confirmBtn, confirmButtonColor: confirmColor });
         if (!confirm.isConfirmed) return;
@@ -554,6 +556,7 @@ export default function InvoiceUpdate({ id }) {
         try {
             const fd = new FormData();
             fd.append("invoiceId", String(id));
+            fd.append("submit", isSubmit ? "true" : "false");
 
 
             fd.append("customerId", formData.customerId);
@@ -586,7 +589,7 @@ export default function InvoiceUpdate({ id }) {
                 description: it.description || null,
                 quantity: Number(it.quantity),
                 unitPrice: Number(it.unitPrice),
-                taxCalculation: it.taxCalculation,
+                taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                 taxGroup: it.taxGroup || null,
                 discounts: (it.discounts || []).map((d) => ({ discountDescription: d.discountDescription || d.description || "", discountPrice: Number(d.discountPrice || d.amount || 0) })),
                 extraCharges: (it.extraCharges || []).map((ec) => ({ extraChargesDescription: ec.extraChargesDescription || ec.description || "", extraChargesPrice: Number(ec.extraChargesPrice || ec.amount || 0) })),
@@ -612,17 +615,15 @@ export default function InvoiceUpdate({ id }) {
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
 
             if (data?.success === 1) {
+                const isSubmitted = data?.submitted === true || data?.data?.submitted === true;
+                const finalStatus = data?.finalStatus ?? data?.status ?? data?.data?.finalStatus ?? data?.data?.status;
+                const statusLabel = STATUS_LABELS[finalStatus] ?? (finalStatus ? finalStatus.charAt(0).toUpperCase() + finalStatus.slice(1).toLowerCase() : "Draft");
+
                 if (isSubmit) {
-                    const subRes = await fetch("/relayapi", {
-                        method: "PUT",
-                        headers: { ...authHeaders(), endpoint: `invoice-submit/${id}`, module: "invoice" },
-                    });
-                    const subPayload = await subRes.json();
-                    const subData = subPayload.encrypted ? decryptResponse(subPayload.encrypted) : subPayload;
-                    if (subData?.success === 1) {
-                        toast.success("Invoice updated and submitted successfully.", { position: "top-right" });
+                    if (isSubmitted) {
+                        toast.success(`Invoice saved. Status: ${statusLabel}`, { position: "top-right" });
                     } else {
-                        toast.warning(`Invoice updated but submit failed: ${subData?.message || "Unknown error"}`, { position: "top-right" });
+                        toast.warning(data?.message || "Invoice saved as draft, but could not be submitted.", { position: "top-right" });
                     }
                 } else {
                     toast.success("Invoice saved as draft.", { position: "top-right" });
@@ -656,7 +657,7 @@ export default function InvoiceUpdate({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/invoice-list" className="cursor-pointer hover:text-blue-600">Invoices</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <Link href="/invoice/${id}" className="cursor-pointer hover:text-blue-600">Invoice</Link>
+                    <Link href={`/invoice/${id}`} className="cursor-pointer hover:text-blue-600">Invoice</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Edit</span>
                 </nav>
@@ -821,7 +822,7 @@ export default function InvoiceUpdate({ id }) {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Delivery Type <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Delivery Type</label>
                             <Select
                                 instanceId="invoice-delivery-type"
                                 value={DELIVERY_TYPE_OPTIONS.find((o) => o.value === formData.deliveryType) || null}
@@ -1069,12 +1070,12 @@ export default function InvoiceUpdate({ id }) {
             </div>
 
 
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-6 py-4 flex items-center justify-between z-30">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-6 py-4 flex items-center justify-between z-30 justify-center gap-3">
                 <button
                     type="button"
                     onClick={handleDiscard}
                     disabled={loading}
-                    className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
+                    className="rounded-sm border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                     Discard
                 </button>
@@ -1083,18 +1084,20 @@ export default function InvoiceUpdate({ id }) {
                         type="button"
                         onClick={() => handleSubmit(false)}
                         disabled={loading}
-                        className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
+                        className="rounded-sm border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         {loading ? "Saving…" : "Save as Draft"}
                     </button>
-                    {/* <button
-                        type="button"
-                        onClick={() => handleSubmit(true)}
-                        disabled={loading}
-                        className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
-                    >
-                        {loading ? "Submitting…" : "Submit"}
-                    </button> */}
+                    {canSave && (
+                        <button
+                            type="button"
+                            onClick={() => handleSubmit(true)}
+                            disabled={loading}
+                            className="rounded-sm bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
+                        >
+                            {loading ? "Saving…" : "Save"}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

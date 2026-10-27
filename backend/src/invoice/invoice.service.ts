@@ -581,7 +581,7 @@ export class InvoiceService {
         shippingState: body.shippingState,
         billingState: body.billingState,
         deliveryState: body.deliveryState,
-        deliveryType: body.deliveryType,
+        deliveryType: body.deliveryType ?? null,
         invoiceFor: body.invoiceFor ?? null,
         sourceOrderId: this.toOptionalNumber(body.sourceOrderId) ?? null,
         sourceQuotationId: this.toOptionalNumber(body.sourceQuotationId) ?? null,
@@ -874,7 +874,7 @@ export class InvoiceService {
       if (body.shippingState !== undefined) patch.shippingState = body.shippingState;
       if (body.billingState !== undefined) patch.billingState = body.billingState;
       if (body.deliveryState !== undefined) patch.deliveryState = body.deliveryState;
-      if (body.deliveryType !== undefined) patch.deliveryType = body.deliveryType;
+      if (body.deliveryType !== undefined) patch.deliveryType = body.deliveryType ?? null;
       if (body.invoiceFor !== undefined) patch.invoiceFor = body.invoiceFor ?? null;
       if (body.sourceOrderId !== undefined)
         patch.sourceOrderId = this.toOptionalNumber(body.sourceOrderId) ?? null;

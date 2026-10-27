@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { decryptResponse } from "../lib/crypto";
 
+export const dynamic = "force-dynamic";
+
 function getServiceBase(request) {
     let module = request.headers.get("module");
     if (!module && request.nextUrl?.searchParams) {
@@ -30,6 +32,7 @@ function getServiceBase(request) {
     if (module === "vault") return "http://localhost:4000/vault";
     if (module === "credit-note") return "http://localhost:4000/credit-note";
     if (module === "debit-note") return "http://localhost:4000/debit-note";
+    if (module === "delivery-note") return "http://localhost:4000/delivery-note";
     return "http://localhost:4000";
 }
 
@@ -46,7 +49,11 @@ function getAuthToken(request) {
 }
 
 async function doFetch(url, options = {}) {
-    const res = await fetch(url, options);
+    const fetchOptions = {
+        cache: "no-store",
+        ...options,
+    };
+    const res = await fetch(url, fetchOptions);
     const raw = await res.text();
     let payload;
     try {

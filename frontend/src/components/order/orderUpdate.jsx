@@ -213,7 +213,7 @@ export default function OrderUpdate({ id }) {
                     deliveryTerms: data.deliveryTerms ?? "",
                     discountApplicable: data.discountApplicable ?? "",
                     shippingState: data.shippingState ?? "", billingState: data.billingState ?? "", deliveryState: data.deliveryState ?? "",
-                    deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceAutoApproval ?? "NO",
+                    deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceGenerationOn === "DELIVERY_LEVEL" ? (data.invoiceAutoApproval ?? "NO") : "NO",
                     bankBookId: String(data.bankBookId ?? ""), bankBookLabel: data.bankBookName ?? "",
                     placeOfSupply: data.placeOfSupply ?? "", vatWithheld: data.vatWithheld ?? "NO",
                     salesPersonId: String(data.salesPersonId ?? ""), salesPersonLabel: data.salesPersonName ?? "",
@@ -229,7 +229,7 @@ export default function OrderUpdate({ id }) {
                             const basePrice = parseFloat(it.baseCurrencyPrice) || parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
                             const realItemId = String(it.itemId ?? it.item?.itemId ?? it.id ?? "");
                             const labelStr = getItemLabel(it);
-                            const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation || "N/A");
+                            const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                             const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                             const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                             const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -438,7 +438,7 @@ export default function OrderUpdate({ id }) {
             fd.append("deliveryState", formData.deliveryState);
             fd.append("deliveryType", formData.deliveryType);
             fd.append("invoiceGenerationOn", formData.invoiceGenerationOn);
-            fd.append("invoiceAutoApproval", formData.invoiceAutoApproval || "NO");
+            fd.append("invoiceAutoApproval", formData.invoiceGenerationOn === "DELIVERY_LEVEL" ? (formData.invoiceAutoApproval || "NO") : "NO");
             fd.append("status", targetStatus);
             fd.append("vatWithheld", formData.vatWithheld);
             fd.append("currencyConversionRate", String(formData.currencyConversionRate));
@@ -458,7 +458,7 @@ export default function OrderUpdate({ id }) {
                     itemGL: it.itemGL || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
-                    taxCalculation: it.taxCalculation === "N/A" ? "NA" : (it.taxCalculation || "NA"),
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || undefined,
                     discounts: (it.discounts || []).map((d) => ({
                         discountDescription: d.discountDescription || d.description,
@@ -529,6 +529,8 @@ export default function OrderUpdate({ id }) {
                     <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/order-list" className="cursor-pointer hover:text-blue-600">Orders</Link>
+                    <span className="text-gray-400">{">>"}</span>
+                    <Link href={`/order/${id}`} className="cursor-pointer hover:text-blue-600">Order</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">
                         Edit
@@ -830,7 +832,7 @@ export default function OrderUpdate({ id }) {
 
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                Delivery Type <span className="text-red-500">*</span>
+                                Delivery Type
                             </label>
                             <Select
                                 value={formData.deliveryType ? {
@@ -881,10 +883,10 @@ export default function OrderUpdate({ id }) {
                                     setFormData((prev) => ({
                                         ...prev,
                                         invoiceGenerationOn: val,
-                                        invoiceAutoApproval: val ? (prev.invoiceAutoApproval || "NO") : "NO",
+                                        invoiceAutoApproval: val === "DELIVERY_LEVEL" ? (prev.invoiceAutoApproval || "NO") : "NO",
                                     }));
                                     if (errors.invoiceGenerationOn) setErrors((prev) => ({ ...prev, invoiceGenerationOn: null }));
-                                    if (!val && errors.invoiceAutoApproval) setErrors((prev) => ({ ...prev, invoiceAutoApproval: null }));
+                                    if (val !== "DELIVERY_LEVEL" && errors.invoiceAutoApproval) setErrors((prev) => ({ ...prev, invoiceAutoApproval: null }));
                                 }}
                                 options={invoiceGenerationOptions}
                                 isClearable
@@ -908,7 +910,7 @@ export default function OrderUpdate({ id }) {
                             {invoiceGenerationError && <p className="text-red-500 text-xs mt-1 font-medium">{invoiceGenerationError}</p>}
                         </div>
 
-                        {formData.invoiceGenerationOn && (
+                        {formData.invoiceGenerationOn === "DELIVERY_LEVEL" && (
                             <div>
                                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                     Invoice Auto Approval <span className="text-red-500">*</span>

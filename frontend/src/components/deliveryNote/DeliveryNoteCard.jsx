@@ -16,7 +16,7 @@ export default function DeliveryNoteCard({ deliveryNote: dn, onCustomerClick, on
                     <button
                         type="button"
                         onClick={() => onViewClick?.(dn.deliveryNoteId)}
-                        className="font-semibold text-lg truncate cursor-pointer hover:underline text-[#3563e9] block text-left bg-transparent border-none p-0"
+                        className="font-semibold jtext-lg truncate cursor-pointer hover:underline text-[#3563e9] block text-left bg-transparent border-none p-0"
                     >
                         {dn.deliveryNoteCode || "-"}
                     </button>
@@ -84,13 +84,7 @@ export default function DeliveryNoteCard({ deliveryNote: dn, onCustomerClick, on
             )}
 
             <div className="mt-auto pt-4 border-t border-gray-100 flex justify-end">
-                <button
-                    type="button"
-                    onClick={() => onViewClick?.(dn.deliveryNoteId)}
-                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                >
-                    View Details
-                </button>
+
             </div>
         </div>
     );

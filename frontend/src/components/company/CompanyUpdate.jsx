@@ -364,7 +364,9 @@ export default function CompanyUpdate({ id, onBack }) {
                 <span className="text-gray-400">{">>"}</span>
                 <Link href="/company-list" className="cursor-pointer hover:text-blue-600 hover:underline">Companies</Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="text-gray-800 cursor-pointer">Edit Company</span>
+                <Link href={`/company/${id}`} onClick={(e) => { if (onBack) { e.preventDefault(); onBack(); } }} className="cursor-pointer hover:text-blue-600 hover:underline">Company</Link>
+                <span className="text-gray-400">{">>"}</span>
+                <span className="text-gray-800">Edit Company</span>
             </nav>
 
             <div className="px-6">

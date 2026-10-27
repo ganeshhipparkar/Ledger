@@ -41,7 +41,9 @@ export default function AddOrder() {
 
     const quotationId = searchParams.get("quotationId");
     const cloneFromId = searchParams.get("cloneFrom");
+    const presetCustomerId = searchParams.get("customerId");
     const sourceId = quotationId || cloneFromId;
+    const hasExistingFlow = Boolean(quotationId || cloneFromId);
 
     const companyId = activeAssignment?.companyId;
 
@@ -157,9 +159,12 @@ export default function AddOrder() {
     const [deletedAttachmentIds, setDeletedAttachmentIds] = useState([]);
 
     const [loading, setLoading] = useState(false);
-    const [prefillState, setPrefillState] = useState(sourceId ? "loading" : "ok");
+    const [prefillState, setPrefillState] = useState(sourceId || presetCustomerId ? "loading" : "ok");
 
     const [lockedCustomer, setLockedCustomer] = useState(false);
+    const [presetCustomerCurrencyOptions, setPresetCustomerCurrencyOptions] = useState(null);
+    const [presetSelectedOption, setPresetSelectedOption] = useState(null);
+    const [isSingleCurrency, setIsSingleCurrency] = useState(false);
 
     const countries = Country.getAllCountries().map(c => ({ value: c.name, label: c.name }));
 
@@ -216,7 +221,7 @@ export default function AddOrder() {
                 deliveryTerms: data.deliveryTerms ?? "",
                 discountApplicable: data.discountApplicable ?? "",
                 shippingState: data.shippingState ?? "", billingState: data.billingState ?? "", deliveryState: data.deliveryState ?? "",
-                deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceAutoApproval ?? "NO",
+                deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceGenerationOn === "DELIVERY_LEVEL" ? (data.invoiceAutoApproval ?? "NO") : "NO",
                 bankBookId: String(data.bankBookId ?? ""), bankBookLabel: data.bankBookName ?? "",
                 placeOfSupply: data.placeOfSupply ?? "", vatWithheld: data.vatWithheld ?? "NO",
                 salesPersonId: String(data.salesPersonId ?? ""), salesPersonLabel: data.salesPersonName ?? "",
@@ -237,7 +242,7 @@ export default function AddOrder() {
                         const realItemId = String(it.itemId ?? it.item?.itemId ?? it.id ?? "");
                         const labelStr = getItemLabel(it);
 
-                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation || "N/A");
+                        const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                         const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                         const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                         const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -359,7 +364,7 @@ export default function AddOrder() {
                 deliveryTerms: data.deliveryTerms ?? "",
                 discountApplicable: data.discountApplicable ?? "",
                 shippingState: data.shippingState ?? "", billingState: data.billingState ?? "", deliveryState: data.deliveryState ?? "",
-                deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceAutoApproval ?? "NO",
+                deliveryType: data.deliveryType ?? "", invoiceGenerationOn: data.invoiceGenerationOn ?? "", invoiceAutoApproval: data.invoiceGenerationOn === "DELIVERY_LEVEL" ? (data.invoiceAutoApproval ?? "NO") : "NO",
                 bankBookId: String(data.bankBookId ?? ""), bankBookLabel: data.bankBookName ?? "",
                 placeOfSupply: data.placeOfSupply ?? "", vatWithheld: data.vatWithheld ?? "NO",
                 salesPersonId: String(data.salesPersonId ?? ""), salesPersonLabel: data.salesPersonName ?? "",
@@ -380,7 +385,7 @@ export default function AddOrder() {
                         const realItemId = String(it.itemId ?? it.item?.itemId ?? it.id ?? "");
                         const labelStr = getItemLabel(it);
 
-                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation || "N/A");
+                        const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                         const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                         const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                         const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -462,7 +467,9 @@ export default function AddOrder() {
 
     useEffect(() => {
         if (!quotationId && !cloneFromId) {
-            setPrefillState("ok");
+            if (!presetCustomerId) {
+                setPrefillState("ok");
+            }
             return;
         }
         if (cloneFromId) {
@@ -470,7 +477,69 @@ export default function AddOrder() {
         } else if (quotationId) {
             loadQuotationIntoForm(quotationId, true);
         }
-    }, [quotationId, cloneFromId]);
+    }, [quotationId, cloneFromId, presetCustomerId]);
+
+    useEffect(() => {
+        if (hasExistingFlow || !presetCustomerId || !companyId) return;
+        let isMounted = true;
+        (async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint: "customer-currencies-list",
+                        module: "customer",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        page: 1,
+                        limit: 50,
+                        filters: [{ key: "customerId", value: presetCustomerId, operator: "eq" }],
+                    }),
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                const rows = (data?.data?.data ?? data?.data ?? []).filter(
+                    (c) => String(c.customerId || c.customer?.customerId) === String(presetCustomerId)
+                );
+                if (!isMounted) return;
+
+                if (rows.length === 0) {
+                    toast.error("Invalid customer or customer has no currencies.", { position: "top-right" });
+                    setPrefillState("ok");
+                    return;
+                }
+
+                const options = rows.map((c) => ({
+                    value: `${c.customerId}_${c.curId}`,
+                    label: `${c.customer?.customerName || c.customerName} (${c.currency?.code || c.currencyCode})`,
+                    raw: c,
+                }));
+
+                if (rows.length === 1) {
+                    setIsSingleCurrency(true);
+                    setPresetSelectedOption(options[0]);
+                    await handleCustomerCurrencySelect(options[0]);
+                    if (isMounted) {
+                        setLockedCustomer(true);
+                        setPrefillState("ok");
+                    }
+                } else {
+                    setIsSingleCurrency(false);
+                    setPresetCustomerCurrencyOptions(options);
+                    setPrefillState("ok");
+                }
+            } catch (err) {
+                console.error("Failed to load preset customer:", err);
+                toast.error("Failed to load customer currencies.", { position: "top-right" });
+                if (isMounted) setPrefillState("ok");
+            }
+        })();
+        return () => {
+            isMounted = false;
+        };
+    }, [companyId, presetCustomerId, hasExistingFlow]);
 
     const loadContactPersonOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
@@ -499,16 +568,18 @@ export default function AddOrder() {
 
     const loadQuotationOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
+        const filters = [
+            { key: "companyId", value: String(companyId), operator: "eq" },
+            { key: "status", value: "CONFIRMED", operator: "eq" },
+            ...(presetCustomerId ? [{ key: "customerId", value: String(presetCustomerId), operator: "eq" }] : []),
+            ...(inputValue ? [{ key: "quotationCode", value: inputValue, operator: "like" }] : []),
+        ];
         fetch("/relayapi", {
             method: "POST",
             headers: { ...authHeaders(), endpoint: "quotation-list", module: "quotation", "Content-Type": "application/json" },
             body: JSON.stringify({
                 page: 1, limit: 20,
-                filters: [
-                    { key: "companyId", value: String(companyId), operator: "eq" },
-                    { key: "status", value: "CONFIRMED", operator: "eq" },
-                    ...(inputValue ? [{ key: "quotationCode", value: inputValue, operator: "like" }] : []),
-                ],
+                filters,
             }),
         }).then(res => res.json()).then(payload => {
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
@@ -522,10 +593,14 @@ export default function AddOrder() {
 
     const handleQuotationChange = (selected) => {
         if (!selected) {
-            setFormData({
+            setFormData(prev => ({
                 sourceQuotationId: "", sourceQuotationLabel: "",
-                customerId: "", customerLabel: "",
-                currencyId: "", currencyCode: "", currencySymbol: "", currencyConversionRate: 1,
+                customerId: presetCustomerId && presetSelectedOption ? String(presetCustomerId) : "",
+                customerLabel: presetCustomerId && presetSelectedOption ? (presetSelectedOption.raw?.customer?.customerName || presetSelectedOption.raw?.customerName || "") : "",
+                currencyId: presetCustomerId && presetSelectedOption ? String(presetSelectedOption.raw?.curId || "") : "",
+                currencyCode: presetCustomerId && presetSelectedOption ? (presetSelectedOption.raw?.currency?.code || presetSelectedOption.raw?.currencyCode || "") : "",
+                currencySymbol: "",
+                currencyConversionRate: 1,
                 contactPersonId: "", contactPersonLabel: "",
                 orderDate: "", deliveryDate: "",
                 businessTerms: "", paymentType: "",
@@ -537,11 +612,21 @@ export default function AddOrder() {
                 placeOfSupply: "", vatWithheld: "NO",
                 salesPersonId: "", salesPersonLabel: "",
                 remarks: "", termsConditionsId: null, termsConditionsText: "",
-            });
+            }));
             setItems([newEmptyItem()]);
             setOrderDiscounts([]);
             setOrderExtraCharges([]);
-            setLockedCustomer(false);
+
+            if (presetCustomerId && presetSelectedOption) {
+                handleCustomerCurrencySelect(presetSelectedOption);
+                if (isSingleCurrency) {
+                    setLockedCustomer(true);
+                } else {
+                    setLockedCustomer(false);
+                }
+            } else {
+                setLockedCustomer(false);
+            }
             return;
         }
         loadQuotationIntoForm(selected.value, false);
@@ -549,6 +634,15 @@ export default function AddOrder() {
 
     const loadCustomerOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
+        if (presetCustomerCurrencyOptions) {
+            const filtered = inputValue
+                ? presetCustomerCurrencyOptions.filter((opt) =>
+                    opt.label.toLowerCase().includes(inputValue.toLowerCase())
+                )
+                : presetCustomerCurrencyOptions;
+            callback(filtered);
+            return;
+        }
         fetch("/relayapi", {
             method: "POST",
             headers: { ...authHeaders(), endpoint: "customer-currencies-list", module: "customer", "Content-Type": "application/json" },
@@ -570,7 +664,13 @@ export default function AddOrder() {
     };
 
     const handleCustomerCurrencySelect = async (option) => {
+        if (presetCustomerId && option) {
+            setPresetSelectedOption(option);
+        }
         if (!option) {
+            if (presetCustomerId) {
+                return; // Do not clear preset customer
+            }
             setFormData(prev => ({
                 ...prev, customerId: "", customerLabel: "",
                 currencyId: "", currencyCode: "", currencySymbol: "", currencyConversionRate: 1,
@@ -669,7 +769,13 @@ export default function AddOrder() {
             confirmButtonColor: "#ef4444",
             cancelButtonText: "Keep editing",
         });
-        if (result.isConfirmed) router.push("/order-list");
+        if (result.isConfirmed) {
+            if (presetCustomerId) {
+                router.push(`/customer/${presetCustomerId}#orders`);
+            } else {
+                router.push("/order-list");
+            }
+        }
     };
 
     const handleSubmit = async (status) => {
@@ -749,7 +855,7 @@ export default function AddOrder() {
             fd.append("deliveryState", formData.deliveryState);
             fd.append("deliveryType", formData.deliveryType);
             fd.append("invoiceGenerationOn", formData.invoiceGenerationOn);
-            fd.append("invoiceAutoApproval", formData.invoiceAutoApproval || "NO");
+            fd.append("invoiceAutoApproval", formData.invoiceGenerationOn === "DELIVERY_LEVEL" ? (formData.invoiceAutoApproval || "NO") : "NO");
             fd.append("companyId", String(companyId));
             fd.append("status", status);
             fd.append("vatWithheld", formData.vatWithheld);
@@ -773,7 +879,7 @@ export default function AddOrder() {
                     itemGL: it.itemGL || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
-                    taxCalculation: it.taxCalculation === "N/A" ? "NA" : (it.taxCalculation || "NA"),
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || undefined,
                     discounts: (it.discounts || []).map((d) => ({
                         discountDescription: d.discountDescription || d.description,
@@ -913,16 +1019,16 @@ export default function AddOrder() {
                             ) : (
                                 <AsyncSelect
                                     instanceId="customer-select"
-                                    cacheOptions
-                                    defaultOptions
+                                    cacheOptions={!presetCustomerCurrencyOptions}
+                                    defaultOptions={presetCustomerCurrencyOptions || true}
                                     loadOptions={loadCustomerOptions}
                                     value={formData.customerId && formData.currencyId ? {
                                         value: `${formData.customerId}_${formData.currencyId}`,
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Please select customer"
-                                    isClearable
+                                    placeholder={presetCustomerCurrencyOptions ? "Please select currency" : "Please select customer"}
+                                    isClearable={!presetCustomerCurrencyOptions && !lockedCustomer}
                                     isDisabled={lockedCustomer}
                                     classNamePrefix="react-select"
                                     styles={{
@@ -1231,7 +1337,7 @@ export default function AddOrder() {
 
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                Delivery Type <span className="text-red-500">*</span>
+                                Delivery Type
                             </label>
                             <Select
                                 instanceId="delivery-type-select"
@@ -1283,10 +1389,10 @@ export default function AddOrder() {
                                     setFormData((prev) => ({
                                         ...prev,
                                         invoiceGenerationOn: val,
-                                        invoiceAutoApproval: val ? (prev.invoiceAutoApproval || "NO") : "NO",
+                                        invoiceAutoApproval: val === "DELIVERY_LEVEL" ? (prev.invoiceAutoApproval || "NO") : "NO",
                                     }));
                                     if (errors.invoiceGenerationOn) setErrors((prev) => ({ ...prev, invoiceGenerationOn: null }));
-                                    if (!val && errors.invoiceAutoApproval) setErrors((prev) => ({ ...prev, invoiceAutoApproval: null }));
+                                    if (val !== "DELIVERY_LEVEL" && errors.invoiceAutoApproval) setErrors((prev) => ({ ...prev, invoiceAutoApproval: null }));
                                 }}
                                 options={invoiceGenerationOptions}
                                 isClearable
@@ -1310,7 +1416,7 @@ export default function AddOrder() {
                             {invoiceGenerationError && <p className="text-red-500 text-xs mt-1 font-medium">{invoiceGenerationError}</p>}
                         </div>
 
-                        {formData.invoiceGenerationOn && (
+                        {formData.invoiceGenerationOn === "DELIVERY_LEVEL" && (
                             <div>
                                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                     Invoice Auto Approval <span className="text-red-500">*</span>

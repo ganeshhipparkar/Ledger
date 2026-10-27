@@ -1,17 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { getInitials } from "@/lib/utils";
-import { DebitNoteStatusBadge } from "./DebitNoteList";
+import NoteStatusBadge from "./NoteStatusBadge";
 
 function fmtAmount(n, symbol) {
     if (n == null) return "—";
     return `${symbol ?? ""} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 }
 
-export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewClick }) {
-    const initials = getInitials(cn.debitNoteCode || "-");
-    const sym = cn.currencyCode;
+export default function NoteCard({ note, config, onCustomerClick, onViewClick }) {
+    const code = note[config.codeKey] || "-";
+    const initials = getInitials(code);
+    const sym = note.currencyCode;
 
     return (
         <div className="relative bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow-md transition flex flex-col h-full">
@@ -22,21 +22,21 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                 <div className="flex-1 min-w-0 pr-2">
                     <button
                         type="button"
-                        onClick={() => onViewClick?.(cn.id)}
+                        onClick={() => onViewClick?.(note.id)}
                         className="font-semibold text-lg truncate cursor-pointer hover:underline text-[#3563e9] block text-left bg-transparent border-none p-0"
                     >
-                        {cn.debitNoteCode || "-"}
+                        {code}
                     </button>
                     <div className="text-sm text-gray-600 break-all mt-1">
                         <span
                             className="text-blue-600 hover:underline cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); cn.customerId && onCustomerClick?.(cn.customerId); }}
+                            onClick={(e) => { e.stopPropagation(); note.customerId && onCustomerClick?.(note.customerId); }}
                         >
-                            {cn.customerName || "—"}
+                            {note.customerName || "—"}
                         </span>
                     </div>
                     <div className="mt-1">
-                        <DebitNoteStatusBadge status={cn.status} />
+                        <NoteStatusBadge status={note.status} />
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                         Invoice Code
                     </span>
                     <span className="font-semibold break-words">
-                        {cn.invoiceCode || "—"}
+                        {note.invoiceCode || "—"}
                     </span>
                 </div>
                 <div className="flex-1 pl-2 border-l border-gray-200">
@@ -55,7 +55,7 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                         Currency
                     </span>
                     <span className="font-semibold break-words">
-                        {cn.currencyCode || "—"}
+                        {note.currencyCode || "—"}
                     </span>
                 </div>
             </div>
@@ -66,7 +66,7 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                         Customer Charges
                     </span>
                     <span className="font-semibold break-words">
-                        {cn.customerCharges || "—"}
+                        {note.customerCharges || "—"}
                     </span>
                 </div>
                 <div className="flex-1 pl-2 border-l border-gray-200">
@@ -74,7 +74,7 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                         Added By
                     </span>
                     <span className="font-semibold break-words">
-                        {cn.addedByName || "—"}
+                        {note.addedByName || "—"}
                     </span>
                 </div>
             </div>
@@ -83,33 +83,32 @@ export default function DebitNoteCard({ debitNote: cn, onCustomerClick, onViewCl
                 <span className="text-[#71717b] text-xs uppercase tracking-wide block mb-1">
                     Narration
                 </span>
-                <span className="font-semibold break-words truncate block" title={cn.narration || ""}>
-                    {cn.narration || "—"}
+                <span className="font-semibold break-words truncate block" title={note.narration || ""}>
+                    {note.narration || "—"}
                 </span>
             </div>
 
             <div className="space-y-2 mt-4 flex-1">
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Total Amount:</span>{" "}
-                    {fmtAmount(cn.totalAmount, sym)}
+                    {fmtAmount(note.totalAmount, sym)}
                 </div>
 
                 <div className="text-sm text-gray-600">
                     <span className="font-medium">Final Amount:</span>{" "}
-                    <span className="font-semibold text-gray-800">{fmtAmount(cn.finalAmount, sym)}</span>
+                    <span className="font-semibold text-gray-800">{fmtAmount(note.finalAmount, sym)}</span>
                 </div>
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
                 <button
                     type="button"
-                    onClick={() => onViewClick?.(cn.id)}
+                    onClick={() => onViewClick?.(note.id)}
                     className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
                 >
                     View Details
                 </button>
             </div>
-
         </div>
     );
 }

@@ -91,9 +91,9 @@ export default function ActionButtonGroup({ allAvailable, plainCandidates = [], 
                         return (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors">
+                                    <div className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors">
                                         More <ChevronDown className="h-4 w-4" />
-                                    </button>
+                                    </div>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-gray-100 p-1">
                                     {dropdownItems.map(action => (

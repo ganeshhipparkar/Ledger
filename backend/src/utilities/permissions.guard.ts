@@ -23,7 +23,50 @@ export const RequirePermission =
     return descriptor;
   };
 
- const permKey = (groupId: number) => `perm:group:${groupId}`;
+export const permKey = (groupId: number) => `perm:group:${groupId}`;
+
+export async function checkGroupPermission(
+  groupId: number,
+  permission: string,
+  gpRepo: Repository<GroupPermissionEntity>,
+  redis?: Redis,
+  logger?: Logger,
+): Promise<boolean> {
+  try {
+    if (redis) {
+      const cached = await redis.get(permKey(groupId));
+      if (cached !== null) {
+        const permNames: string[] = JSON.parse(cached);
+        return permNames.includes(permission);
+      }
+    }
+  } catch (err: any) {
+    logger?.warn(
+      `Redis unavailable for perm cache read (group ${groupId}): ${err?.message}`,
+    );
+  }
+
+  const rows = await gpRepo
+    .createQueryBuilder('gp')
+    .innerJoin('gp.permission', 'p')
+    .select('p.permissionName', 'permissionName')
+    .where('gp.groupId = :groupId', { groupId })
+    .getRawMany<{ permissionName: string }>();
+
+  const permNames = rows.map((r) => r.permissionName);
+
+  try {
+    if (redis) {
+      await redis.set(permKey(groupId), JSON.stringify(permNames));
+    }
+  } catch (err: any) {
+    logger?.warn(
+      `Redis unavailable for perm cache write (group ${groupId}): ${err?.message}`,
+    );
+  }
+
+  return permNames.includes(permission);
+}
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -66,35 +109,12 @@ export class PermissionsGuard implements CanActivate {
     groupId: number,
     permission: string,
   ): Promise<boolean> {
-     try {
-      const cached = await this.redis.get(permKey(groupId));
-      if (cached !== null) {
-        const permNames: string[] = JSON.parse(cached);
-        return permNames.includes(permission);
-      }
-    } catch (err: any) {
-       this.logger.warn(
-        `Redis unavailable for perm cache read (group ${groupId}): ${err?.message}`,
-      );
-    }
-
-     const rows = await this.gpRepo
-      .createQueryBuilder('gp')
-      .innerJoin('gp.permission', 'p')
-      .select('p.permissionName', 'permissionName')
-      .where('gp.groupId = :groupId', { groupId })
-      .getRawMany<{ permissionName: string }>();
-
-    const permNames = rows.map((r) => r.permissionName);
-
-     try {
-      await this.redis.set(permKey(groupId), JSON.stringify(permNames));
-    } catch (err: any) {
-       this.logger.warn(
-        `Redis unavailable for perm cache write (group ${groupId}): ${err?.message}`,
-      );
-    }
-
-    return permNames.includes(permission);
+    return checkGroupPermission(
+      groupId,
+      permission,
+      this.gpRepo,
+      this.redis,
+      this.logger,
+    );
   }
 }

@@ -77,6 +77,8 @@ export class DeliveryNoteListService {
           customerName: 'customer',
           companyName: 'company',
           orderCode: 'order',
+          orderId: 'delivery_note',
+          customerId: 'delivery_note',
         },
         param.condition === 'Any' ? 'Any' : 'All',
       );
@@ -164,17 +166,20 @@ export class DeliveryNoteListService {
       ? await this.userEntity.findOne({ where: { userId: dn.addedBy } })
       : null;
 
-    const items = (dn.items || []).map((it) => ({
-      deliveryNoteItemId: it.deliveryNoteItemId,
-      orderItemId: it.orderItemId,
-      itemId: it.itemId ?? null,
-      itemName: it.item?.itemName ?? (it.orderItem?.description ?? ''),
-      itemCode: it.item?.itemCode ?? null,
-      description: it.orderItem?.description ?? null,
-      requestedQuantity: Number(it.requestedQuantity),
-      pendingQuantity: Number(it.pendingQuantity),
-      deliverQuantity: Number(it.deliverQuantity),
-    }));
+    const items = (dn.items || [])
+      .slice()
+      .sort((a, b) => (a.deliveryNoteItemId ?? 0) - (b.deliveryNoteItemId ?? 0))
+      .map((it) => ({
+        deliveryNoteItemId: it.deliveryNoteItemId,
+        orderItemId: it.orderItemId,
+        itemId: it.itemId ?? null,
+        itemName: it.item?.itemName ?? (it.orderItem?.description ?? ''),
+        itemCode: it.item?.itemCode ?? null,
+        description: it.orderItem?.description ?? null,
+        requestedQuantity: Number(it.requestedQuantity),
+        pendingQuantity: Number(it.pendingQuantity),
+        deliverQuantity: Number(it.deliverQuantity),
+      }));
 
     return {
       ...dn,
@@ -253,6 +258,7 @@ export class DeliveryNoteListService {
         customerId: order.customerId,
         customerName: order.customer?.customerName ?? null,
         items: deliverableItems,
+        data: deliverableItems,
       };
     } catch (err: any) {
       return { success: 0, message: err.message };

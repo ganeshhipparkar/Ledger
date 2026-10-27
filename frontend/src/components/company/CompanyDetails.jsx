@@ -202,7 +202,7 @@ export default function CompanyDetails({ id }) {
                                             <div className="font-medium text-gray-800">
                                                 {company.parentCompanyId && company.parentCompanyName ? (
                                                     can("companyView") ? (
-                                                        <Link href="/company/${company.parentCompanyId}" className="text-blue-600 cursor-pointer hover:underline">
+                                                        <Link href={`/company/${company.parentCompanyId}`} className="text-blue-600 cursor-pointer hover:underline">
                                                             {company.parentCompanyName}
                                                         </Link>
                                                     ) : (

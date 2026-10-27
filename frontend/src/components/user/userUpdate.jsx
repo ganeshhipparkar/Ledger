@@ -366,11 +366,15 @@ export default function EditUserPage({ user, onBack }) {
                     Users
                 </Link>
                 <span className="text-gray-400">{">>"}</span>
-                <Link href="/user" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">
+                <Link
+                    href={formData.userId ? `/user/${formData.userId}` : (user?.user_userId ? `/user/${user.user_userId}` : "/users")}
+                    onClick={(e) => { if (onBack) { e.preventDefault(); onBack(); } }}
+                    className="cursor-pointer transition-colors hover:text-blue-600 hover:underline"
+                >
                     User
                 </Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="text-gray-800 cursor-pointer">Update</span>
+                <span className="text-gray-800">Update</span>
             </nav>
 
             <div className="px-6">

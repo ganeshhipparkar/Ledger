@@ -97,7 +97,7 @@ export class DeliveryNoteController {
     @Req() req: any,
     @Param('customerId') customerId: string,
   ) {
-    const result =
+    const result =  
       await this.deliveryNoteListService.getDeliverableOrdersForCustomer(
         Number(customerId),
         req,

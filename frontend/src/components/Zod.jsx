@@ -812,7 +812,10 @@ const OrderItemRowSchema = z.object({
     itemGL: z.string().optional(),
     quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
     unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
-    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
+    taxCalculation: z.preprocess(
+        (val) => (!val || val === "N/A" ? "NA" : val),
+        z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"])
+    ),
 }).refine((data) => {
     const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
     const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
@@ -835,7 +838,7 @@ export const OrderFormSchema = z.object({
     shippingState: z.string().min(1, "Shipping Address required."),
     billingState: z.string().min(1, "Billing Address required."),
     deliveryState: z.string().min(1, "Place of Delivery required."),
-    deliveryType: z.string().min(1, "Delivery Type required."),
+    deliveryType: z.string().optional(),
     invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
     invoiceAutoApproval: z.string().optional().default("NO"),
     bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
@@ -844,7 +847,7 @@ export const OrderFormSchema = z.object({
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person is required."),
     items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
 }).superRefine((data, ctx) => {
-    if (data.invoiceGenerationOn && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
+    if (data.invoiceGenerationOn === "DELIVERY_LEVEL" && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Invoice Auto Approval required.",
@@ -864,7 +867,7 @@ export const OrderUpdateFormSchema = z.object({
     shippingState: z.string().min(1, "Shipping Address required."),
     billingState: z.string().min(1, "Billing Address required."),
     deliveryState: z.string().min(1, "Place of Delivery required."),
-    deliveryType: z.string().min(1, "Delivery Type required."),
+    deliveryType: z.string().optional(),
     invoiceGenerationOn: z.string().min(1, "Invoice Generation required."),
     invoiceAutoApproval: z.string().optional().default("NO"),
     bankBookId: z.union([z.string(), z.number()]).refine(nonEmpty, "Bank Account is required."),
@@ -873,7 +876,7 @@ export const OrderUpdateFormSchema = z.object({
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Sales Person required."),
     items: z.array(OrderItemRowSchema).min(1, "At least one item is required."),
 }).superRefine((data, ctx) => {
-    if (data.invoiceGenerationOn && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
+    if (data.invoiceGenerationOn === "DELIVERY_LEVEL" && (!data.invoiceAutoApproval || !["YES", "NO"].includes(data.invoiceAutoApproval))) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Invoice Auto Approval required.",
@@ -888,7 +891,10 @@ const InvoiceItemRowSchema = z.object({
     itemGL: z.string().optional(),
     quantity: z.number({ coerce: true }).positive("Quantity must be > 0"),
     unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
-    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
+    taxCalculation: z.preprocess(
+        (val) => (!val || val === "N/A" ? "NA" : val),
+        z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"])
+    ),
 }).refine((data) => {
     const hasItemId = data.itemId !== undefined && data.itemId !== null && String(data.itemId).trim() !== "";
     const hasDescription = data.description !== undefined && data.description !== null && String(data.description).trim() !== "";
@@ -906,7 +912,7 @@ export const InvoiceFormSchema = z.object({
     deliveryDate: z.string().min(1, "Exchange date is required."),
     businessTerms: z.string().min(1, "Please Select Business terms."),
     paymentType: z.string().min(1, "Please Select Payment type."),
-    deliveryType: z.string().min(1, "Please Select Delivery type."),
+    deliveryType: z.string().optional(),
     vatWithheld: z.string().min(1, "VAT withheld is required."),
     contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Contact person."),
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please Select Sales person."),
@@ -964,7 +970,7 @@ export const InvoiceUpdateFormSchema = z.object({
     deliveryDate: z.string().min(1, "Please select Exchange date."),
     businessTerms: z.string().min(1, "Please select Business terms."),
     paymentType: z.string().min(1, "Please select Payment type."),
-    deliveryType: z.string().min(1, "Please select Delivery type."),
+    deliveryType: z.string().optional(),
     vatWithheld: z.string().min(1, "Please select VAT withheld."),
     contactPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Contact person."),
     salesPersonId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select Sales person."),
@@ -1021,7 +1027,10 @@ export const CreditNoteItemRowSchema = z.object({
     quantity: z.number({ coerce: true }).positive("Quantity must be greater than 0."),
     maxQuantity: z.number({ coerce: true }).optional(),
     unitPrice: z.number({ coerce: true }).positive("Unit Price must be greater than 0."),
-    taxCalculation: z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"]),
+    taxCalculation: z.preprocess(
+        (val) => (!val || val === "N/A" ? "NA" : val),
+        z.enum(["NA", "EXCLUSIVE", "INCLUSIVE"])
+    ),
     taxGroupId: z.union([z.string(), z.number()]).optional(),
 }).superRefine((data, ctx) => {
     if (!data.invoiceItemId && (!data.description || data.description.trim() === "")) {
@@ -1057,7 +1066,7 @@ export const CreditNoteInvoiceFormSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Issue Date cannot be earlier than the invoice date.", path: ["issueDate"] });
         }
     }
-    
+
     const seen = new Set();
     data.items.forEach((item, idx) => {
         if (item.lineType === "INVOICE_ITEM" && item.invoiceItemId) {
@@ -1108,8 +1117,12 @@ export const DebitNoteInvoiceFormSchema = z.object({
 
 export const DeliveryNoteItemRowSchema = z.object({
     orderItemId: z.union([z.string(), z.number()]).refine(nonEmpty, "Please select an item."),
-    deliverQuantity: z.coerce.number({ invalid_type_error: "Deliver quantity must be a valid number." })
-        .gt(0, "Deliver quantity must be greater than 0.")
+    deliverQuantity: z.union([z.string(), z.number()])
+        .refine((val) => val !== "" && val !== undefined && val !== null, "Deliver quantity is required.")
+        .refine((val) => {
+            const num = Number(val);
+            return !isNaN(num) && num > 0;
+        }, "Deliver quantity must be greater than 0.")
         .refine((val) => {
             const str = String(val);
             const decimals = str.includes(".") ? str.split(".")[1].length : 0;
@@ -1117,7 +1130,7 @@ export const DeliveryNoteItemRowSchema = z.object({
         }, "Deliver quantity cannot have more than 4 decimal places."),
     pendingQuantity: z.coerce.number().optional(),
 }).refine((data) => {
-    if (data.pendingQuantity !== undefined && data.deliverQuantity > data.pendingQuantity) {
+    if (data.pendingQuantity !== undefined && Number(data.deliverQuantity) > Number(data.pendingQuantity)) {
         return false;
     }
     return true;
@@ -1127,12 +1140,12 @@ export const DeliveryNoteItemRowSchema = z.object({
 });
 
 export const DeliveryNoteFormSchema = z.object({
-    companyId: z.union([z.string(), z.number()]).refine(nonEmpty, "Company is required."),
+    companyId: z.union([z.string(), z.number()]).optional(),
     customerId: z.union([z.string(), z.number()]).refine(nonEmpty, "Customer is required."),
     orderId: z.union([z.string(), z.number()]).refine(nonEmpty, "Order Number is required."),
     deliveryDate: z.string().min(1, "Delivery Date is required.").refine((val) => dayjs(val).isValid(), "Valid delivery date is required."),
-    receiverName: z.string().min(1, "Receiver Name is required."),
-    billingAddress: z.string().min(1, "Billing Address is required."),
+    receiverName: z.string().refine((val) => typeof val === "string" && val.trim().length > 0, "Receiver Name is required."),
+    billingAddress: z.string().refine((val) => typeof val === "string" && val.trim().length > 0, "Billing Address is required."),
     receiverSignature: z.string().optional(),
     deliveryNoteItems: z.array(DeliveryNoteItemRowSchema).min(1, "At least one item is required."),
 }).superRefine((data, ctx) => {
@@ -1152,3 +1165,4 @@ export const DeliveryNoteFormSchema = z.object({
         }
     });
 });
+

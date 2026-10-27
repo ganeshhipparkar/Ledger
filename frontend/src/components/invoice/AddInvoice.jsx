@@ -18,6 +18,7 @@ import TermsConditionsWidget from "../quotation/TermsConditionsWidget";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
 import { loginContext } from "../hooks/LoginContext";
+import { STATUS_LABELS } from "./InvoiceList";
 import { computeItem } from "@/lib/itemTaxCalc";
 import { limitDecimals, limitPriceDecimals } from "@/lib/utils";
 import { Country } from "country-state-city";
@@ -91,11 +92,13 @@ export default function AddInvoice() {
     const countries = Country.getAllCountries().map(c => ({ value: c.name, label: c.name }));
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeAssignment } = useContext(loginContext) || {};
+    const { activeAssignment, can } = useContext(loginContext) || {};
+    const canSave = Boolean(can && can("invoiceAdd") && can("invoiceUpdate"));
 
     const fromQuotationId = searchParams.get("fromQuotation");
     const fromOrderId = searchParams.get("fromOrder");
     const cloneFromId = searchParams.get("cloneFrom");
+    const presetCustomerId = searchParams.get("customerId");
     const isCloneMode = !!cloneFromId;
     const companyId = activeAssignment?.companyId;
     const oneMonthAgo = getOneMonthAgo();
@@ -150,7 +153,8 @@ export default function AddInvoice() {
     const [loading, setLoading] = useState(false);
     const [lockedCustomer, setLockedCustomer] = useState(false);
     const [lockedCurrency, setLockedCurrency] = useState(false);
-    const [prefillLoading, setPrefillLoading] = useState(!!fromQuotationId || !!fromOrderId || !!cloneFromId);
+    const [presetCustomer, setPresetCustomer] = useState(null);
+    const [prefillLoading, setPrefillLoading] = useState(!!fromQuotationId || !!fromOrderId || !!cloneFromId || !!presetCustomerId);
 
     const setFormField = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
@@ -185,7 +189,7 @@ export default function AddInvoice() {
                     baseCurrencyPrice: parseFloat(it.unitPrice) || 0,
                     quantity: String(it.quantity || 1),
                     unitPrice: String(it.unitPrice || 0),
-                    taxCalculation: it.taxCalculation || "N/A",
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || "",
                     taxRate: 0,
                     discounts: it.discounts || [],
@@ -212,7 +216,7 @@ export default function AddInvoice() {
                     baseCurrencyPrice: parseFloat(it.unitPrice) || 0,
                     quantity: String(it.quantity || 1),
                     unitPrice: String(it.unitPrice || 0),
-                    taxCalculation: it.taxCalculation || "N/A",
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || "",
                     taxRate: 0,
                     discounts: it.discounts || [],
@@ -229,6 +233,7 @@ export default function AddInvoice() {
                     method: "GET",
                     headers: { ...authHeaders(), endpoint: `customer-details/${sourceData.customerId}`, module: "customer" },
                 });
+                console.log(sourceData, "sorusdate")
                 const custPayload = await custRes.json();
                 const custData = custPayload.encrypted ? decryptResponse(custPayload.encrypted) : custPayload;
                 setCurrencies(custData?.currencies ?? []);
@@ -252,6 +257,7 @@ export default function AddInvoice() {
                 shippingState: sourceData.shippingState ?? "",
                 billingState: sourceData.billingState ?? "",
                 deliveryState: sourceData.deliveryState ?? "",
+                deliveryType: sourceData.deliveryType ?? "",
                 bankBookId: sourceData.bankBookId ? String(sourceData.bankBookId) : "",
                 bankBookLabel: sourceData.bankBookName ?? "",
                 invoiceFor: type,
@@ -370,7 +376,7 @@ export default function AddInvoice() {
                     setItems(data.invoiceItems.map((it) => {
                         const unitPriceVal = parseFloat(it.unitPrice) || 0;
                         const basePrice = parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
-                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation ?? "N/A");
+                        const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                         const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                         const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                         const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -437,7 +443,6 @@ export default function AddInvoice() {
                 const payload = await res.json();
                 const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
                 setBankBooks(data?.data ?? []);
-                console.log(data?.data, "the datea lakjd")
             } catch {
                 setBankBooks([]);
             }
@@ -509,6 +514,79 @@ export default function AddInvoice() {
         }
     };
 
+    useEffect(() => {
+        if (!presetCustomerId || fromQuotationId || fromOrderId || cloneFromId) return;
+
+        (async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint: "customer-currencies-list",
+                        module: "customer",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        page: 1,
+                        limit: 50,
+                        filters: [{ key: "customerId", value: String(presetCustomerId), operator: "eq" }],
+                    }),
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                const rows = (data?.data?.data ?? data?.data ?? []).filter(
+                    (c) => String(c.customerId) === String(presetCustomerId)
+                );
+
+                if (!rows.length) {
+                    toast.error("Customer not found or has no assigned currencies.", { position: "top-right" });
+                    setPrefillLoading(false);
+                    return;
+                }
+
+                const cust = rows[0]?.customer;
+                if (cust?.status && String(cust.status).toLowerCase() !== "active") {
+                    toast.error("Customer is inactive.", { position: "top-right" });
+                    setPrefillLoading(false);
+                    return;
+                }
+
+                const options = rows.map((c) => ({
+                    value: `${c.customerId}_${c.curId}`,
+                    label: `${c.customer?.customerName || cust?.customerName || ""} (${c.currency?.code || ""})`,
+                    raw: c,
+                }));
+
+                if (options.length === 1) {
+                    await handleCustomerCurrencySelect(options[0]);
+                    setPresetCustomer({
+                        single: true,
+                        options,
+                        customerName: cust?.customerName || "",
+                        customerId: String(presetCustomerId),
+                    });
+                } else {
+                    setPresetCustomer({
+                        single: false,
+                        options,
+                        customerName: cust?.customerName || "",
+                        customerId: String(presetCustomerId),
+                    });
+                    setFormData((prev) => ({
+                        ...prev,
+                        customerId: String(presetCustomerId),
+                        customerLabel: cust?.customerName || "",
+                    }));
+                }
+            } catch (err) {
+                toast.error("Failed to load customer: " + err.message, { position: "top-right" });
+            } finally {
+                setPrefillLoading(false);
+            }
+        })();
+    }, [presetCustomerId, fromQuotationId, fromOrderId, cloneFromId]);
+
 
     const loadUserOptions = (inputValue, callback) => {
         fetch("/relayapi", {
@@ -531,10 +609,15 @@ export default function AddInvoice() {
 
 
     const loadOrderOptions = (inputValue, callback) => {
+        const filters = [
+            { key: "status", value: "DELIVERED", operator: "eq" },
+            ...(presetCustomer ? [{ key: "customerId", value: String(presetCustomerId), operator: "eq" }] : []),
+            ...(inputValue ? [{ key: "orderCode", value: inputValue, operator: "like" }] : []),
+        ];
         fetch("/relayapi", {
             method: "POST",
             headers: { ...authHeaders(), endpoint: "order-list", module: "order", "Content-Type": "application/json" },
-            body: JSON.stringify({ page: 1, limit: 20, filters: [{ key: "status", value: "DELIVERED", operator: "eq" }, ...(inputValue ? [{ key: "orderCode", value: inputValue, operator: "like" }] : [])] }),
+            body: JSON.stringify({ page: 1, limit: 20, filters }),
         })
             .then((r) => r.json())
             .then((payload) => {
@@ -546,10 +629,15 @@ export default function AddInvoice() {
 
 
     const loadQuotationOptions = (inputValue, callback) => {
+        const filters = [
+            { key: "status", value: "CONFIRMED", operator: "eq" },
+            ...(presetCustomer ? [{ key: "customerId", value: String(presetCustomerId), operator: "eq" }] : []),
+            ...(inputValue ? [{ key: "quotationCode", value: inputValue, operator: "like" }] : []),
+        ];
         fetch("/relayapi", {
             method: "POST",
             headers: { ...authHeaders(), endpoint: "quotation-list", module: "quotation", "Content-Type": "application/json" },
-            body: JSON.stringify({ page: 1, limit: 20, filters: [{ key: "status", value: "CONFIRMED", operator: "eq" }, ...(inputValue ? [{ key: "quotationCode", value: inputValue, operator: "like" }] : [])] }),
+            body: JSON.stringify({ page: 1, limit: 20, filters }),
         })
             .then((r) => r.json())
             .then((payload) => {
@@ -561,11 +649,29 @@ export default function AddInvoice() {
 
 
     const resetSourceFields = () => {
+        if (presetCustomer) {
+            setFormData((prev) => ({
+                ...prev,
+                vatWithheld: "NO",
+                businessTerms: "",
+                paymentType: "CREDIT",
+                deliveryType: "",
+                salesPersonId: "",
+                salesPersonLabel: "",
+                sourceOrderId: "",
+                sourceOrderLabel: "",
+                sourceQuotationId: "",
+                sourceQuotationLabel: "",
+            }));
+            setItems([newEmptyItem()]);
+            return;
+        }
         setFormData((prev) => ({
             ...prev,
             customerId: "", customerLabel: "",
             currencyId: "", currencyCode: "", currencySymbol: "", currencyConversionRate: 1,
             vatWithheld: "NO", businessTerms: "", paymentType: "CREDIT",
+            deliveryType: "",
             salesPersonId: "", salesPersonLabel: "",
             sourceOrderId: "", sourceOrderLabel: "", sourceQuotationId: "", sourceQuotationLabel: ""
         }));
@@ -621,12 +727,16 @@ export default function AddInvoice() {
             return;
         }
 
-        const confirmTitle = submitAfterCreate ? "Submit Invoice?" : "Save Invoice as Draft?";
+        const confirmTitle = submitAfterCreate
+            ? (isCloneMode ? "Save Copy?" : "Save Invoice?")
+            : "Save Invoice as Draft?";
         const confirmText = submitAfterCreate
-            ? "The invoice will be created and immediately submitted. A PDF will be generated."
+            ? "The invoice will be saved and its status set automatically according to the payment settings."
             : "Save this invoice as a draft. You can submit it later.";
-        const confirmBtn = submitAfterCreate ? "Submit" : "Save as Draft";
-        const confirmColor = submitAfterCreate ? "#060607" : "#16a34a";
+        const confirmBtn = submitAfterCreate
+            ? (isCloneMode ? "Save Copy" : "Save")
+            : "Save as Draft";
+        const confirmColor = submitAfterCreate ? "#2563eb" : "#16a34a";
 
         const confirm = await MySwal.fire({ title: confirmTitle, text: confirmText, icon: "question", showCancelButton: true, confirmButtonText: confirmBtn, confirmButtonColor: confirmColor });
         if (!confirm.isConfirmed) return;
@@ -634,6 +744,7 @@ export default function AddInvoice() {
         setLoading(true);
         try {
             const fd = new FormData();
+            fd.append("submit", submitAfterCreate ? "true" : "false");
             fd.append("customerId", formData.customerId);
             fd.append("currencyId", formData.currencyId);
             fd.append("invoiceDate", formData.invoiceDate);
@@ -663,7 +774,7 @@ export default function AddInvoice() {
                 description: it.description || null,
                 quantity: Number(it.quantity),
                 unitPrice: Number(it.unitPrice),
-                taxCalculation: it.taxCalculation,
+                taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                 taxGroup: it.taxGroup || null,
                 discounts: (it.discounts || []).map((d) => ({ discountDescription: d.discountDescription || "", discountPrice: Number(d.discountPrice || d.amount || 0), manufacturerId: d.manufacturerId || null })),
                 extraCharges: (it.extraCharges || []).map((ec) => ({ extraChargesDescription: ec.extraChargesDescription || "", extraChargesPrice: Number(ec.extraChargesPrice || ec.amount || 0), manufacturerId: ec.manufacturerId || null })),
@@ -693,25 +804,15 @@ export default function AddInvoice() {
                 const isAutoApproved = data?.autoApproved === true || data?.data?.autoApproved === true;
                 const isAutoApprovalFalse = data?.autoApproved === false || data?.data?.autoApproved === false;
                 const autoApprovalMsg = data?.autoApprovalMessage || data?.data?.autoApprovalMessage;
+                const isSubmitted = data?.submitted === true || data?.data?.submitted === true;
+                const finalStatus = data?.finalStatus ?? data?.status ?? data?.data?.finalStatus ?? data?.data?.status;
+                const statusLabel = STATUS_LABELS[finalStatus] ?? (finalStatus ? finalStatus.charAt(0).toUpperCase() + finalStatus.slice(1).toLowerCase() : "Draft");
 
-                if (submitAfterCreate && invoiceId) {
-                    if (isAutoApproved) {
-                        toast.success("Invoice created and approved automatically.", { position: "top-right" });
-                        router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
-                        return;
-                    }
-                    const subRes = await fetch("/relayapi", {
-                        method: "PUT",
-                        headers: { ...authHeaders(), endpoint: `invoice-submit/${invoiceId}`, module: "invoice" },
-                    });
-                    const subPayload = await subRes.json();
-                    const subData = subPayload.encrypted ? decryptResponse(subPayload.encrypted) : subPayload;
-                    if (subData?.success === 1) {
-                        toast.success("Invoice created and submitted successfully.", { position: "top-right" });
-                        router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
+                if (submitAfterCreate) {
+                    if (isSubmitted) {
+                        toast.success(`Invoice saved. Status: ${statusLabel}`, { position: "top-right" });
                     } else {
-                        toast.warning(`Invoice created but submit failed: ${subData?.message || "Unknown error"}`, { position: "top-right" });
-                        router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
+                        toast.warning(data?.message || "Invoice saved as draft, but could not be submitted.", { position: "top-right" });
                     }
                 } else {
                     if (isAutoApproved) {
@@ -721,8 +822,8 @@ export default function AddInvoice() {
                     } else {
                         toast.success("Invoice saved as draft.", { position: "top-right" });
                     }
-                    router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
                 }
+                router.push(invoiceId ? `/invoice/${invoiceId}` : "/invoice-list");
             } else {
                 toast.error(data?.message || "Failed to create invoice.", { position: "top-right" });
             }
@@ -769,7 +870,7 @@ export default function AddInvoice() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Customer <span className="text-red-500">*</span></label>
-                            {lockedCustomer ? (
+                            {lockedCustomer || presetCustomer?.single ? (
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium">
                                     {formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel}
                                 </div>
@@ -777,15 +878,18 @@ export default function AddInvoice() {
                                 <AsyncSelect
                                     instanceId="invoice-customer-select"
                                     cacheOptions
-                                    defaultOptions
-                                    loadOptions={loadCustomerOptions}
+                                    defaultOptions={presetCustomer ? presetCustomer.options : true}
+                                    loadOptions={presetCustomer ? (input, cb) => {
+                                        const filtered = presetCustomer.options.filter(o => !input || o.label.toLowerCase().includes(input.toLowerCase()));
+                                        cb(filtered);
+                                    } : loadCustomerOptions}
                                     value={formData.customerId && formData.currencyId ? {
                                         value: `${formData.customerId}_${formData.currencyId}`,
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
                                     placeholder="Please select customer"
-                                    isClearable
+                                    isClearable={!presetCustomer}
                                     classNamePrefix="react-select"
                                     styles={rsStyles(!!errors.customerId)}
                                     menuPortalTarget={typeof window !== "undefined" ? document.body : null}
@@ -943,7 +1047,7 @@ export default function AddInvoice() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Delivery Type <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Delivery Type</label>
                             <Select
                                 instanceId="invoice-delivery-type"
                                 value={DELIVERY_TYPE_OPTIONS.find((o) => o.value === formData.deliveryType) || null}
@@ -1201,17 +1305,19 @@ export default function AddInvoice() {
                         disabled={loading}
                         className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
                     >
-                        {loading ? "Saving…" : isCloneMode ? "Save Copy as Draft" : "Save as Draft"}
+                        {loading ? "Saving…" : "Save as Draft"}
                     </button>
-                    {/* <button
-                        type="button"
-                        id="invoice-submit-btn"
-                        onClick={() => handleSubmit(true)}
-                        disabled={loading}
-                        className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
-                    >
-                        {loading ? "Submitting…" : "Submit"}
-                    </button> */}
+                    {canSave && (
+                        <button
+                            type="button"
+                            id="invoice-submit-btn"
+                            onClick={() => handleSubmit(true)}
+                            disabled={loading}
+                            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
+                        >
+                            {loading ? "Saving…" : isCloneMode ? "Save Copy" : "Save"}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

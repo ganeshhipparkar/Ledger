@@ -41,8 +41,10 @@ export default function AddQuotation() {
 
     const cloneFromId = searchParams.get("cloneFrom");
     const changeFromId = searchParams.get("changeFrom");
+    const presetCustomerId = searchParams.get("customerId");
     const isChangeMode = !!changeFromId;
     const isCloneMode = !!cloneFromId;
+    const hasExistingFlow = Boolean(cloneFromId || changeFromId);
 
     const companyId = activeAssignment?.companyId;
 
@@ -121,9 +123,10 @@ export default function AddQuotation() {
     const [deletedAttachmentIds, setDeletedAttachmentIds] = useState([]);
 
     const [loading, setLoading] = useState(false);
-    const [prefillState, setPrefillState] = useState(cloneFromId || changeFromId ? "loading" : "ok");
+    const [prefillState, setPrefillState] = useState(cloneFromId || changeFromId || presetCustomerId ? "loading" : "ok");
 
     const [lockedCustomer, setLockedCustomer] = useState(false);
+    const [presetCustomerCurrencyOptions, setPresetCustomerCurrencyOptions] = useState(null);
     const [versionCodeDisplay, setVersionCodeDisplay] = useState("");
 
     useEffect(() => {
@@ -224,7 +227,7 @@ export default function AddQuotation() {
                         data.quotationItems.map((it) => {
                             const unitPriceVal = parseFloat(it.unitPrice) || 0;
                             const basePrice = parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
-                            const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation ?? "N/A");
+                            const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                             const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                             const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                             const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -278,8 +281,77 @@ export default function AddQuotation() {
         })();
     }, [cloneFromId, changeFromId]);
 
+    // Preset customer flow (?customerId=<id>)
+    useEffect(() => {
+        if (hasExistingFlow || !presetCustomerId || !companyId) return;
+        let isMounted = true;
+        (async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "POST",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint: "customer-currencies-list",
+                        module: "customer",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        page: 1,
+                        limit: 50,
+                        filters: [{ key: "customerId", value: presetCustomerId, operator: "eq" }],
+                    }),
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                const rows = (data?.data?.data ?? data?.data ?? []).filter(
+                    (c) => String(c.customerId || c.customer?.customerId) === String(presetCustomerId)
+                );
+                if (!isMounted) return;
+
+                if (rows.length === 0) {
+                    toast.error("Invalid customer or customer has no currencies.", { position: "top-right" });
+                    setPrefillState("ok");
+                    return;
+                }
+
+                const options = rows.map((c) => ({
+                    value: `${c.customerId}_${c.curId}`,
+                    label: `${c.customer?.customerName || c.customerName} (${c.currency?.code || c.currencyCode})`,
+                    raw: c,
+                }));
+
+                if (rows.length === 1) {
+                    await handleCustomerCurrencySelect(options[0]);
+                    if (isMounted) {
+                        setLockedCustomer(true);
+                        setPrefillState("ok");
+                    }
+                } else {
+                    setPresetCustomerCurrencyOptions(options);
+                    setPrefillState("ok");
+                }
+            } catch (err) {
+                console.error("Failed to load preset customer:", err);
+                toast.error("Failed to load customer currencies.", { position: "top-right" });
+                if (isMounted) setPrefillState("ok");
+            }
+        })();
+        return () => {
+            isMounted = false;
+        };
+    }, [companyId, presetCustomerId, hasExistingFlow]);
+
     const loadCustomerOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
+        if (presetCustomerCurrencyOptions) {
+            const filtered = inputValue
+                ? presetCustomerCurrencyOptions.filter((opt) =>
+                      opt.label.toLowerCase().includes(inputValue.toLowerCase())
+                  )
+                : presetCustomerCurrencyOptions;
+            callback(filtered);
+            return;
+        }
         fetch("/relayapi", {
             method: "POST",
             headers: {
@@ -454,7 +526,13 @@ export default function AddQuotation() {
             confirmButtonColor: "#ef4444",
             cancelButtonText: "Keep editing",
         });
-        if (result.isConfirmed) router.push("/quotation-list");
+        if (result.isConfirmed) {
+            if (presetCustomerId) {
+                router.push(`/customer/${presetCustomerId}#quotations`);
+            } else {
+                router.push("/quotation-list");
+            }
+        }
     };
 
     const handleSubmit = async (status) => {
@@ -545,7 +623,7 @@ export default function AddQuotation() {
                     description: it.description || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
-                    taxCalculation: it.taxCalculation === "N/A" ? "NA" : (it.taxCalculation || "NA"),
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || undefined,
                     discounts: (it.discounts || []).map((d) => ({
                         discountDescription: d.discountDescription || d.description,
@@ -639,16 +717,16 @@ export default function AddQuotation() {
                             ) : (
                                 <AsyncSelect
                                     instanceId="customer-select"
-                                    cacheOptions
-                                    defaultOptions
+                                    cacheOptions={!presetCustomerCurrencyOptions}
+                                    defaultOptions={presetCustomerCurrencyOptions || true}
                                     loadOptions={loadCustomerOptions}
                                     value={formData.customerId && formData.currencyId ? {
                                         value: `${formData.customerId}_${formData.currencyId}`,
                                         label: formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel
                                     } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Please Select customer"
-                                    isClearable
+                                    placeholder={presetCustomerCurrencyOptions ? "Please select currency" : "Please Select customer"}
+                                    isClearable={!presetCustomerCurrencyOptions && !lockedCustomer}
                                     isDisabled={lockedCustomer}
                                     classNamePrefix="react-select"
                                     styles={{

@@ -130,11 +130,6 @@ export default function OrderList() {
             confirmText = "Cancel";
             confirmColor = "#dc2626";
             endpoint = `order-cancel/${orderId}`;
-        } else if (actionType === "MARK_DELIVERED") {
-            title = "Mark this order as delivered?";
-            confirmText = "Mark Delivered";
-            confirmColor = "#16a34a";
-            endpoint = `order-mark-delivered/${orderId}`;
         } else if (actionType === "CLOSE") {
             title = "Close this order?";
             confirmText = "Close";
@@ -273,6 +268,8 @@ export default function OrderList() {
                                 onCustomerClick={(id) => setSelectedCustomerId(id)}
                                 onAddedByClick={(id) => setSelectedUserId(id)}
                                 onOrderClick={(id) => setSelectedOrderIdForPanel(id)}
+                                isExpanded={!!expandedRows[q.orderId]}
+                                onToggle={() => toggleRow(q.orderId)}
                             />
                         ))}
                     </div>
@@ -379,14 +376,16 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
     const handleSubmit = () => onStatusUpdate?.(q.orderId, "SUBMIT");
     const handleCancel = () => onStatusUpdate?.(q.orderId, "CANCEL");
     const handleClose = () => onStatusUpdate?.(q.orderId, "CLOSE");
-    const handleMarkAsDelivered = () => onStatusUpdate?.(q.orderId, "MARK_DELIVERED");
     const handleDelete = () => onStatusUpdate?.(q.orderId, "DELETE");
 
-    const isOpen = q.orderStatus === "OPEN" || !q.orderStatus;
+    const isOpen = (q.orderStatus === "OPEN" || !q.orderStatus) && q.orderStatus !== "CLOSED" && q.status !== "CANCELLED";
+    const canDeliver = isOpen && (q.status === "PLACED" || q.status === "PARTIAL_DELIVERED") && Boolean(can?.("deliveryNoteAdd"));
+    const canInvoice = isOpen && q.status === "DELIVERED" && Boolean(can?.("invoiceAdd"));
     const hasActions = Boolean(
         (isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false) ||
-        (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false)) ||
-        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false)
+        (isOpen && q.status === "PLACED" && (!!q.invoicePdfPath || can?.("orderUpdate") !== false || canDeliver)) ||
+        (isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && (can?.("orderUpdate") !== false || canDeliver || canInvoice)) ||
+        can?.("orderAdd")
     );
 
     return (
@@ -444,8 +443,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                     {(() => {
                                         const primaryAction = [
                                             { show: isOpen && q.status === "DRAFT" && can?.("orderUpdate") !== false, label: "Edit" },
-                                            // { show: isOpen && q.status === "PLACED" && !!q.invoicePdfPath, label: "View Invoice" },
-                                            // { show: isOpen && q.status === "PLACED" && can?.("orderUpdate") !== false, label: "Regenerate PDF" },
+                                            { show: canDeliver, label: "Add Delivery Note" },
                                             { show: isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false, label: "Update Price" },
                                             { show: isOpen && can?.("orderAdd"), label: "Clone Order" }
                                         ].find(x => x.show)?.label ?? "Actions";
@@ -496,40 +494,53 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                     {isOpen && q.status === "PLACED" && (
                                         <>
                                             {can?.("orderUpdate") !== false && (
-                                                <>
-                                                    <DropdownMenuItem
-                                                        className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onUpdatePrice?.(q);
-                                                        }}
-                                                    >
-                                                        Update Price
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="cursor-pointer px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleMarkAsDelivered();
-                                                        }}
-                                                    >
-                                                        Mark as Delivered
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleCancel();
-                                                        }}
-                                                    >
-                                                        Cancel Order
-                                                    </DropdownMenuItem>
-                                                </>
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onUpdatePrice?.(q);
+                                                    }}
+                                                >
+                                                    Update Price
+                                                </DropdownMenuItem>
+                                            )}
+                                            {canDeliver && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        router.push(`/add-delivery-note?fromOrder=${q.orderId}`);
+                                                    }}
+                                                >
+                                                    Add Delivery Note
+                                                </DropdownMenuItem>
+                                            )}
+                                            {can?.("orderUpdate") !== false && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCancel();
+                                                    }}
+                                                >
+                                                    Cancel Order
+                                                </DropdownMenuItem>
                                             )}
                                         </>
                                     )}
-                                    {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && can?.("orderUpdate") !== false && (
+                                    {isOpen && (q.status === "PARTIAL_DELIVERED" || q.status === "DELIVERED") && (
                                         <>
+                                            {canDeliver && (
+                                                <DropdownMenuItem
+                                                    className="cursor-pointer px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        router.push(`/add-delivery-note?fromOrder=${q.orderId}`);
+                                                    }}
+                                                >
+                                                    Add Delivery Note
+                                                </DropdownMenuItem>
+                                            )}
                                             {/* {q.invoicePdfPath && (
                                                 <>
                                                     <DropdownMenuItem
@@ -575,7 +586,7 @@ function OrderListRow({ order: q, onStatusUpdate, onUpdatePrice, onRegeneratePdf
                                                     </DropdownMenuItem>
                                                 </>
                                             )}
-                                            {can?.("invoiceAdd") && (
+                                            {canInvoice && (
                                                 <DropdownMenuItem
                                                     className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                     onClick={(e) => {

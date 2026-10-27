@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Select from "react-select";
@@ -11,21 +12,24 @@ import { loginContext } from "../hooks/LoginContext";
 import Header from "../Header";
 import Loader from "../ui/Loader";
 import CreditNoteItemsTable, { newEmptyCreditNoteItem, toCreditNotePayloadItems } from "../creditNote/CreditNoteItemsTable";
-import { DebitNoteInvoiceFormSchema } from "../Zod";
-import { computeItem } from "@/lib/itemTaxCalc";
 import CreditNoteSummaryPanel from "../creditNote/CreditNoteSummaryPanel";
 import { toast } from "react-toastify";
 import { getCreditNoteMode } from "@/lib/creditNoteMode";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
+import { noteInvoiceFormConfig } from "./configs/noteInvoiceForm.config";
 
 const MySwal = withReactContent(Swal);
 
-export default function AddDebitNote() {
+export default function NoteInvoiceAddForm({ noteType }) {
+    const cfg = noteInvoiceFormConfig[noteType];
+    if (!cfg) throw new Error("NoteInvoiceAddForm: unknown noteType");
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const urlInvoiceId = searchParams.get("invoiceId");
-
+    const presetCustomerId = searchParams.get("customerId");
+    
     const { loginDetails, activeAssignment, can } = useContext(loginContext) || {};
     const companyId = activeAssignment?.companyId;
     const mode = getCreditNoteMode();
@@ -46,6 +50,7 @@ export default function AddDebitNote() {
         currencySymbol: "",
         narration: "",
         remarks: "",
+        ...cfg.initialFormExtras,
     });
 
     const [items, setItems] = useState([newEmptyCreditNoteItem()]);
@@ -54,6 +59,7 @@ export default function AddDebitNote() {
     const [errors, setErrors] = useState({});
     const [itemErrors, setItemErrors] = useState({});
     const [isLocked, setIsLocked] = useState(false);
+    const [presetCustomer, setPresetCustomer] = useState(null);
     const [invoiceOptions, setInvoiceOptions] = useState([]);
     const [invoiceLineItems, setInvoiceLineItems] = useState([]);
     const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -62,47 +68,12 @@ export default function AddDebitNote() {
         setFormData((prev) => ({ ...prev, [key]: value }));
     };
 
-    useEffect(() => {
-        if (!submitAttempted) return;
-        const parseRes = DebitNoteInvoiceFormSchema.safeParse({ ...formData, items });
-        if (!parseRes.success) {
-            const fieldErrors = {};
-            const itemErrs = {};
-            parseRes.error.issues.forEach((err) => {
-                if (err.path[0] === "items" && typeof err.path[1] === "number") {
-                    const idx = err.path[1];
-                    const field = err.path[2];
-                    itemErrs[idx] = { ...(itemErrs[idx] || {}), [field]: err.message };
-                } else {
-                    const field = err.path[0];
-                    if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
-                }
-            });
-            setErrors(fieldErrors);
-            setItemErrors(itemErrs);
-        } else {
-            setErrors({});
-            setItemErrors({});
-        }
-    }, [formData, items, submitAttempted]);
-
-    useEffect(() => {
-        if (mode !== "INVOICE") {
-            router.replace("/debit-note-list");
-            return;
-        }
-
-        const loadInitialData = async () => {
-            if (urlInvoiceId) {
-                setIsLocked(true);
-                await fetchInvoiceDetails(urlInvoiceId);
-            } else {
-                setLoading(false);
-            }
-        };
-
-        loadInitialData();
-    }, [urlInvoiceId, mode, router, loginDetails]);
+    const loadPresetCustomerOptions = (inputValue, callback) => {
+        const opts = (presetCustomer?.options || []).filter((o) =>
+            !inputValue || o.label.toLowerCase().includes(inputValue.toLowerCase())
+        );
+        callback(opts);
+    };
 
     const loadCustomerOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
@@ -135,49 +106,57 @@ export default function AddDebitNote() {
             .catch(() => callback([]));
     };
 
-    const handleCustomerCurrencySelect = async (option) => {
-        const hasData = items.some(it => it.invoiceItemId || it.itemId || (it.description && it.description.trim() !== ""));
-        if (hasData) {
+    const handleCustomerCurrencySelect = async (selected) => {
+        const hasDirtyData = items.some((it) => it.itemId || it.invoiceItemId || it.quantity || it.unitPrice || it.rate);
+        if (hasDirtyData) {
             const result = await MySwal.fire({
                 title: "Change Customer?",
-                text: "Changing the customer will clear the current items.",
+                text: "Changing customer or currency will clear all selected items.",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonText: "Change",
-                confirmButtonColor: "#ef4444"
+                confirmButtonColor: "#ef4444",
+                cancelButtonText: "Cancel",
             });
             if (!result.isConfirmed) return;
         }
 
-        if (!option) {
-            setFormData(prev => ({
+        if (!selected) {
+            setFormData((prev) => ({
                 ...prev,
-                customerId: "", customerLabel: "", currencyId: "", currencyCode: "", currencySymbol: "",
-                invoiceId: "", invoiceCode: "", invoiceDate: "", issueDate: ""
+                customerId: "",
+                customerLabel: "",
+                currencyId: "",
+                currencyCode: "",
+                currencySymbol: "",
+                invoiceId: "",
+                invoiceCode: "",
+                invoiceDate: "",
+                ...(cfg.hasIssueDate ? { issueDate: "" } : {}),
             }));
             setInvoiceOptions([]);
-            setItems([newEmptyCreditNoteItem()]);
             setInvoiceLineItems([]);
+            setItems([newEmptyCreditNoteItem()]);
             return;
         }
 
-        const raw = option.raw;
+        const raw = selected.raw;
         const custId = raw.customerId;
-        const custName = raw.customer?.customerName || "";
         const curId = raw.curId;
 
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            customerId: custId ? String(custId) : "",
-            customerLabel: custName,
+            customerId: String(custId),
+            customerLabel: raw.customer?.customerName || "",
             currencyId: String(curId),
             currencyCode: raw.currency?.code || "",
             currencySymbol: raw.currency?.symbol || "",
             invoiceId: "",
             invoiceCode: "",
             invoiceDate: "",
-            issueDate: "",
+            ...(cfg.hasIssueDate ? { issueDate: "" } : {}),
         }));
+
         setItems([newEmptyCreditNoteItem()]);
         setInvoiceLineItems([]);
 
@@ -188,44 +167,20 @@ export default function AddDebitNote() {
                 headers: {
                     ...authHeaders(),
                     endpoint: `invoices-by-customer/${custId}/${curId}`,
-                    module: "debit-note",
+                    module: cfg.module,
                 },
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-            const invoices = (data?.data ?? []).map(inv => ({
+            const invoices = (data?.data ?? []).map((inv) => ({
                 value: String(inv.invoiceId),
                 label: `${inv.invoiceCode} — ${inv.status}`,
-                raw: inv
+                raw: inv,
             }));
             setInvoiceOptions(invoices);
         } catch (err) {
             setInvoiceOptions([]);
         }
-    };
-
-    const handleInvoiceSelect = async (option) => {
-        const hasData = items.some(it => it.invoiceItemId || it.itemId || (it.description && it.description.trim() !== ""));
-        if (hasData) {
-            const result = await MySwal.fire({
-                title: "Change Invoice?",
-                text: "Changing the invoice will clear the current items.",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Change",
-                confirmButtonColor: "#ef4444"
-            });
-            if (!result.isConfirmed) return;
-        }
-
-        if (!option) {
-            setFormData(prev => ({ ...prev, invoiceId: "", invoiceCode: "", invoiceDate: "", issueDate: "" }));
-            setItems([newEmptyCreditNoteItem()]);
-            setInvoiceLineItems([]);
-            return;
-        }
-        setItems([newEmptyCreditNoteItem()]);
-        await fetchInvoiceDetails(option.value);
     };
 
     const fetchInvoiceDetails = async (invId) => {
@@ -236,8 +191,8 @@ export default function AddDebitNote() {
                 headers: {
                     ...authHeaders(),
                     endpoint: `invoice-items/${invId}`,
-                    module: "debit-note",
-                }
+                    module: cfg.module,
+                },
             });
             if (res.status === 401 || res.status === 403) {
                 setError("Unauthorized");
@@ -246,9 +201,9 @@ export default function AddDebitNote() {
             }
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
-
+            
             if (data.success) {
-                setFormData(prev => ({
+                setFormData((prev) => ({
                     ...prev,
                     invoiceId: String(data.invoiceId),
                     invoiceCode: data.invoiceCode,
@@ -260,7 +215,7 @@ export default function AddDebitNote() {
                     currencySymbol: data.currencySymbol || prev.currencySymbol,
                     companyId: companyId,
                 }));
-
+                
                 setInvoiceLineItems(data.items);
                 setItems([newEmptyCreditNoteItem()]);
             } else {
@@ -275,6 +230,138 @@ export default function AddDebitNote() {
         }
     };
 
+    const handleInvoiceSelect = async (option) => {
+        const hasData = items.some((it) => it.invoiceItemId || it.itemId || (it.description && it.description.trim() !== ""));
+        if (hasData) {
+            const result = await MySwal.fire({
+                title: "Change Invoice?",
+                text: "Changing the invoice will clear the current items.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Change",
+                confirmButtonColor: "#ef4444",
+            });
+            if (!result.isConfirmed) return;
+        }
+
+        if (!option) {
+            setFormData((prev) => ({
+                ...prev,
+                invoiceId: "",
+                invoiceCode: "",
+                invoiceDate: "",
+                ...(cfg.hasIssueDate ? { issueDate: "" } : {}),
+            }));
+            setItems([newEmptyCreditNoteItem()]);
+            setInvoiceLineItems([]);
+            return;
+        }
+        setItems([newEmptyCreditNoteItem()]);
+        await fetchInvoiceDetails(option.value);
+    };
+
+    useEffect(() => {
+        if (mode !== "INVOICE") {
+            router.replace(cfg.listRoute);
+            return;
+        }
+
+        const loadInitialData = async () => {
+            if (urlInvoiceId) {
+                setIsLocked(true);
+                await fetchInvoiceDetails(urlInvoiceId);
+            } else if (presetCustomerId) {
+                try {
+                    const res = await fetch("/relayapi", {
+                        method: "POST",
+                        headers: {
+                            ...authHeaders(),
+                            endpoint: "customer-currencies-list",
+                            module: "customer",
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            page: 1,
+                            limit: 50,
+                            filters: [
+                                { key: "customerId", value: String(presetCustomerId), operator: "equal" },
+                            ],
+                        }),
+                    });
+                    const payload = await res.json();
+                    const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                    const rows = (data?.data?.data ?? data?.data ?? []).filter(
+                        (c) => String(c.customerId) === String(presetCustomerId)
+                    );
+                    if (!rows.length) {
+                        toast.error("Customer has no assigned currencies or not found.", { position: "top-right" });
+                        setPresetCustomer(null);
+                        setLoading(false);
+                        return;
+                    }
+
+                    const options = rows.map((c) => ({
+                        value: `${c.customerId}_${c.curId}`,
+                        label: `${c.customer?.customerName} (${c.currency?.code})`,
+                        raw: c,
+                    }));
+
+                    if (options.length === 1) {
+                        const opt = options[0];
+                        setPresetCustomer({
+                            customerId: String(presetCustomerId),
+                            customerName: opt.raw.customer?.customerName || "",
+                            isSingle: true,
+                            options,
+                        });
+                        await handleCustomerCurrencySelect(opt);
+                    } else {
+                        const custName = options[0].raw.customer?.customerName || "";
+                        setPresetCustomer({
+                            customerId: String(presetCustomerId),
+                            customerName: custName,
+                            isSingle: false,
+                            options,
+                        });
+                    }
+                } catch (err) {
+                    toast.error("Failed to load customer details: " + err.message, { position: "top-right" });
+                    setPresetCustomer(null);
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                setLoading(false);
+            }
+        };
+
+        loadInitialData();
+    }, [urlInvoiceId, presetCustomerId, mode, router, loginDetails]);
+
+    useEffect(() => {
+        if (!submitAttempted) return;
+        const parseRes = cfg.schema.safeParse({ ...formData, items });
+        if (!parseRes.success) {
+            const fieldErrors = {};
+            const itemErrs = {};
+            parseRes.error.issues.forEach((err) => {
+                if (err.path[0] === "items" && typeof err.path[1] === "number") {
+                    const idx = err.path[1];
+                    const field = err.path[2];
+                    itemErrs[idx] = { ...(itemErrs[idx] || {}), [field]: err.message };
+                } else {
+                    const field = err.path[0];
+                    if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+                }
+            });
+            setErrors(fieldErrors);
+            setItemErrors(itemErrs);
+        } else {
+            setErrors({});
+            setItemErrors({});
+        }
+    }, [formData, items, submitAttempted]);
+
     const handleDiscard = async () => {
         const result = await MySwal.fire({
             title: "Discard changes?",
@@ -285,7 +372,7 @@ export default function AddDebitNote() {
             confirmButtonColor: "#ef4444",
             cancelButtonText: "Keep editing",
         });
-        if (result.isConfirmed) router.push("/debit-note-list");
+        if (result.isConfirmed) router.push(cfg.listRoute);
     };
 
     const handleSave = async () => {
@@ -301,7 +388,7 @@ export default function AddDebitNote() {
             items,
         };
 
-        const parseRes = DebitNoteInvoiceFormSchema.safeParse(payloadToValidate);
+        const parseRes = cfg.schema.safeParse(payloadToValidate);
         if (!parseRes.success) {
             const fieldErrors = {};
             const itemErrs = {};
@@ -324,13 +411,13 @@ export default function AddDebitNote() {
         setItemErrors({});
 
         if ((totals.finalAmount ?? 0) <= 0) {
-            toast.error("Debit note amount must be greater than 0");
+            toast.error(cfg.zeroAmountMsg);
             return;
         }
 
         const confirmRes = await MySwal.fire({
-            title: "Create Debit Note?",
-            text: "Are you sure you want to create this debit note?",
+            title: cfg.confirmTitle,
+            text: cfg.confirmText,
             icon: "info",
             showCancelButton: true,
             confirmButtonColor: "#2563eb",
@@ -350,7 +437,9 @@ export default function AddDebitNote() {
                 narration: formData.narration,
                 remarks: formData.remarks,
                 noteMode: "INVOICE",
-                items: JSON.stringify(toCreditNotePayloadItems(items))
+                items: JSON.stringify(toCreditNotePayloadItems(items)),
+                ...(cfg.hasIssueDate ? { issueDate: formData.issueDate } : {}),
+                ...(cfg.hasVatWithheld ? { vatWithheld: formData.vatWithheld } : {}),
             };
 
             const form = new FormData();
@@ -366,8 +455,8 @@ export default function AddDebitNote() {
             const res = await fetch("/relayapi", {
                 method: "POST",
                 headers: {
-                    endpoint: "debit-note-add",
-                    module: "debit-note",
+                    endpoint: cfg.addEndpoint,
+                    module: cfg.module,
                 },
                 body: form,
             });
@@ -377,10 +466,10 @@ export default function AddDebitNote() {
             const data = responsePayload.encrypted ? decryptResponse(responsePayload.encrypted) : responsePayload;
 
             if (data.success) {
-                toast.success(data.message || "Debit Note created successfully", { position: "top-right" });
-                router.push("/debit-note-list");
+                toast.success(data.message || cfg.successMsg, { position: "top-right" });
+                router.push(cfg.listRoute);
             } else {
-                toast.error(data.message || "Failed to create Debit Note", { position: "top-right" });
+                toast.error(data.message || cfg.failMsg, { position: "top-right" });
                 setSubmitting(false);
             }
         } catch (err) {
@@ -392,9 +481,9 @@ export default function AddDebitNote() {
     if (loading) {
         return (
             <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
-                <Header page="add-credit-note" />
+                <Header page={cfg.headerPage} />
                 <div className="flex-1 flex items-center justify-center">
-                    <Loader label="Loading debit note data..." />
+                    <Loader label={cfg.loaderLabel} />
                 </div>
             </div>
         );
@@ -403,13 +492,13 @@ export default function AddDebitNote() {
     if (error) {
         return (
             <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
-                <Header page="add-credit-note" />
+                <Header page={cfg.headerPage} />
                 <div className="p-8 max-w-7xl mx-auto flex-1">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-200">
                         <div className="flex items-center gap-3 text-red-600 mb-4">
                             <h2 className="text-lg font-semibold">{error}</h2>
                         </div>
-                        <button onClick={() => router.push("/debit-note-list")} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                        <button onClick={() => router.push(cfg.listRoute)} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">
                             Back to List
                         </button>
                     </div>
@@ -420,21 +509,21 @@ export default function AddDebitNote() {
 
     return (
         <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
-            <Header page="add-credit-note" />
+            <Header page={cfg.headerPage} />
 
             <div className="px-6 pt-4">
                 <nav className="flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <Link href="/" className="cursor-pointer hover:text-blue-600">Home</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <Link href="/debit-note-list" className="cursor-pointer hover:text-blue-600">Debit Notes</Link>
+                    <Link href={cfg.listRoute} className="cursor-pointer hover:text-blue-600">{cfg.breadcrumbListLabel}</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <span className="text-gray-800">Debit Note</span>
+                    <span className="text-gray-800">{cfg.pageTitle}</span>
                 </nav>
             </div>
-
+            
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6 px-6 pt-4">
                 <h1 className="text-2xl font-semibold text-[#1f2937]">
-                    Debit Note
+                    {cfg.pageTitle}
                 </h1>
             </div>
 
@@ -445,20 +534,20 @@ export default function AddDebitNote() {
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                                 Customer + Currency <span className="text-red-500">*</span>
                             </label>
-                            {isLocked ? (
+                            {isLocked || (presetCustomer && presetCustomer.isSingle) ? (
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 font-medium h-[42px] flex items-center">
                                     {formData.currencyCode ? `${formData.customerLabel} (${formData.currencyCode})` : formData.customerLabel}
                                 </div>
                             ) : (
                                 <AsyncSelect
                                     instanceId="customer-currency-select"
-                                    cacheOptions
-                                    defaultOptions
-                                    loadOptions={loadCustomerOptions}
-                                    value={formData.customerId ? { value: `${formData.customerId}_${formData.currencyId}`, label: `${formData.customerLabel} (${formData.currencyCode})` } : null}
+                                    cacheOptions={!presetCustomer}
+                                    defaultOptions={presetCustomer ? presetCustomer.options : true}
+                                    loadOptions={presetCustomer ? loadPresetCustomerOptions : loadCustomerOptions}
+                                    value={formData.customerId && formData.currencyId ? { value: `${formData.customerId}_${formData.currencyId}`, label: `${formData.customerLabel} (${formData.currencyCode})` } : null}
                                     onChange={handleCustomerCurrencySelect}
-                                    placeholder="Select Customer & Currency..."
-                                    isClearable
+                                    placeholder={presetCustomer ? "Select Currency..." : "Select Customer & Currency..."}
+                                    isClearable={!presetCustomer}
                                     classNamePrefix="react-select"
                                     styles={{
                                         menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -493,8 +582,8 @@ export default function AddDebitNote() {
                                     value={formData.invoiceId ? { value: formData.invoiceId, label: formData.invoiceCode } : null}
                                     onChange={handleInvoiceSelect}
                                     options={invoiceOptions}
-                                    isDisabled={!formData.customerId}
-                                    placeholder={!formData.customerId ? "Select customer first..." : "Select Invoice..."}
+                                    isDisabled={!formData.customerId || !formData.currencyId}
+                                    placeholder={(!formData.customerId || !formData.currencyId) ? "Select customer first..." : "Select Invoice..."}
                                     noOptionsMessage={() => "No eligible invoices"}
                                     isClearable
                                     classNamePrefix="react-select"
@@ -516,6 +605,22 @@ export default function AddDebitNote() {
                             )}
                             {errors.invoiceId && <p className="text-red-500 text-xs mt-1 font-medium">{errors.invoiceId}</p>}
                         </div>
+
+                        {cfg.hasIssueDate && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                    Issue Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.issueDate}
+                                    onChange={(e) => setFormField("issueDate", e.target.value)}
+                                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 cursor-pointer h-[42px] ${errors.issueDate ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"}`}
+                                />
+                                {errors.issueDate && <p className="text-red-500 text-xs mt-1 font-medium">{errors.issueDate}</p>}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -536,6 +641,48 @@ export default function AddDebitNote() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     <div className="lg:col-span-7 space-y-5">
+                        {cfg.hasVatWithheld && (
+                            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                            VAT Withheld <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select
+                                            instanceId="vat-withheld-select"
+                                            value={formData.vatWithheld ? {
+                                                value: formData.vatWithheld, label: [
+                                                    { value: "NO", label: "No" },
+                                                    { value: "YES", label: "Yes" }
+                                                ].find(o => String(o.value) === String(formData.vatWithheld))?.label || formData.vatWithheld
+                                            } : null}
+                                            onChange={(selected) => setFormField("vatWithheld", selected ? selected.value : "")}
+                                            options={[
+                                                { value: "NO", label: "No" },
+                                                { value: "YES", label: "Yes" }
+                                            ]}
+                                            isClearable
+                                            placeholder="No"
+                                            classNamePrefix="react-select"
+                                            styles={{
+                                                menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                                control: (base) => ({
+                                                    ...base,
+                                                    borderRadius: "0.75rem",
+                                                    borderColor: errors.vatWithheld ? "#ef4444" : "#d1d5db",
+                                                    padding: "1px",
+                                                    fontSize: "0.875rem",
+                                                    boxShadow: "none",
+                                                    "&:hover": { borderColor: errors.vatWithheld ? "#ef4444" : "#3b82f6" },
+                                                }),
+                                            }}
+                                            menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
                             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                 <span className="text-gray-400">☰</span> Remarks
@@ -554,7 +701,7 @@ export default function AddDebitNote() {
                     <div className="lg:col-span-5 space-y-5">
                         <CreditNoteSummaryPanel
                             items={items}
-                            vatWithheld={formData.vatWithheld}
+                            vatWithheld={cfg.hasVatWithheld ? formData.vatWithheld : "NO"}
                             currencyCode={formData.currencyCode}
                             currencySymbol={formData.currencySymbol}
                             selectedFiles={selectedFiles}

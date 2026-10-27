@@ -14,9 +14,8 @@ import LinkedBankBookCell from "../common/LinkedBankBookCell";
 import PaymentInvoicesTab from "./PaymentInvoicesTab";
 import PaymentTransactionStatusSidePanel from "./PaymentTransactionStatusSidePanel";
 import ActivityTimeline from "@/components/activity/ActivityTimeline";
-import { ChevronDown, CheckCircle, XCircle, Paperclip } from "lucide-react";
+import { ChevronDown, CheckCircle, XCircle } from "lucide-react";
 import MultiFilePicker from "../common/MultiFilePicker";
-import { getImageUrl } from "@/lib/utils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -332,20 +331,13 @@ export default function PaymentTransactionDetails({ id }) {
                                                 </div>
                                             )}
                                             {transaction.statusAttachmentUrl && (
-                                                <div>
-                                                    <p className="text-gray-400 font-medium text-xs">Status Attachment</p>
-                                                    <div className="mt-0.5">
-                                                        <a
-                                                            href={getImageUrl(transaction.statusAttachmentUrl)}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-sm text-blue-600 font-medium transition-colors"
-                                                        >
-                                                            <Paperclip className="h-4 w-4" />
-                                                            View Attachment
-                                                        </a>
-                                                    </div>
-                                                </div>
+                                                <MultiFilePicker
+                                                    readOnly
+                                                    label="Status Attachment"
+                                                    existingAttachments={[
+                                                        { id: "status-attachment", attachmentUrl: transaction.statusAttachmentUrl },
+                                                    ]}
+                                                />
                                             )}
                                         </div>
                                     </div>

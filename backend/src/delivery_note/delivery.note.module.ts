@@ -17,9 +17,13 @@ import { DeliveryNoteAttachmentEntity } from './entity/delivery.note.attachments
 import { DeliveryNoteController } from './delivery.note.controller';
 import { DeliveryNoteService } from './service/delivery.note.service';
 import { DeliveryNoteListService } from './service/delivery.note.list.service';
+import { OrderModule } from 'src/order/order.module';
+import { InvoiceModule } from 'src/invoice/invoice.module';
 
 @Module({
   imports: [
+    OrderModule,
+    InvoiceModule,
     TypeOrmModule.forFeature([
       DeliveryNoteEntity,
       DeliveryNoteItemEntity,

@@ -284,9 +284,10 @@ export class OrderDto {
   @IsNotEmpty()
   deliveryState!: string;
 
+  @IsOptional()
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsEnum(DeliveryType)
-  @IsNotEmpty()
-  deliveryType!: DeliveryType;
+  deliveryType?: DeliveryType | null;
 
   @IsEnum(InvoiceGenerationOn)
   @IsNotEmpty()
@@ -420,8 +421,9 @@ export class OrderUpdateDto {
   deliveryState?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsEnum(DeliveryType)
-  deliveryType?: DeliveryType;
+  deliveryType?: DeliveryType | null;
 
   @IsOptional()
   @IsEnum(InvoiceGenerationOn)

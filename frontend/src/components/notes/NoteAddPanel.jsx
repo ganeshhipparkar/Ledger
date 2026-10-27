@@ -34,6 +34,8 @@ export default function NoteAddPanel({
     lockedInvoiceId = null,
     lockedInvoiceCode = null,
     lockedCompanyId = null,
+    presetCustomerId = null,
+    presetCustomerName = null,
 
     onClose,
     onSuccess,
@@ -50,7 +52,7 @@ export default function NoteAddPanel({
 
     const [formData, setFormData] = useState({
         ...EMPTY_FORM,
-        customerId: lockedCustomerId ? String(lockedCustomerId) : "",
+        customerId: lockedCustomerId ? String(lockedCustomerId) : (presetCustomerId ? String(presetCustomerId) : ""),
         currencyId: lockedCurrencyId ? String(lockedCurrencyId) : "",
         invoiceId: lockedInvoiceId ? String(lockedInvoiceId) : "",
     });
@@ -103,9 +105,10 @@ export default function NoteAddPanel({
 
     useEffect(() => {
         if (lockedCustomerId === null) {
-            fetchInvoicesByCustomer(formData.customerId, formData.currencyId);
+            const effectiveCustId = presetCustomerId ? String(presetCustomerId) : formData.customerId;
+            fetchInvoicesByCustomer(effectiveCustId, formData.currencyId);
         }
-    }, [formData.customerId, formData.currencyId, lockedCustomerId]);
+    }, [formData.customerId, formData.currencyId, lockedCustomerId, presetCustomerId]);
 
 
     const handleChange = (field, value) => {
@@ -116,7 +119,7 @@ export default function NoteAddPanel({
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const effectiveCustomerId = lockedCustomerId ?? formData.customerId;
+        const effectiveCustomerId = lockedCustomerId ?? (presetCustomerId ? String(presetCustomerId) : formData.customerId);
         const effectiveCurrencyId = lockedCurrencyId ?? formData.currencyId;
         const effectiveInvoiceId = lockedInvoiceId ?? formData.invoiceId;
 
@@ -236,6 +239,8 @@ export default function NoteAddPanel({
                     lockedCurrencyCode={lockedCurrencyCode}
                     lockedInvoiceId={lockedInvoiceId}
                     lockedInvoiceCode={lockedInvoiceCode}
+                    presetCustomerId={presetCustomerId}
+                    presetCustomerName={presetCustomerName}
                     formData={formData}
                     onChange={handleChange}
                     selectedFiles={selectedFiles}

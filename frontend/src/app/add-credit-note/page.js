@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import AddCreditNote from "@/components/creditNote/AddCreditNote";
+import NoteInvoiceAddForm from "@/components/notes/NoteInvoiceAddForm";
 import RouteGuard from "@/components/RouteGuard";
 import Loader from "@/components/ui/Loader";
 import { getCreditNoteMode } from "@/lib/creditNoteMode";
@@ -18,7 +18,7 @@ export default function AddCreditNotePage() {
     return (
         <RouteGuard permission="creditNoteAdd">
             <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader /></div>}>
-                <AddCreditNote />
+                <NoteInvoiceAddForm noteType="CREDIT" />
             </Suspense>
         </RouteGuard>
     );

@@ -66,7 +66,7 @@ export default function TabFilterPanel({
                                     </select>
                                 ) : (
                                     <input
-                                        type="text"
+                                        type={field.type || "text"}
                                         value={value}
                                         onChange={(e) => onChange?.(field.id, e.target.value)}
                                         placeholder={`Please enter ${field.label}`}

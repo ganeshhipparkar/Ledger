@@ -20,12 +20,15 @@ import {
   OrderEntity,
   OrderLifecycleStatus,
   OrderStatus,
+  InvoiceGenerationOn,
 } from 'src/order/entity/order.entity';
 import { OrderItemEntity } from 'src/order/entity/order.item.entity';
 import { DeliveryNoteEntity } from '../entity/delivery.note.entity';
 import { DeliveryNoteItemEntity } from '../entity/delivery.note.item.entity';
 import { DeliveryNoteAttachmentEntity } from '../entity/delivery.note.attachments.entity';
 import { DeliveryNoteDto } from '../dto/delivery.note.dto';
+import { OrderPdfService } from 'src/order/order.pdf.service';
+import { InvoiceService } from 'src/invoice/service/invoice.service';
 
 @Injectable()
 export class DeliveryNoteService {
@@ -34,6 +37,8 @@ export class DeliveryNoteService {
     private readonly codeGeneratorService: CodeGeneratorService,
     private readonly fileTransfer: FileTransfer,
     private readonly eventEmitter: EventEmitter2,
+    private readonly orderPdfService: OrderPdfService,
+    private readonly invoiceService: InvoiceService,
 
     @InjectRepository(DeliveryNoteEntity)
     private readonly deliveryNoteRepo: Repository<DeliveryNoteEntity>,
@@ -91,7 +96,7 @@ export class DeliveryNoteService {
       try {
         fs.unlinkSync(tempPath);
       } catch {
-        // ignore
+ 
       }
     }
   }
@@ -147,8 +152,7 @@ export class DeliveryNoteService {
         };
       }
 
-      // Check for duplicate orderItemId in request
-      const inputItemIds = body.deliveryNoteItems.map((i) => Number(i.orderItemId));
+       const inputItemIds = body.deliveryNoteItems.map((i) => Number(i.orderItemId));
       const uniqueItemIds = new Set(inputItemIds);
       if (uniqueItemIds.size !== inputItemIds.length) {
         return {
@@ -157,8 +161,7 @@ export class DeliveryNoteService {
         };
       }
 
-      // Validate quantities > 0
-      for (let i = 0; i < body.deliveryNoteItems.length; i++) {
+       for (let i = 0; i < body.deliveryNoteItems.length; i++) {
         const item = body.deliveryNoteItems[i];
         const qty = Number(item.deliverQuantity);
         if (isNaN(qty) || qty <= 0) {
@@ -169,8 +172,7 @@ export class DeliveryNoteService {
         }
       }
 
-      // Validate receiverImage mimetype (must be image-only)
-      const imageFile = files?.receiverImage?.[0];
+       const imageFile = files?.receiverImage?.[0];
       if (imageFile) {
         const allowedImageTypes = [
           'image/jpeg',
@@ -399,7 +401,7 @@ export class DeliveryNoteService {
         const requestedQuantity = Number(lockedItem.quantity);
         const currentDelivered = Number(lockedItem.deliveredQuantity || 0);
         const pendingQuantity = Math.max(0, requestedQuantity - currentDelivered);
-        const deliverQuantity = Number(itemInput.deliverQuantity);
+        const deliverQuantity = Number(itemInput.deliverQuantity);  
 
         await queryRunner.manager.insert(DeliveryNoteItemEntity, {
           deliveryNoteId,
@@ -448,7 +450,70 @@ export class DeliveryNoteService {
 
       await queryRunner.commitTransaction();
 
-       this.eventEmitter.emit('activity.log', {
+      if (lockedOrder.status !== nextOrderStatus) {
+        this.eventEmitter.emit('activity.log', {
+          activityCode: ActivityCode.ORDER_UPDATE,
+          userId: performerId,
+          companyId: Number(body.companyId),
+          actorType: 'USER',
+          targetType: 'ORDER',
+          targetId: String(body.orderId),
+          executionStatus: 'SUCCESS',
+          severity: 'INFO',
+          parameters: {
+            userEmail: performerEmail,
+            userGroup: authCtx.activeGroupName || 'N/A',
+            orderCode: lockedOrder.orderCode,
+            action: 'deliveryNoteCreated',
+            status: nextOrderStatus,
+            deliveryNoteCode,
+            impersonated: !!req?.user?.isImpersonation,
+          },
+          metadata: {},
+        });
+      }
+
+      if (nextOrderStatus === OrderStatus.DELIVERED) {
+        this.orderPdfService
+          .generateAndStoreInvoicePdf(Number(body.orderId))
+          .catch((err: Error) =>
+            console.error(
+              `[PDF] Failed to generate invoice for order ${body.orderId}:`,
+              err.message,
+            ),
+          );
+      }
+
+      let autoInvoiceResult: any = null;
+      if (
+        nextOrderStatus === OrderStatus.DELIVERED &&
+        (lockedOrder.invoiceGenerationOn === InvoiceGenerationOn.DELIVERY_LEVEL ||
+          (lockedOrder.invoiceGenerationOn as any) === 'DELIVERY_LEVEL')
+      ) {
+        try {
+          autoInvoiceResult = await this.invoiceService.autoGenerateInvoiceFromOrder(
+            Number(body.orderId),
+            req,
+            body.deliveryDate,
+          );
+          if (autoInvoiceResult && autoInvoiceResult.success === 1) {
+            console.log(
+              `[insertDeliveryNote] Auto-generated invoice ${autoInvoiceResult.invoiceCode} (status: ${autoInvoiceResult.invoiceStatus}) for order ${body.orderId}`,
+            );
+          } else if (autoInvoiceResult) {
+            console.warn(
+              `[insertDeliveryNote] Auto-generate invoice for order ${body.orderId} returned: ${autoInvoiceResult.message}`,
+            );
+          }
+        } catch (invoiceErr: any) {
+          console.error(
+            `[insertDeliveryNote] Failed to auto-generate invoice for order ${body.orderId}:`,
+            invoiceErr,
+          );
+        }
+      }
+
+      this.eventEmitter.emit('activity.log', {
         activityCode: ActivityCode.DELIVERY_NOTE_CREATE,
         userId: performerId,
         companyId: Number(body.companyId),
@@ -474,6 +539,14 @@ export class DeliveryNoteService {
         message: 'Delivery note created successfully',
         deliveryNoteId,
         deliveryNoteCode,
+        ...(autoInvoiceResult && autoInvoiceResult.success === 1
+          ? {
+              invoiceId: autoInvoiceResult.invoiceId,
+              invoiceCode: autoInvoiceResult.invoiceCode,
+              invoiceStatus: autoInvoiceResult.invoiceStatus,
+              autoApproved: autoInvoiceResult.autoApproved,
+            }
+          : {}),
       };
     } catch (err: any) {
       if (queryRunner.isTransactionActive) {

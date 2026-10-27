@@ -1,10 +1,16 @@
 import { getCreditNoteMode } from "@/lib/creditNoteMode";
 
-export function handleCreditNoteAddNavigation({ router, setShowAddPanel, invoice }) {
+export function handleCreditNoteAddNavigation({ router, setShowAddPanel, invoice, customer }) {
     const mode = getCreditNoteMode();
     if (mode === "INVOICE") {
-        router.push(invoice ? `/add-credit-note?invoiceId=${invoice.invoiceId}` : "/add-credit-note");
+        if (invoice) {
+            router.push(`/add-credit-note?invoiceId=${invoice.invoiceId}`);
+        } else if (customer) {
+            router.push(`/add-credit-note?customerId=${customer.customerId}`);
+        } else {
+            router.push("/add-credit-note");
+        }
     } else {
-        if (setShowAddPanel) setShowAddPanel(invoice || true);
+        if (setShowAddPanel) setShowAddPanel(invoice || customer || true);
     }
 }

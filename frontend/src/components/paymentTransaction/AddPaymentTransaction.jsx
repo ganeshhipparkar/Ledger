@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import Header from "../Header";
@@ -27,6 +27,8 @@ const getMinDateOneMonthAgo = () => {
 
 export default function AddPaymentTransaction() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const presetCustomerId = searchParams.get("customerId");
     const { displayUser, activeAssignment } = useContext(loginContext) || {};
     const config = paymentTransactionFormConfig.contexts["payment-transaction-add"];
     const isSuperAdmin = displayUser?.primaryProfile?.groupCode === "admin" || activeAssignment?.groupCode === "admin";
@@ -58,15 +60,82 @@ export default function AddPaymentTransaction() {
     const [bankBooks, setBankBooks] = useState([]);
 
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [presetCustomer, setPresetCustomer] = useState(null);
+
+    useEffect(() => {
+        if (!presetCustomerId) return;
+        (async () => {
+            try {
+                const res = await fetch("/relayapi", {
+                    method: "GET",
+                    headers: {
+                        ...authHeaders(),
+                        endpoint: `customer-details/${presetCustomerId}`,
+                        module: "customer",
+                    },
+                });
+                const payload = await res.json();
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                if (!data?.customerId) {
+                    toast.error("Customer not found.", { position: "top-right" });
+                    return;
+                }
+                if (data.status && String(data.status).toLowerCase() !== "active") {
+                    toast.error("Customer is inactive.", { position: "top-right" });
+                    return;
+                }
+                setPresetCustomer({
+                    customerId: String(data.customerId),
+                    customerName: data.customerName || "",
+                    companyId: String(data.companyId || ""),
+                });
+            } catch (err) {
+                toast.error("Failed to load customer: " + err.message, { position: "top-right" });
+            }
+        })();
+    }, [presetCustomerId]);
 
     useEffect(() => {
         const initial = buildInitial();
-        if (!isSuperAdmin && activeAssignment?.companyId) {
-            initial.companyId = String(activeAssignment.companyId);
+        if (presetCustomer) {
+            initial.customerId = presetCustomer.customerId;
+            if (isSuperAdmin && presetCustomer.companyId) {
+                initial.companyId = presetCustomer.companyId;
+            } else if (!isSuperAdmin && activeAssignment?.companyId) {
+                initial.companyId = String(activeAssignment.companyId);
+            }
+        } else {
+            if (!isSuperAdmin && activeAssignment?.companyId) {
+                initial.companyId = String(activeAssignment.companyId);
+            }
         }
-        setFormData(initial);
+        setFormData((prev) => {
+            if (presetCustomer) {
+                return {
+                    ...initial,
+                    customerId: presetCustomer.customerId,
+                    companyId: isSuperAdmin && presetCustomer.companyId
+                        ? presetCustomer.companyId
+                        : (initial.companyId || prev.companyId),
+                };
+            }
+            return initial;
+        });
         if (isSuperAdmin) fetchCompanies();
-    }, [isSuperAdmin, activeAssignment]);
+    }, [isSuperAdmin, activeAssignment, presetCustomer]);
+
+    useEffect(() => {
+        if (presetCustomer && currencies.length === 1) {
+            const singleCurId = String(currencies[0].curId);
+            setFormData((prev) => {
+                if (String(prev.currencyId) === singleCurId) return prev;
+                return { ...prev, currencyId: singleCurId };
+            });
+            if (errors.currencyId) {
+                setErrors((prev) => ({ ...prev, currencyId: "" }));
+            }
+        }
+    }, [presetCustomer, currencies]);
 
     useEffect(() => {
         fetchCustomers();
@@ -139,8 +208,8 @@ export default function AddPaymentTransaction() {
     useEffect(() => {
         const rate = parseFloat(formData.exchangeRate);
         const amount = parseFloat(formData.transactionAmount);
-        if (!isNaN(rate) && !isNaN(amount)) {
-            const computed = (amount * rate).toFixed(4);
+        if (!isNaN(rate) && rate > 0 && !isNaN(amount)) {
+            const computed = (amount / rate).toFixed(4);
             if (formData.baseAmount !== computed) {
                 setFormData((prev) => ({ ...prev, baseAmount: computed }));
             }
@@ -181,6 +250,7 @@ export default function AddPaymentTransaction() {
     const handleChange = (e) => {
         const { name, value } = e.target;
         if (name === "companyId") {
+            if (presetCustomer) return;
             setFormData((prev) => ({
                 ...prev,
                 companyId: value,
@@ -191,6 +261,7 @@ export default function AddPaymentTransaction() {
                 baseAmount: "",
             }));
         } else if (name === "customerId") {
+            if (presetCustomer) return;
             setFormData((prev) => ({
                 ...prev,
                 customerId: value,
@@ -368,6 +439,7 @@ export default function AddPaymentTransaction() {
                                     name="companyId"
                                     value={formData.companyId}
                                     onChange={handleChange}
+                                    disabled={!!presetCustomer}
                                     className={selectClass("companyId")}
                                 >
                                     <option value="">Select Company</option>
@@ -394,7 +466,9 @@ export default function AddPaymentTransaction() {
                                     name="customerId"
                                     value={formData.customerId ? {
                                         value: String(formData.customerId),
-                                        label: customers.find(c => String(c.customerId) === String(formData.customerId))?.customerName || ""
+                                        label: presetCustomer?.customerName
+                                            || customers.find(c => String(c.customerId) === String(formData.customerId))?.customerName
+                                            || ""
                                     } : null}
                                     onChange={(selected) => {
                                         handleChange({ target: { name: "customerId", value: selected ? selected.value : "" } });
@@ -403,8 +477,9 @@ export default function AddPaymentTransaction() {
                                         value: String(c.customerId),
                                         label: c.customerName,
                                     }))}
+                                    isDisabled={!!presetCustomer}
                                     placeholder="Select Customer"
-                                    isClearable
+                                    isClearable={!presetCustomer}
                                     styles={{
                                         control: (base) => ({
                                             ...base,

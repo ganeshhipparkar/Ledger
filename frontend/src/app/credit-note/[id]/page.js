@@ -3,12 +3,13 @@
 import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import RouteGuard from "@/components/RouteGuard";
-import CreditNoteDetails from "@/components/creditNote/CreditNoteDetails";
+import NoteDetails from "@/components/common/NoteDetails";
+import { creditNoteViewConfig } from "@/components/creditNote/configs/creditNoteView.config";
 import Loader from "@/components/ui/Loader";
 
 function CreditNotePageInner() {
     const { id } = useParams();
-    return <CreditNoteDetails id={id} />;
+    return <NoteDetails id={id} config={creditNoteViewConfig} />;
 }
 
 export default function CreditNotePage() {

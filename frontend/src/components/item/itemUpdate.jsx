@@ -313,7 +313,7 @@ export default function EditItemPage({ item, onBack }) {
                 <span className="text-gray-400">{">>"}</span>
                 <Link href="/item-list" className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Items</Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="cursor-pointer transition-colors hover:text-blue-600 hover:underline" onClick={onBack}>Item</span>
+                <Link href={`/item/${item?.itemId}`} onClick={(e) => { if (onBack) { e.preventDefault(); onBack(); } }} className="cursor-pointer transition-colors hover:text-blue-600 hover:underline">Item</Link>
                 <span className="text-gray-400">{">>"}</span>
                 <span className="text-gray-800">Edit Item</span>
             </nav>

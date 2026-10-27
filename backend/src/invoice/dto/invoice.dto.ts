@@ -2,6 +2,7 @@ import { Transform, Type, plainToInstance } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -279,9 +280,10 @@ export class InvoiceDto {
   @IsNotEmpty()
   deliveryState!: string;
 
+  @IsOptional()
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsEnum(DeliveryType)
-  @IsNotEmpty()
-  deliveryType!: DeliveryType;
+  deliveryType?: DeliveryType | null;
 
   @IsOptional()
   @IsEnum(InvoiceFor)
@@ -323,6 +325,15 @@ export class InvoiceDto {
     value !== undefined && value !== null && value !== '' ? Number(value) : undefined,
   )
   addedBy?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === 1 || value === '1') return true;
+    if (value === 'false' || value === false || value === 0 || value === '0') return false;
+    return undefined;
+  })
+  submit?: boolean;
 }
 
 
@@ -415,8 +426,9 @@ export class InvoiceUpdateDto {
   deliveryState?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsEnum(DeliveryType)
-  deliveryType?: DeliveryType;
+  deliveryType?: DeliveryType | null;
 
   @IsOptional()
   @IsEnum(InvoiceFor)
@@ -473,6 +485,15 @@ export class InvoiceUpdateDto {
   @IsInt()
   @Transform(({ value }) => Number(value))
   updatedBy?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === 1 || value === '1') return true;
+    if (value === 'false' || value === false || value === 0 || value === '0') return false;
+    return undefined;
+  })
+  submit?: boolean;
 }
 
 

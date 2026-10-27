@@ -139,8 +139,21 @@ export class DebitNoteListService {
 
     const cn = await this.debitNoteRepo.findOne({
       where: { id },
-      relations: ['customer', 'currency', 'invoice', 'company', 'taxGroup', 'attachments'],
+      relations: [
+        'customer',
+        'currency',
+        'invoice',
+        'company',
+        'taxGroup',
+        'attachments',
+        'items',
+        'items.item',
+      ],
     });
+
+    if (cn?.items) {
+      cn.items.sort((a, b) => a.debitNoteItemId - b.debitNoteItemId);
+    }
 
     if (!cn) throw new NotFoundException('Credit note not found');
 

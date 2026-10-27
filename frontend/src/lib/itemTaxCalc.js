@@ -1,4 +1,4 @@
-export const TAX_CALC_OPTIONS = ["N/A", "EXCLUSIVE", "INCLUSIVE"];
+export const TAX_CALC_OPTIONS = ["NA", "EXCLUSIVE", "INCLUSIVE"];
 
 export function getItemLabel(it) {
     if (!it) return "";

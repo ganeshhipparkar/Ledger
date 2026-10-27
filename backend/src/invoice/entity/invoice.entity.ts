@@ -234,8 +234,9 @@ export class InvoiceEntity {
   @Column({
     type: 'enum',
     enum: DeliveryType,
+    nullable: true,
   })
-  deliveryType!: string;
+  deliveryType?: string | null;
 
   @Column({ type: 'enum', enum: InvoiceFor, nullable: true })
   invoiceFor?: string | null;

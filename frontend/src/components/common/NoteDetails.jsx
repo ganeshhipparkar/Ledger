@@ -1,6 +1,8 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import Link from "next/link";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -13,6 +15,9 @@ import { FileText, Eye, Download } from "lucide-react";
 import AttachmentPreviewModal from "../ui/AttachmentPreviewModal";
 import UserSidePanel from "../user/UserSidePanel";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
+import DetailsSidePanel from "../DetailsSidePanel";
+import { itemSidePanelConfig } from "../item/configs/itemSidePanel.config";
+import { formatTaxCalcLabel } from "@/lib/itemTaxCalc";
 
 function formatDate(dateString) {
     if (!dateString) return "-";
@@ -96,94 +101,109 @@ function AttachmentThumb({ url, onClick }) {
     );
 }
 
-export default function CreditNoteDetails({ id }) {
+export default function NoteDetails({ id, config }) {
+    const qtyDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_DECIMAL_ALLOWED, 10)
+        : 2;
+    const priceDecimals = Number.isFinite(parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10))
+        ? parseInt(process.env.NEXT_PUBLIC_PRICE_DECIMAL_ALLOWED, 10)
+        : 4;
+
     const router = useRouter();
     const { can } = useContext(loginContext) || {};
-    const [creditNote, setCreditNote] = useState(null);
+    const [note, setNote] = useState(null);
     const [loading, setLoading] = useState(true);
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState("image");
     const [selectedUserPanelId, setSelectedUserPanelId] = useState(null);
     const [selectedCustomerPanelId, setSelectedCustomerPanelId] = useState(null);
+    const [selectedItemId, setSelectedItemId] = useState(null);
 
-    const fetchCreditNote = async () => {
+    const fetchNote = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch("/relayapi", {
                 method: "GET",
                 headers: {
                     ...authHeaders(),
-                    endpoint: `credit-note-details/${id}`,
-                    module: "credit-note",
+                    endpoint: `${config.fetchEndpoint}/${id}`,
+                    module: config.module,
                 },
             });
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.id) {
-                setCreditNote(data);
+                setNote(data);
             } else {
-                setCreditNote(null);
+                setNote(null);
             }
         } catch (err) {
             console.error(err);
-            setCreditNote(null);
+            setNote(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, config.fetchEndpoint, config.module]);
 
-    useEffect(() => { fetchCreditNote(); }, [id]);
+    useEffect(() => {
+        fetchNote();
+    }, [fetchNote]);
 
     const fmt = (n) => Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
     if (loading) {
         return (
             <div className="min-h-screen bg-[#f5f6f8]">
-                <Header page="credit-note-details" />
+                <Header page={config.headerPage} />
                 <div className="flex items-center justify-center py-20">
-                    <Loader label="Loading credit note details..." />
+                    <Loader label={`Loading ${config.label.toLowerCase()} details...`} />
                 </div>
             </div>
         );
     }
 
-    if (!creditNote) {
+    if (!note) {
         return (
             <div className="min-h-screen bg-[#f5f6f8]">
-                <Header page="credit-note-details" />
+                <Header page={config.headerPage} />
                 <div className="p-8 text-red-500 text-lg font-semibold">
-                    Credit Note not found.
+                    {config.label} not found.
                 </div>
             </div>
         );
     }
+
+    const code = note[config.codeKey];
+    const pdfPath = note[config.pdfPathKey];
 
     return (
         <div className="min-h-screen bg-[#f5f6f8] text-gray-800">
-            <Header page="credit-note-details" />
+            <Header page={config.headerPage} />
 
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4 pb-20">
+                {/* Breadcrumbs */}
                 <nav className="mb-6 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Home
                     </Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <Link href="/credit-note-list" className="cursor-pointer hover:text-blue-600 hover:underline">
-                        Credit Notes
+                    <Link href={config.listRoute} className="cursor-pointer hover:text-blue-600 hover:underline">
+                        {config.pluralLabel}
                     </Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Details</span>
                 </nav>
 
+                {/* Title + action buttons */}
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">
                         Details
                     </h1>
                     <div className="flex items-center gap-4">
-                        {creditNote.creditNotePdfPath && (
+                        {pdfPath && (
                             <>
                                 <button
-                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${creditNote.creditNotePdfPath}`, "_blank")}
+                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${pdfPath}`, "_blank")}
                                     className="inline-flex h-12 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/40 active:scale-[0.98] cursor-pointer gap-2"
                                     title="View PDF"
                                 >
@@ -195,7 +215,7 @@ export default function CreditNoteDetails({ id }) {
                                         e.stopPropagation();
                                         try {
                                             const { downloadFile } = await import("@/lib/utils");
-                                            await downloadFile(creditNote.creditNotePdfPath, `CreditNote_${creditNote.creditNoteCode ?? creditNote.id}.pdf`);
+                                            await downloadFile(pdfPath, `${config.pdfFilePrefix}${code ?? note.id}.pdf`);
                                         } catch {
                                             toast.error("Failed to download PDF", { position: "top-right" });
                                         }
@@ -218,15 +238,16 @@ export default function CreditNoteDetails({ id }) {
                 </div>
 
                 <div className="grid grid-cols-12 gap-6">
+                    {/* Left sidebar */}
                     <div className="col-span-12 sm:col-span-2">
                         <div className="rounded-2xl bg-white p-5 shadow-sm">
                             <div className="border-b pb-5">
                                 <h2 className="text-xl font-semibold text-gray-800">
-                                    {creditNote.creditNoteCode || "N/A"}
+                                    {code || "N/A"}
                                 </h2>
                                 <div className="mt-3">
-                                    <span className={statusBadge(creditNote.status)}>
-                                        {creditNote.status || "N/A"}
+                                    <span className={statusBadge(note.status)}>
+                                        {note.status || "N/A"}
                                     </span>
                                 </div>
                             </div>
@@ -238,88 +259,93 @@ export default function CreditNoteDetails({ id }) {
                         </div>
                     </div>
 
+                    {/* Right column */}
                     <div className="col-span-12 lg:col-span-10">
-                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
-
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+                            
+                            {/* Column 1: Info & Narration */}
                             <div className="lg:col-span-3 space-y-6">
+                                {/* Note Info card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <div className="flex items-center gap-4 border-b pb-5 mb-6">
                                         <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-blue-50 shadow-md">
                                             <span className="text-2xl font-bold text-blue-600 uppercase">
-                                                CN
+                                                {config.shortCode}
                                             </span>
                                         </div>
                                         <div className="min-w-0">
                                             <h2 className="text-xl font-semibold text-gray-800 truncate">
-                                                Credit Note Info
+                                                {config.label} Info
                                             </h2>
                                             <p className="text-xs text-gray-400 font-mono mt-0.5">
-                                                {creditNote.creditNoteCode || "N/A"}
+                                                {code || "N/A"}
                                             </p>
                                         </div>
                                     </div>
-
+                                    
                                     <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
-                                            <p className="text-gray-500">CN Code</p>
-                                            <p className="font-mono text-blue-600 font-medium">{creditNote.creditNoteCode || "-"}</p>
+                                            <p className="text-gray-500">{config.shortCode} Code</p>
+                                            <p className="font-mono text-blue-600 font-medium">{code || "-"}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Customer</p>
                                             <p
                                                 className="font-medium text-blue-600 hover:underline cursor-pointer"
-                                                onClick={() => creditNote.customerId && setSelectedCustomerPanelId(creditNote.customerId)}
+                                                onClick={() => note.customerId && setSelectedCustomerPanelId(note.customerId)}
                                             >
-                                                {creditNote.customerName || "-"}
+                                                {note.customerName || "-"}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Invoice</p>
-                                            <p className="font-medium text-gray-800">{creditNote.invoiceCode || "-"}</p>
+                                            <p className="font-medium text-gray-800">{note.invoiceCode || "-"}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Currency</p>
-                                            <p className="font-medium text-gray-800">{creditNote.currencyCode || "-"}</p>
+                                            <p className="font-medium text-gray-800">{note.currencyCode || "-"}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Customer Charges</p>
-                                            <p className="font-medium text-gray-800">{creditNote.customerCharges?.replace(/_/g, " ") || "-"}</p>
+                                            <p className="font-medium text-gray-800">{note.customerCharges?.replace(/_/g, " ") || "-"}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Tax Calculation</p>
-                                            <p className="font-medium text-gray-800">{creditNote.taxCalculation || "-"}</p>
+                                            <p className="font-medium text-gray-800">{note.taxCalculation || "-"}</p>
                                         </div>
-                                        {creditNote.taxGroupName && (
+                                        {note.taxGroupName && (
                                             <div className="grid grid-cols-2">
                                                 <p className="text-gray-500">Tax Group</p>
-                                                <p className="font-medium text-gray-800">{`${creditNote.taxGroupName} (${creditNote.taxGroupValue}%)`}</p>
+                                                <p className="font-medium text-gray-800">{`${note.taxGroupName} (${note.taxGroupValue}%)`}</p>
                                             </div>
                                         )}
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Status</p>
                                             <div>
-                                                <span className={statusBadge(creditNote.status)}>
-                                                    {creditNote.status}
+                                                <span className={statusBadge(note.status)}>
+                                                    {note.status}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Approval Status</p>
                                             <div>
-                                                <span className={statusBadge(creditNote.approvalStatus)}>
-                                                    {creditNote.approvalStatus || "—"}
+                                                <span className={statusBadge(note.approvalStatus)}>
+                                                    {note.approvalStatus || "—"}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Narration */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm flex flex-col h-[204px]">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Narration</h3>
                                     <div className="flex-1 overflow-y-auto">
-                                        {creditNote.narration ? (
+                                        {note.narration ? (
                                             <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
-                                                {creditNote.narration}
+                                                {note.narration}
                                             </p>
                                         ) : (
                                             <p className="flex h-full items-center justify-center text-sm text-gray-400 italic">No narration provided.</p>
@@ -328,73 +354,77 @@ export default function CreditNoteDetails({ id }) {
                                 </div>
                             </div>
 
+                            {/* Column 2: Audit Logs, Amounts, Attachments */}
                             <div className="lg:col-span-3 space-y-6">
+                                {/* Audit Card */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Audit Logs</h3>
                                     <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Added By</p>
                                             <p className="font-medium text-gray-800">
-                                                {creditNote.addedByName ? (
+                                                {note.addedByName ? (
                                                     <span
                                                         className="text-blue-600 cursor-pointer hover:underline"
-                                                        onClick={() => setSelectedUserPanelId(creditNote.addedBy)}
+                                                        onClick={() => setSelectedUserPanelId(note.addedBy)}
                                                     >
-                                                        {creditNote.addedByName}
+                                                        {note.addedByName}
                                                     </span>
                                                 ) : "-"}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Added Date</p>
-                                            <p className="font-medium text-gray-800">{formatDate(creditNote.addedDate)}</p>
+                                            <p className="font-medium text-gray-800">{formatDate(note.addedDate)}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Updated By</p>
                                             <p className="font-medium text-gray-800">
-                                                {creditNote.updatedByName ? (
+                                                {note.updatedByName ? (
                                                     <span
                                                         className="text-blue-600 cursor-pointer hover:underline"
-                                                        onClick={() => setSelectedUserPanelId(creditNote.updatedBy)}
+                                                        onClick={() => setSelectedUserPanelId(note.updatedBy)}
                                                     >
-                                                        {creditNote.updatedByName}
+                                                        {note.updatedByName}
                                                     </span>
                                                 ) : "-"}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Updated Date</p>
-                                            <p className="font-medium text-gray-800">{formatDate(creditNote.updatedDate)}</p>
+                                            <p className="font-medium text-gray-800">{formatDate(note.updatedDate)}</p>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Amounts breakdown */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Amounts</h3>
                                     <div className="space-y-4 text-[15px]">
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Total Amount</p>
-                                            <p className="font-medium text-gray-800">{creditNote.currencyCode} {fmt(creditNote.totalAmount)}</p>
+                                            <p className="font-medium text-gray-800">{note.currencyCode} {fmt(note.totalAmount)}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-500">Tax Amount</p>
-                                            <p className="font-medium text-gray-800">{creditNote.currencyCode} {fmt(creditNote.taxAmount)}</p>
+                                            <p className="font-medium text-gray-800">{note.currencyCode} {fmt(note.taxAmount)}</p>
                                         </div>
                                         <div className="grid grid-cols-2">
                                             <p className="text-gray-700 font-bold">Final Amount</p>
-                                            <p className="text-blue-600 font-bold text-lg">{creditNote.currencyCode} {fmt(creditNote.finalAmount)}</p>
+                                            <p className="text-blue-600 font-bold text-lg">{note.currencyCode} {fmt(note.finalAmount)}</p>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Attachments */}
                                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                                     <h3 className="mb-5 text-xl font-semibold text-gray-800">Attachments</h3>
                                     <div>
-                                        {(creditNote.attachments ?? []).length === 0 ? (
+                                        {(note.attachments ?? []).length === 0 ? (
                                             <p className="text-sm text-gray-400 italic">No attachments.</p>
                                         ) : (
                                             <div className="flex flex-wrap gap-4">
-                                                {creditNote.attachments.filter((a) => a.status !== "Inactive").map((att, i) => (
+                                                {note.attachments.filter((a) => a.status !== "Inactive").map((att, i) => (
                                                     <AttachmentThumb
                                                         key={att.id ?? i}
                                                         url={att.attachmentUrl}
@@ -407,9 +437,94 @@ export default function CreditNoteDetails({ id }) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Item(s) card */}
+                        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                                    <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
+                                    Item(s)
+                                </h3>
+                                <div className="text-xs font-medium text-gray-500">
+                                    Total {(note.items ?? []).length} item(s)
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto w-full">
+                                <table className="w-full min-w-[1000px] border-collapse text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="w-12 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                                            <th className="min-w-[200px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
+                                            <th className="min-w-[90px] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                                            <th className="min-w-[120px] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Price</th>
+                                            <th className="min-w-[130px] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Amount</th>
+                                            <th className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax Calc.</th>
+                                            <th className="min-w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax Group</th>
+                                            <th className="min-w-[120px] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax Amount</th>
+                                            <th className="min-w-[140px] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Final Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {(note.items ?? []).length === 0 ? (
+                                            <tr>
+                                                <td colSpan={9} className="py-12 text-center text-gray-400">
+                                                    No items
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            (note.items ?? []).map((item, idx) => (
+                                                <tr key={item[config.itemIdKey] ?? idx} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="w-12 px-4 py-3.5 text-center text-gray-500 font-medium">{idx + 1}</td>
+                                                    <td className="min-w-[200px] px-4 py-3.5 text-left">
+                                                        {item.itemId ? (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSelectedItemId(item.item?.itemId ?? item.itemId)}
+                                                                    className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words text-left bg-transparent border-none p-0 cursor-pointer"
+                                                                >
+                                                                    {item.item?.itemName ?? item.itemCode ?? item.item?.itemCode ?? "—"}
+                                                                </button>
+                                                                <p className="text-xs text-gray-400 mt-0.5">{item.item?.itemCode ?? item.itemCode ?? ""}</p>
+                                                            </>
+                                                        ) : (
+                                                            <span className="font-semibold text-gray-800 break-words">{item.description ?? "—"}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="min-w-[90px] px-4 py-3.5 text-right font-medium text-gray-800 whitespace-nowrap">
+                                                        {Number(item.quantity ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: qtyDecimals })}
+                                                    </td>
+                                                    <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">
+                                                        {note.currencySymbol ?? ""}{Number(item.unitPrice ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}
+                                                    </td>
+                                                    <td className="min-w-[130px] px-4 py-3.5 text-right whitespace-nowrap font-medium text-gray-800">
+                                                        {note.currencySymbol ? `${note.currencySymbol} ` : ""}{Number(item.totalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}
+                                                    </td>
+                                                    <td className="min-w-[110px] px-4 py-3.5 text-center whitespace-nowrap">
+                                                        <span className="px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600">
+                                                            {formatTaxCalcLabel(item.taxCalculation)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="min-w-[120px] px-4 py-3.5 text-left text-sm text-gray-600 whitespace-nowrap">
+                                                        {item.taxGroup ?? "—"}
+                                                    </td>
+                                                    <td className="min-w-[120px] px-4 py-3.5 text-right whitespace-nowrap text-gray-700">
+                                                        {note.currencySymbol ? `${note.currencySymbol} ` : ""}{Number(item.taxAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}
+                                                    </td>
+                                                    <td className="min-w-[140px] px-4 py-3.5 text-right whitespace-nowrap font-bold text-gray-900">
+                                                        {note.currencySymbol ? `${note.currencySymbol} ` : ""}{Number(item.finalAmount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: priceDecimals })}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
 
             <AttachmentPreviewModal
                 open={!!previewUrl}
@@ -417,6 +532,14 @@ export default function CreditNoteDetails({ id }) {
                 fileUrl={previewUrl}
                 fileType={previewType}
             />
+
+            {selectedItemId && (
+                <DetailsSidePanel
+                    config={itemSidePanelConfig}
+                    id={selectedItemId}
+                    onClose={() => setSelectedItemId(null)}
+                />
+            )}
 
             {selectedUserPanelId &&
                 typeof document !== "undefined" &&

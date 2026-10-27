@@ -220,7 +220,7 @@ export default function QuotationUpdate({ id }) {
                     setItems(data.quotationItems.map((it) => {
                         const unitPriceVal = parseFloat(it.unitPrice) || 0;
                         const basePrice = parseFloat(it.item?.convertedCostPerUnit) || (parseFloat(it.item?.costPerUnit) / (parseFloat(it.item?.conversionRate) || 1)) || (unitPriceVal / rate) || 0;
-                        const loadedTaxCalc = it.taxCalculation === "NA" ? "N/A" : (it.taxCalculation ?? "N/A");
+                        const loadedTaxCalc = it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation;
                         const isTaxableLoad = loadedTaxCalc === "EXCLUSIVE" || loadedTaxCalc === "INCLUSIVE";
                         const loadedTaxable = parseFloat(it.taxableAmount) || 0;
                         const loadedTaxAmt = parseFloat(it.taxAmount) || 0;
@@ -538,7 +538,7 @@ export default function QuotationUpdate({ id }) {
                     description: it.description || undefined,
                     quantity: parseFloat(it.quantity) || 0,
                     unitPrice: parseFloat(it.unitPrice) || 0,
-                    taxCalculation: it.taxCalculation === "N/A" ? "NA" : (it.taxCalculation || "NA"),
+                    taxCalculation: it.taxCalculation === "N/A" || !it.taxCalculation ? "NA" : it.taxCalculation,
                     taxGroup: it.taxGroup || undefined,
                     discounts: (it.discounts || []).map((d) => ({
                         discountDescription: d.discountDescription || d.description,
@@ -606,7 +606,7 @@ export default function QuotationUpdate({ id }) {
                     <span className="text-gray-400">{">>"}</span>
                     <Link href="/quotation-list" className="cursor-pointer hover:text-blue-600">Quotations</Link>
                     <span className="text-gray-400">{">>"}</span>
-                    <Link href="/quotation/${id}" className="cursor-pointer hover:text-blue-600">Quotation</Link>
+                    <Link href={`/quotation/${id}`} className="cursor-pointer hover:text-blue-600">Quotation</Link>
                     <span className="text-gray-400">{">>"}</span>
                     <span className="text-gray-800">Edit</span>
                 </nav>

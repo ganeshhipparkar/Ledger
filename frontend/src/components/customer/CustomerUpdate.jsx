@@ -400,7 +400,9 @@ export default function CustomerUpdate({ id, onBack }) {
                 <span className="text-gray-400">{">>"}</span>
                 <Link href="/customer-list" className="cursor-pointer hover:text-blue-600 hover:underline">Customers</Link>
                 <span className="text-gray-400">{">>"}</span>
-                <span className="text-gray-800 cursor-pointer">Edit Customer</span>
+                <Link href={`/customer/${id}`} onClick={(e) => { if (onBack) { e.preventDefault(); onBack(); } }} className="cursor-pointer hover:text-blue-600 hover:underline">Customer</Link>
+                <span className="text-gray-400">{">>"}</span>
+                <span className="text-gray-800">Edit Customer</span>
             </nav>
 
             <div className="px-6">

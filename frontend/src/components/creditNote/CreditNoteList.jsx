@@ -15,27 +15,15 @@ import { createPortal } from "react-dom";
 import { ChevronDown, FileText } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import NoteAddPanel from "../notes/NoteAddPanel";
-import CreditNoteCard from "./CreditNoteCard";
+import NoteCard from "../common/NoteCard";
+import NoteStatusBadge from "../common/NoteStatusBadge";
+import { creditNoteViewConfig } from "./configs/creditNoteView.config";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
 import DetailsSidePanel from "../DetailsSidePanel";
 import { creditNoteSidePanelConfig } from "./configs/creditNoteSidePanel.config";
 import { handleCreditNoteAddNavigation } from "@/lib/useCreditNoteNavigation";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-const STATUS_COLORS = {
-    SUBMITTED: "bg-blue-100 text-blue-700 border-blue-200",
-};
-
-export function CreditNoteStatusBadge({ status }) {
-    const cls = STATUS_COLORS[status] ?? "bg-gray-100 text-gray-500 border-gray-200";
-    const label = status ? status.charAt(0) + status.slice(1).toLowerCase() : "—";
-    return (
-        <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold ${cls}`}>
-            {label}
-        </span>
-    );
-}
 
 function getCreditNoteTableColumns({ can, onViewClick, onCustomerClick }) {
     return [
@@ -130,7 +118,7 @@ function getCreditNoteTableColumns({ can, onViewClick, onCustomerClick }) {
         {
             id: "status",
             header: "Status",
-            cell: ({ row }) => <CreditNoteStatusBadge status={row.original.status} />,
+            cell: ({ row }) => <NoteStatusBadge status={row.original.status} />,
         },
         {
             id: "addedByName",
@@ -201,7 +189,7 @@ function CreditNoteListRow({ creditNote: cn, isOpen, onToggle, onCustomerClick, 
 
                 <div>
                     <div className="text-sm text-gray-500 mb-1">Status</div>
-                    <CreditNoteStatusBadge status={cn.status} />
+                    <NoteStatusBadge status={cn.status} />
                 </div>
 
                 <div className="flex items-start justify-between gap-2">
@@ -395,7 +383,7 @@ export default function CreditNoteList() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                         {data.length === 0 && <p className="text-center text-gray-400 py-16 col-span-full bg-white rounded-2xl border border-gray-200">No credit notes found.</p>}
                         {data.map((cn) => (
-                            <CreditNoteCard key={cn.id} creditNote={cn} onCustomerClick={(id) => setSelectedCustomerId(id)} onViewClick={(id) => setViewId(id)} />
+                            <NoteCard key={cn.id} note={cn} config={creditNoteViewConfig} onCustomerClick={(id) => setSelectedCustomerId(id)} onViewClick={(id) => setViewId(id)} />
                         ))}
                     </div>
                 )}

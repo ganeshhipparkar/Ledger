@@ -7,6 +7,7 @@ import { decryptResponse } from "@/app/lib/crypto";
 import MultiFilePicker from "../common/MultiFilePicker";
 import AsyncSelect from "react-select/async";
 import Select from "react-select";
+import { toast } from "react-toastify";
 import FormattedNumberInput from "../ui/FormattedNumberInput";
 import { limitPriceDecimals } from "@/lib/utils";
 
@@ -47,6 +48,8 @@ export default function NoteFormCore({
     lockedCurrencyCode = null,
     lockedInvoiceId = null,
     lockedInvoiceCode = null,
+    presetCustomerId = null,
+    presetCustomerName = null,
 
     formData,
     onChange,
@@ -74,6 +77,57 @@ export default function NoteFormCore({
     const { taxAmount, finalAmount } = computePreview(formData.totalAmount, formData.taxCalculation, taxRate);
 
     const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+    const [customerCurrencies, setCustomerCurrencies] = useState([]);
+    const [loadingCurrencies, setLoadingCurrencies] = useState(false);
+
+    useEffect(() => {
+        if (!presetCustomerId) return;
+        setLoadingCurrencies(true);
+        fetch("/relayapi", {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+                endpoint: "customer-currencies-list",
+                module: "customer",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                page: 1,
+                limit: 50,
+                filters: [{ key: "customerId", value: String(presetCustomerId), operator: "equal" }],
+            }),
+        })
+            .then((res) => res.json())
+            .then((payload) => {
+                const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
+                const rows = (data?.data?.data ?? data?.data ?? []).filter(
+                    (c) => String(c.customerId) === String(presetCustomerId)
+                );
+                if (!rows.length) {
+                    toast.error("Customer has no assigned currencies.", { position: "top-right" });
+                    onCancel?.();
+                    return;
+                }
+                const curOptions = rows.map((r) => ({
+                    value: String(r.curId),
+                    label: r.currency?.code || "",
+                }));
+                setCustomerCurrencies(curOptions);
+                if (curOptions.length === 1) {
+                    onChange("currencyId", curOptions[0].value);
+                    onChange("currencyCode", curOptions[0].label);
+                    onChange("invoiceId", "");
+                }
+            })
+            .catch((err) => {
+                toast.error("Failed to load customer currencies: " + err.message, { position: "top-right" });
+                onCancel?.();
+            })
+            .finally(() => {
+                setLoadingCurrencies(false);
+            });
+    }, [presetCustomerId]);
 
     const loadCustomerOptions = (inputValue, callback) => {
         if (!companyId) return callback([]);
@@ -151,6 +205,46 @@ export default function NoteFormCore({
                 <>
                     <LockedField label="Customer" value={lockedCustomerName} />
                     <LockedField label="Currency" value={lockedCurrencyCode} />
+                </>
+            ) : presetCustomerId !== null ? (
+                <>
+                    <LockedField label="Customer" value={presetCustomerName} />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Currency <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                            instanceId="note-preset-currency-select"
+                            value={formData.currencyId ? {
+                                value: String(formData.currencyId),
+                                label: customerCurrencies.find(c => String(c.value) === String(formData.currencyId))?.label || formData.currencyCode || ""
+                            } : null}
+                            onChange={(selected) => {
+                                onChange("currencyId", selected ? selected.value : "");
+                                onChange("currencyCode", selected ? selected.label : "");
+                                onChange("invoiceId", "");
+                            }}
+                            options={customerCurrencies}
+                            isLoading={loadingCurrencies}
+                            placeholder="Select Currency"
+                            isClearable={customerCurrencies.length > 1}
+                            classNamePrefix="react-select"
+                            styles={{
+                                menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                control: (base) => ({
+                                    ...base,
+                                    borderRadius: "0.75rem",
+                                    borderColor: errors.currencyId ? "#ef4444" : "#e5e7eb",
+                                    padding: "1px",
+                                    fontSize: "0.875rem",
+                                    boxShadow: "none",
+                                    "&:hover": { borderColor: errors.currencyId ? "#ef4444" : "#3b82f6" },
+                                }),
+                            }}
+                            menuPortalTarget={typeof window !== "undefined" ? document.body : null}
+                        />
+                        <FieldError name="currencyId" />
+                    </div>
                 </>
             ) : (
                 <div className="col-span-1 md:col-span-2">

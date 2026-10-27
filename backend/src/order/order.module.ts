@@ -49,6 +49,6 @@ import { OrderPdfService } from './order.pdf.service';
   ],
   controllers: [OrderController],
   providers: [OrderService, OrderListService, Filter, FileTransfer, CodeGeneratorService, OrderPdfService],
-  exports: [TypeOrmModule, OrderService, OrderListService],
+  exports: [TypeOrmModule, OrderService, OrderListService, OrderPdfService],
 })
 export class OrderModule {}
