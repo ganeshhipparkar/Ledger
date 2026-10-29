@@ -1,4 +1,4 @@
-import AddCustomer from "@/components/customer/AddCustomer";
+import CustomerFormPage from "@/components/customer/CustomerFormPage";
 import RouteGuard from "@/components/RouteGuard";
 
 export const metadata = {
@@ -9,7 +9,7 @@ export const metadata = {
 export default function AddCustomerPage() {
     return (
         <RouteGuard permission="customerAdd">
-            <AddCustomer />
+            <CustomerFormPage context="customer-add" />
         </RouteGuard>
     );
 }

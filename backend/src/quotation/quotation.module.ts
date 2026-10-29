@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { GroupPermissionEntity } from 'src/group/entity/capability.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
@@ -23,6 +24,9 @@ import { QuotationContorller } from './quotation.controller';
 import { QuotationService } from './quotation.service';
 import { QuotationListService } from './quotation.list.service';
 import { QuotationPdfService } from './quotation.pdf.service';
+import { QuotationPdfProducerService } from './quotation.pdf.producer.service';
+import { QuotationPdfProcessor } from './quotation.pdf.processor';
+import { PDF_GENERATION_QUEUE } from './quotation.pdf.queue';
 
 @Module({
   imports: [
@@ -46,9 +50,19 @@ import { QuotationPdfService } from './quotation.pdf.service';
       ManufacturerEntity,
       taxGroupEntity,
     ]),
+    BullModule.registerQueue({ name: PDF_GENERATION_QUEUE }),
   ],
   controllers: [QuotationContorller],
-  providers: [QuotationService, QuotationListService, QuotationPdfService, Filter, FileTransfer, CodeGeneratorService],
+  providers: [
+    QuotationService,
+    QuotationListService,
+    QuotationPdfService,
+    QuotationPdfProducerService,
+    QuotationPdfProcessor,
+    Filter,
+    FileTransfer,
+    CodeGeneratorService,
+  ],
   exports: [TypeOrmModule, QuotationService, QuotationListService],
 })
 export class QuotationModule {}

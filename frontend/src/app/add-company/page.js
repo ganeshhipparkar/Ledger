@@ -1,10 +1,10 @@
-import AddCompany from "@/components/company/AddCompany";
+import CompanyFormPage from "@/components/company/CompanyFormPage";
 import RouteGuard from "@/components/RouteGuard";
 
 export default function AddCompanyPage() {
     return (
         <RouteGuard permission="companyAdd">
-            <AddCompany />
+            <CompanyFormPage context="company-add" />
         </RouteGuard>
     );
 }

@@ -124,7 +124,6 @@ export default function BankBookDetails({ id }) {
                     <span className="text-gray-800">Bank Book</span>
                 </nav>
 
-                {/* Title + action buttons */}
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="mt-1 text-3xl font-semibold text-gray-800">
                         Details
@@ -149,7 +148,6 @@ export default function BankBookDetails({ id }) {
                 </div>
 
                 <div className="grid grid-cols-12 gap-6">
-                    {/* Left sidebar */}
                     <div className="col-span-12 lg:col-span-3">
                         <div className="rounded-2xl bg-white p-5 shadow-sm">
                             <div className="border-b pb-5">
@@ -168,10 +166,10 @@ export default function BankBookDetails({ id }) {
                         </div>
                     </div>
 
-                    {/* Right column */}
+
                     <div className="col-span-12 lg:col-span-9">
                         <div className="grid gap-6 lg:grid-cols-2">
-                            {/* Details card */}
+
                             <div className="rounded-2xl bg-white p-6 shadow-sm">
                                 <div className="flex items-center gap-4 border-b pb-5">
                                     <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-blue-50 shadow-md">
@@ -208,16 +206,16 @@ export default function BankBookDetails({ id }) {
                                         </div>
                                     </div>
                                     {isSuperAdmin && (
-<div>
-                                        <div className="text-sm text-gray-500">Company</div>
-                                        <div className="text-[#101010] font-bold text-[#374151] mt-1">
-                                            <LinkedCompanyCell
-                                                companyId={bankBook.companyId}
-                                                companyName={bankBook.companyName || bankBook.company?.companyName}
-                                            />
+                                        <div>
+                                            <div className="text-sm text-gray-500">Company</div>
+                                            <div className="text-[#101010] font-bold text-[#374151] mt-1">
+                                                <LinkedCompanyCell
+                                                    companyId={bankBook.companyId}
+                                                    companyName={bankBook.companyName || bankBook.company?.companyName}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-)}
+                                    )}
                                     <div>
                                         <div className="text-sm text-gray-500">Currency</div>
                                         <div className="text-[#101010] font-bold text-[#374151] mt-1">
@@ -253,7 +251,6 @@ export default function BankBookDetails({ id }) {
                                 </div>
                             </div>
 
-                            {/* Audit Card */}
                             <div className="rounded-2xl bg-white p-6 shadow-sm">
                                 <div className="flex items-center gap-4 border-b pb-5">
                                     <div className="text-[#888888] font-bold text-base">Audit Logs</div>
@@ -308,7 +305,6 @@ export default function BankBookDetails({ id }) {
                 </div>
             </div>
 
-            {/* Edit form side panel */}
             {typeof document !== "undefined" &&
                 createPortal(
                     <BankBookFormSidePanel
@@ -321,7 +317,6 @@ export default function BankBookDetails({ id }) {
                     document.body
                 )}
 
-            {/* User detail side panel */}
             {selectedUserPanelId &&
                 typeof document !== "undefined" &&
                 createPortal(

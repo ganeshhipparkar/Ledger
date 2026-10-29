@@ -138,7 +138,6 @@ export default function BankBookList() {
             <Header page="bank-books" onSearch={handleSearch} onAddClick={openAdd} />
 
             <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 overflow-hidden">
-                {/* Breadcrumbs */}
                 <nav className="mb-4 flex items-center space-x-2 text-sm font-medium text-gray-500">
                     <Link href="/" className="cursor-pointer hover:text-blue-600 hover:underline">
                         Home
@@ -151,11 +150,11 @@ export default function BankBookList() {
                     {loading && (
                         <div className="bg-white rounded-xl border border-gray-200 p-8 flex items-center justify-center">
                             <Loader label="Loading bank books..." />
-                        {selectedUserPanelId && typeof document !== "undefined" && createPortal(
-                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
-                document.body
-            )}
-            </div>
+                            {selectedUserPanelId && typeof document !== "undefined" && createPortal(
+                                <UserSidePanel userId={selectedUserPanelId} onClose={() => setSelectedUserPanelId(null)} />,
+                                document.body
+                            )}
+                        </div>
                     )}
 
                     {error && (

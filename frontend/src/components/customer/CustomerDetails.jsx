@@ -12,7 +12,7 @@ import { loginContext } from "../hooks/LoginContext";
 import Loader from "../ui/Loader";
 import AppPagination from "../ui/AppPagination";
 import LinkedCompanyCell from "../common/LinkedCompanyCell";
-import CustomerUpdate from "./CustomerUpdate";
+import CustomerFormPage from "./CustomerFormPage";
 import UserSidePanel from "../user/UserSidePanel";
 import { useSearchParams } from "next/navigation";
 import TabFilterPanel from "../common/TabFilterPanel";
@@ -313,7 +313,7 @@ export default function CustomerDetails({ id }) {
     };
 
     if (showEdit) {
-        return <CustomerUpdate id={id} onBack={handleEditClose} />;
+        return <CustomerFormPage context="customer-update" id={id} onBack={handleEditClose} />;
     }
 
     if (loading) {

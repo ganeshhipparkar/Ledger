@@ -31,6 +31,14 @@ export enum VatWithheld {
   NO = 'NO',
 }
 
+export enum PdfStatus {
+  NONE       = 'NONE',
+  PENDING    = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  READY      = 'READY',
+  FAILED     = 'FAILED',
+}
+
 @Entity('quotation')
 export class QuotationEntity {
   @PrimaryGeneratedColumn()
@@ -172,6 +180,12 @@ export class QuotationEntity {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   invoicePdfPath?: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: PdfStatus.NONE })
+  pdfStatus!: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  pdfStatusMessage?: string | null;
 
   @Column({ nullable: true })
   addedBy?: number;

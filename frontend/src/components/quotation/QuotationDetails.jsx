@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -114,9 +114,12 @@ export default function QuotationDetails({ id }) {
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
 
-    const fetchDetails = async () => {
+    // ref for the PDF-status polling interval
+    const pdfPollRef = useRef(null);
+
+    const fetchDetails = async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await fetch("/relayapi", {
                 method: "GET",
                 headers: { ...authHeaders(), endpoint: `quotation-details/${id}`, module: "quotation" },
@@ -124,19 +127,59 @@ export default function QuotationDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (!data?.quotationId) {
-                toast.error("Quotation not found.", { position: "top-right" });
-                router.push("/quotation-list");
+                if (!silent) {
+                    toast.error("Quotation not found.", { position: "top-right" });
+                    router.push("/quotation-list");
+                }
                 return;
             }
             setQuotation(data);
+            return data;
         } catch (err) {
-            toast.error(`Error: ${err.message}`, { position: "top-right" });
+            if (!silent) toast.error(`Error: ${err.message}`, { position: "top-right" });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => { fetchDetails(); }, [id]);
+
+    useEffect(() => {
+        const pdfStatus = quotation?.pdfStatus;
+        const isGenerating = pdfStatus === "PENDING" || pdfStatus === "PROCESSING";
+
+        if (!isGenerating) {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            return;
+        }
+
+        if (pdfPollRef.current) return;
+
+        let ticks = 0;
+        pdfPollRef.current = setInterval(async () => {
+            ticks++;
+            const data = await fetchDetails({ silent: true });
+            const newStatus = data?.pdfStatus;
+            if (newStatus !== "PENDING" && newStatus !== "PROCESSING") {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            if (ticks >= 20) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        }, 3000);
+
+        return () => {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        };
+    }, [quotation?.pdfStatus]);
 
     const handleStatusUpdate = async (newStatus) => {
         const label = newStatus === "CONFIRMED" ? "Confirm" : newStatus === "SUBMITTED" ? "Submit" : newStatus;
@@ -185,7 +228,7 @@ export default function QuotationDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice PDF regenerated.", { position: "top-right" });
+                toast.success("PDF generation in progress.", { position: "top-right" });
                 fetchDetails();
             } else {
                 toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
@@ -240,26 +283,36 @@ export default function QuotationDetails({ id }) {
                 allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
             }
         } else if (q.status === "CONFIRMED") {
+            const pdfStatus = q.pdfStatus ?? "NONE";
+
             if (can?.("orderAdd")) {
                 allAvailable.push({ id: "convertToOrder", label: "Convert to Order", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-order?quotationId=${id}`), variant: "outline" });
             }
             if (can?.("invoiceAdd")) {
                 allAvailable.push({ id: "convertToInvoice", label: "Convert to Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?fromQuotation=${id}`), variant: "outline" });
             }
-            if (q.invoicePdfPath) {
+
+            if (pdfStatus === "READY" && q.invoicePdfPath) {
+
                 allAvailable.push({ id: "viewPdf", label: "View PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"), variant: "outline" });
-                allAvailable.push({ id: "downloadPdf", label: "Download PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
-                    e.stopPropagation();
-                    try {
-                        await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
-                    } catch (err) {
-                        toast.error("Failed to download invoice", { position: "top-right" });
-                    }
-                }, variant: "outline" });
+                allAvailable.push({
+                    id: "downloadPdf", label: "Download PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
+                        e.stopPropagation();
+                        try {
+                            await downloadFile(q.invoicePdfPath, `Invoice_${q.quotationCode ?? q.quotationId}.pdf`);
+                        } catch (err) {
+                            toast.error("Failed to download invoice", { position: "top-right" });
+                        }
+                    }, variant: "outline"
+                });
             }
-            if (can?.("quotationUpdate")) {
-                allAvailable.push({ id: "regeneratePdf", label: "Regenerate PDF", icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf, variant: "outline" });
+
+            if (pdfStatus === "FAILED" || pdfStatus === "NONE" || pdfStatus === "READY") {
+                if (can?.("quotationUpdate")) {
+                    allAvailable.push({ id: "regeneratePdf", label: "Regenerate PDF", icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf, variant: "outline" });
+                }
             }
+
             if (can?.("quotationAdd")) {
                 allAvailable.push({ id: "clone", label: "Clone Quotation", icon: <Copy className="h-4 w-4" />, onClick: () => router.push(`/add-quotation?cloneFrom=${id}`), variant: "outline" });
             }
@@ -273,7 +326,7 @@ export default function QuotationDetails({ id }) {
     const plainCandidates = [];
     let splitMainActionId = null;
     const dropdownOrder = [];
-    
+
     let nonDestructiveCount = 0;
     allAvailable.forEach(action => {
         if (action.isDestructive) {
@@ -304,13 +357,34 @@ export default function QuotationDetails({ id }) {
                 </nav>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-1 mt-2">
                     <h1 className="text-2xl font-semibold text-[#1f2937]">Quotation</h1>
-                    
+
                     <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-                        <ActionButtonGroup 
-                            allAvailable={allAvailable} 
-                            plainCandidates={plainCandidates} 
-                            splitCandidateIds={splitMainActionId ? [splitMainActionId] : []} 
-                            dropdownOrder={dropdownOrder} 
+                        {/* Disabled generating indicator — shown outside ActionButtonGroup because
+                            ActionButtonGroup does not support disabled/loading action items. */}
+                        {q.status === "CONFIRMED" && (q.pdfStatus === "PENDING" || q.pdfStatus === "PROCESSING") && (
+                            <button
+                                type="button"
+                                disabled
+                                className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-semibold border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                title="PDF is being generated in the background"
+                            >
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                Generating PDF…
+                            </button>
+                        )}
+                        {q.status === "CONFIRMED" && q.pdfStatus === "FAILED" && (
+                            <span
+                                className="flex items-center gap-1.5 rounded-sm px-3 py-2 text-xs font-semibold border border-red-200 bg-red-50 text-red-600"
+                                title={q.pdfStatusMessage || "PDF generation failed"}
+                            >
+                                PDF Failed
+                            </span>
+                        )}
+                        <ActionButtonGroup
+                            allAvailable={allAvailable}
+                            plainCandidates={plainCandidates}
+                            splitCandidateIds={splitMainActionId ? [splitMainActionId] : []}
+                            dropdownOrder={dropdownOrder}
                         />
                     </div>
                 </div>

@@ -41,6 +41,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
 import { RedisModule } from './redis/redis.module';
+import { BullModule } from '@nestjs/bullmq';
+import { redisConfig } from './packages/config/redis.config';
 
 @Module({
   imports: [
@@ -70,6 +72,12 @@ import { RedisModule } from './redis/redis.module';
     }),
   
     RedisModule,
+    BullModule.forRoot({
+      connection: {
+        host: redisConfig.host,
+        port: redisConfig.port,
+      },
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'upload'),

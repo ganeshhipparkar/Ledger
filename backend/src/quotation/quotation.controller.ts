@@ -20,7 +20,7 @@ import {
 } from 'src/utilities/permissions.guard';
 import { QuotationService } from './quotation.service';
 import { QuotationListService } from './quotation.list.service';
-import { QuotationPdfService } from './quotation.pdf.service';
+import { QuotationPdfProducerService } from './quotation.pdf.producer.service';
 import {
   QuotationDto,
   QuotationListDto,
@@ -33,7 +33,7 @@ export class QuotationContorller {
   constructor(
     private readonly quotationService: QuotationService,
     private readonly quotationListService: QuotationListService,
-    private readonly quotationPdfService: QuotationPdfService,
+    private readonly quotationPdfProducerService: QuotationPdfProducerService,
   ) {}
 
   @Post('quotation-list')
@@ -146,12 +146,23 @@ export class QuotationContorller {
     @Param('quotationId') quotationId: string,
   ) {
     try {
-      const invoicePdfPath = await this.quotationPdfService.generateAndStoreInvoicePdf(
+      const result = await this.quotationPdfProducerService.enqueue(
         Number(quotationId),
       );
-      return { encrypted: encryptResponse({ success: 1, invoicePdfPath }) };
-    } catch (err: any) {
-      return { encrypted: encryptResponse({ success: 0, message: err.message }) };
+      return {
+        encrypted: encryptResponse({
+          success: 1,
+          queued: result.queued,
+          alreadyQueued: result.alreadyQueued,
+        }),
+      };
+    } catch {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'PDF generation service temporarily unavailable. Please try again shortly.',
+        }),
+      };
     }
   }
 }

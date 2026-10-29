@@ -55,7 +55,7 @@ export default function BankBookSidePanel({ bankBookId, onClose }) {
         }
     };
 
-    const currencyStr = bankBook?.currencyCode || bankBook?.currency?.code 
+    const currencyStr = bankBook?.currencyCode || bankBook?.currency?.code
         ? `${bankBook.currencyCode || bankBook.currency.code} ${bankBook.currencySymbol || bankBook.currency?.symbol ? `(${bankBook.currencySymbol || bankBook.currency.symbol})` : ""}`
         : "-";
 

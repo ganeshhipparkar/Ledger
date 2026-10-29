@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -32,7 +33,7 @@ import {
   QuotationUpdateDto,
 } from './dto/quotation.dto';
 import { TaxCalculation } from './entity/quotation.item.entity';
-import { QuotationPdfService } from './quotation.pdf.service';
+import { QuotationPdfProducerService } from './quotation.pdf.producer.service';
 
 interface ComputedItemAmounts {
   totalAmount: number;
@@ -88,8 +89,10 @@ export class QuotationService {
     private readonly eventEmitter: EventEmitter2,
     private readonly fileTransfer: FileTransfer,
     private readonly dataSource: DataSource,
-    private readonly quotationPdfService: QuotationPdfService,
+    private readonly quotationPdfProducerService: QuotationPdfProducerService,
   ) {}
+
+  private readonly logger = new Logger(QuotationService.name);
 
   @Inject()
   private readonly filter!: Filter;
@@ -823,9 +826,12 @@ export class QuotationService {
 
       if (isBeingConfirmed) {
         try {
-          await this.quotationPdfService.generateAndStoreInvoicePdf(quotationId);
-        } catch (err: any) {
-          console.error(`[PDF] Failed to generate invoice for quotation ${quotationId}:`, err.message);
+          await this.quotationPdfProducerService.enqueue(quotationId);
+        } catch (err: any) { 
+          this.logger.error(
+            `[PDF] Failed to enqueue PDF job for quotation ${quotationId}: ${err.message}`,
+            err.stack,
+          );
         }
       }
 

@@ -319,7 +319,6 @@ export default function BankBookFormSidePanel({
                 onClick={onClose}
             />
 
-            {/* Panel Drawer */}
             <div
                 className={`absolute inset-y-0 right-0 max-w-full flex pl-10 transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"
                     }`}
@@ -345,7 +344,6 @@ export default function BankBookFormSidePanel({
                         </button>
                     </div>
 
-                    {/* Form Content */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {fetching ? (
                             <div className="flex items-center justify-center py-20">
@@ -370,20 +368,20 @@ export default function BankBookFormSidePanel({
                                                     {field.label} {field.required && <span className="text-red-500">*</span>}
                                                 </label>
                                                 <select
-                                                        name={field.name}
-                                                        value={formData[field.name]}
-                                                        onChange={handleChange}
-                                                        disabled={field.readOnly || companiesLoading}
-                                                        className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
-                                                            }`}
-                                                    >
-                                                        <option value="">Select Company</option>
-                                                        {companies.map((c) => (
-                                                            <option key={c.companyId} value={c.companyId}>
-                                                                {c.companyName}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    name={field.name}
+                                                    value={formData[field.name]}
+                                                    onChange={handleChange}
+                                                    disabled={field.readOnly || companiesLoading}
+                                                    className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 outline-none transition ${errors[field.name] ? "border-red-500" : "border-gray-300 focus:border-blue-500"
+                                                        }`}
+                                                >
+                                                    <option value="">Select Company</option>
+                                                    {companies.map((c) => (
+                                                        <option key={c.companyId} value={c.companyId}>
+                                                            {c.companyName}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                                 {errors[field.name] && (
                                                     <p className="mt-1 text-sm text-red-500">{errors[field.name]}</p>
                                                 )}
@@ -503,7 +501,6 @@ export default function BankBookFormSidePanel({
                                         );
                                     }
 
-                                    // Default text / number input
                                     return (
                                         <div key={field.name} className="space-y-1">
                                             <label className="block text-sm font-medium text-gray-700">
@@ -529,8 +526,7 @@ export default function BankBookFormSidePanel({
                             </form>
                         )}
                     </div>
-
-                    {/* Footer Actions */}
+                            
                     <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-white">
                         <button
                             type="button"

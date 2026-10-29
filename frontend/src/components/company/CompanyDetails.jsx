@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../Header";
-import CompanyUpdate from "./CompanyUpdate";
+import CompanyFormPage from "./CompanyFormPage";
 import { loginContext } from "../hooks/LoginContext";
 import Loader from "../ui/Loader";
 import ImagePreviewModal from "../ui/ImagePreviewModal";
@@ -93,7 +93,7 @@ export default function CompanyDetails({ id }) {
     }
 
     if (showEdit) {
-        return <CompanyUpdate id={id} onBack={() => setShowEdit(false)} />;
+        return <CompanyFormPage context="company-update" id={id} onBack={() => setShowEdit(false)} />;
     }
 
     const assignments = Array.isArray(company.assignments) ? company.assignments : [];
