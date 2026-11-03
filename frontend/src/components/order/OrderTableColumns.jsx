@@ -193,15 +193,15 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                                 Add Delivery Note
                                             </DropdownMenuItem>
                                         )}
-                                        {q.invoicePdfPath && (
+                                        {q.pdfStatus === "READY" && q.invoicePdfPath && (
                                             <>
-                                                <DropdownMenuItem onClick={() => window.open(`http://localhost:4000${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
+                                                <DropdownMenuItem onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank")} className="cursor-pointer text-sm py-2">
                                                     View Pdf
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => {
                                                         const link = document.createElement("a");
-                                                        link.href = `http://localhost:4000${q.invoicePdfPath}`;
+                                                        link.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`;
                                                         link.download = `Invoice_${q.orderCode ?? q.orderId}.pdf`;
                                                         document.body.appendChild(link);
                                                         link.click();
@@ -215,9 +215,29 @@ export function getOrderTableColumns({ can, onStatusUpdate, onUpdatePrice, onReg
                                         )}
                                         {can?.("orderUpdate") !== false && (
                                             <>
-                                                <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.orderId)} className="cursor-pointer text-sm py-2">
-                                                    Regenerate PDF
-                                                </DropdownMenuItem>
+                                                {q.status === "DELIVERED" && (
+                                                    (q.pdfStatus === "PENDING" || q.pdfStatus === "PROCESSING") ? (
+                                                        <DropdownMenuItem disabled className="text-gray-400 cursor-default text-sm py-2">
+                                                            Generating PDF…
+                                                        </DropdownMenuItem>
+                                                    ) : q.pdfStatus === "FAILED" ? (
+                                                        <DropdownMenuItem
+                                                            onClick={() => onRegeneratePdf?.(q.orderId)}
+                                                            className="cursor-pointer text-sm py-2"
+                                                            title={q.pdfStatusMessage || "PDF generation failed"}
+                                                        >
+                                                            Retry Invoice PDF
+                                                        </DropdownMenuItem>
+                                                    ) : q.pdfStatus === "READY" ? (
+                                                        <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.orderId)} className="cursor-pointer text-sm py-2">
+                                                            Regenerate Invoice PDF
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem onClick={() => onRegeneratePdf?.(q.orderId)} className="cursor-pointer text-sm py-2">
+                                                            Generate Invoice PDF
+                                                        </DropdownMenuItem>
+                                                    )
+                                                )}
                                                 <DropdownMenuItem onClick={() => onStatusUpdate?.(q.orderId, "CLOSE")} className="cursor-pointer text-sm py-2">
                                                     Close Order
                                                 </DropdownMenuItem>

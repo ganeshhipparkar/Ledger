@@ -20,6 +20,7 @@ import { OrderExtraChargeEntity } from './order.extra.charge.entity';
 import { OrderAttachmentsEntity } from './order.attachments';
 import { QuotationEntity } from 'src/quotation/entity/quotation.entity';
 import { DeliveryNoteEntity } from 'src/delivery_note/entity/delivery.note.entity';
+import { PdfStatus } from 'src/utilities/pdf-status.enum';
 
 export enum OrderStatus {
   DRAFT = 'DRAFT',
@@ -182,6 +183,12 @@ export class OrderEntity {
 
   @Column({ type: 'varchar', nullable: true })
   invoicePdfPath?: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: PdfStatus.NONE })
+  pdfStatus!: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  pdfStatusMessage?: string | null;
 
   @Column({
     type: 'enum',

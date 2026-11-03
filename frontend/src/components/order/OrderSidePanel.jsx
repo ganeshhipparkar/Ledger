@@ -83,16 +83,32 @@ export default function OrderSidePanel({ id, onClose }) {
                 { label: "Delivery Date", value: formatDisplayDate(data.deliveryDate) || "—" },
                 {
                     label: "Order Pdf",
-                    value: data.invoicePdfPath ? (
-                        <a
-                            href={`http://localhost:4000${data.invoicePdfPath}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
-                        >
-                            View
-                        </a>
-                    ) : "—"
+                    value: (() => {
+                        const s = data.pdfStatus;
+                        if (s === "PENDING" || s === "PROCESSING") {
+                            return <span className="text-blue-500 text-xs">Generating…</span>;
+                        }
+                        if (s === "FAILED") {
+                            return (
+                                <span className="text-red-500 text-xs" title={data.pdfStatusMessage || "PDF generation failed"}>
+                                    Failed
+                                </span>
+                            );
+                        }
+                        if (s === "READY" && data.invoicePdfPath) {
+                            return (
+                                <a
+                                    href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${data.invoicePdfPath}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                >
+                                    View
+                                </a>
+                            );
+                        }
+                        return "—";
+                    })()
                 }
             ]
         }

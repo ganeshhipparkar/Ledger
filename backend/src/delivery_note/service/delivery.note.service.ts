@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -27,17 +28,19 @@ import { DeliveryNoteEntity } from '../entity/delivery.note.entity';
 import { DeliveryNoteItemEntity } from '../entity/delivery.note.item.entity';
 import { DeliveryNoteAttachmentEntity } from '../entity/delivery.note.attachments.entity';
 import { DeliveryNoteDto } from '../dto/delivery.note.dto';
-import { OrderPdfService } from 'src/order/order.pdf.service';
+import { OrderPdfProducerService } from 'src/order/order.pdf.producer.service';
 import { InvoiceService } from 'src/invoice/service/invoice.service';
 
 @Injectable()
 export class DeliveryNoteService {
+  private readonly logger = new Logger(DeliveryNoteService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly codeGeneratorService: CodeGeneratorService,
     private readonly fileTransfer: FileTransfer,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderPdfService: OrderPdfService,
+    private readonly orderPdfProducerService: OrderPdfProducerService,
     private readonly invoiceService: InvoiceService,
 
     @InjectRepository(DeliveryNoteEntity)
@@ -474,14 +477,14 @@ export class DeliveryNoteService {
       }
 
       if (nextOrderStatus === OrderStatus.DELIVERED) {
-        this.orderPdfService
-          .generateAndStoreInvoicePdf(Number(body.orderId))
-          .catch((err: Error) =>
-            console.error(
-              `[PDF] Failed to generate invoice for order ${body.orderId}:`,
-              err.message,
-            ),
+        try {
+          await this.orderPdfProducerService.enqueue(Number(body.orderId));
+        } catch (err: any) {
+          this.logger.error(
+            `Failed to enqueue PDF job for order ${body.orderId}: ${err.message}`,
+            err.stack,
           );
+        }
       }
 
       let autoInvoiceResult: any = null;

@@ -3,7 +3,8 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job, UnrecoverableError } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { QuotationEntity, PdfStatus } from './entity/quotation.entity';
+import { QuotationEntity } from './entity/quotation.entity';
+import { PdfStatus } from 'src/utilities/pdf-status.enum';
 import { QuotationPdfService } from './quotation.pdf.service';
 import { PDF_GENERATION_QUEUE, PDF_JOB_NAME, PdfJobData } from './quotation.pdf.queue';
 
@@ -64,8 +65,9 @@ export class QuotationPdfProcessor extends WorkerHost {
     const { quotationId } = job.data;
     const isFinalAttempt = job.attemptsMade >= (job.opts.attempts ?? 1);
     const isUnrecoverable = err instanceof UnrecoverableError;
+    const isStalled = err?.message?.includes('stalled');
 
-    if (isFinalAttempt || isUnrecoverable) {
+    if (isFinalAttempt || isUnrecoverable || isStalled) {
       this.logger.error(
         `PDF generation permanently failed for quotation ${quotationId} after ${job.attemptsMade} attempt(s): ${err.message}`,
         err.stack,

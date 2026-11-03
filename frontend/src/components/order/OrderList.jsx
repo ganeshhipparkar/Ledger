@@ -182,7 +182,11 @@ export default function OrderList() {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Order PDF regenerated.", { position: "top-right" });
+                if (data.alreadyQueued) {
+                    toast.info("PDF is already being generated.", { position: "top-right" });
+                } else {
+                    toast.success("Invoice PDF generation queued.", { position: "top-right" });
+                }
                 fetchList(page, limit, statusFilter, currentFilters);
             } else {
                 toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });

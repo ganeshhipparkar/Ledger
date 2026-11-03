@@ -3,7 +3,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { QuotationEntity, PdfStatus } from './entity/quotation.entity';
+import { QuotationEntity } from './entity/quotation.entity';
+import { PdfStatus } from 'src/utilities/pdf-status.enum';
 import {
   PDF_GENERATION_QUEUE,
   PDF_JOB_NAME,

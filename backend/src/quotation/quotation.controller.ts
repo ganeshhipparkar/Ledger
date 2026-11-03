@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import {
   PermissionsGuard,
@@ -21,6 +23,7 @@ import {
 import { QuotationService } from './quotation.service';
 import { QuotationListService } from './quotation.list.service';
 import { QuotationPdfProducerService } from './quotation.pdf.producer.service';
+import { QuotationEntity } from './entity/quotation.entity';
 import {
   QuotationDto,
   QuotationListDto,
@@ -34,6 +37,8 @@ export class QuotationContorller {
     private readonly quotationService: QuotationService,
     private readonly quotationListService: QuotationListService,
     private readonly quotationPdfProducerService: QuotationPdfProducerService,
+    @InjectRepository(QuotationEntity)
+    private readonly quotationRepo: Repository<QuotationEntity>,
   ) {}
 
   @Post('quotation-list')
@@ -145,6 +150,29 @@ export class QuotationContorller {
     @Req() _req: any,
     @Param('quotationId') quotationId: string,
   ) {
+    const quotation = await this.quotationRepo.findOne({
+      where: { quotationId: Number(quotationId) },
+      select: ['quotationId', 'status'],
+    });
+
+    if (!quotation) {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Quotation not found',
+        }),
+      };
+    }
+
+    if (quotation.status !== 'CONFIRMED') {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Invoice PDF can only be generated for CONFIRMED quotations',
+        }),
+      };
+    }
+
     try {
       const result = await this.quotationPdfProducerService.enqueue(
         Number(quotationId),

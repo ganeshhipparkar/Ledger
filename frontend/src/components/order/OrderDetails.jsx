@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -143,10 +143,11 @@ export default function OrderDetails({ id }) {
     const [pricePanelOpen, setPricePanelOpen] = useState(false);
     const [tcPreviewUrl, setTcPreviewUrl] = useState("");
     const [selectedItemId, setSelectedItemId] = useState(null);
+    const pdfPollRef = useRef(null);
 
-    const fetchDetails = async () => {
+    const fetchDetails = async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await fetch("/relayapi", {
                 method: "GET",
                 headers: { ...authHeaders(), endpoint: `order-details/${id}`, module: "order" },
@@ -154,19 +155,59 @@ export default function OrderDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (!data?.orderId) {
-                toast.error("Order not found.", { position: "top-right" });
-                router.push("/order-list");
-                return;
+                if (!silent) {
+                    toast.error("Order not found.", { position: "top-right" });
+                    router.push("/order-list");
+                }
+                return null;
             }
             setOrder(data);
+            return data;
         } catch (err) {
-            toast.error(`Error: ${err.message}`, { position: "top-right" });
+            if (!silent) toast.error(`Error: ${err.message}`, { position: "top-right" });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => { fetchDetails(); }, [id]);
+
+    useEffect(() => {
+        const pdfStatus = order?.pdfStatus;
+        const isGenerating = pdfStatus === "PENDING" || pdfStatus === "PROCESSING";
+
+        if (!isGenerating) {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            return;
+        }
+
+        if (pdfPollRef.current) return;
+
+        let ticks = 0;
+        pdfPollRef.current = setInterval(async () => {
+            ticks++;
+            const data = await fetchDetails({ silent: true });
+            const newStatus = data?.pdfStatus;
+            if (newStatus !== "PENDING" && newStatus !== "PROCESSING") {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            if (ticks >= 20) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        }, 3000);
+
+        return () => {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        };
+    }, [order?.pdfStatus]);
 
     const handleStatusUpdate = async (actionType) => {
         let title = "";
@@ -246,8 +287,12 @@ export default function OrderDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice PDF regenerated.", { position: "top-right" });
-                fetchDetails();
+                if (data.alreadyQueued) {
+                    toast.info("PDF is already being generated.", { position: "top-right" });
+                } else {
+                    toast.success("Invoice PDF generation queued.", { position: "top-right" });
+                }
+                fetchDetails({ silent: true });
             } else {
                 toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
             }
@@ -341,7 +386,8 @@ export default function OrderDetails({ id }) {
             if (can?.("orderUpdate") !== false) {
                 allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
             }
-            if (q.invoicePdfPath) {
+            const pdfStatus = q.pdfStatus ?? "NONE";
+            if (pdfStatus === "READY" && q.invoicePdfPath) {
                 allAvailable.push({ id: "viewInvoicePdf", label: "View Invoice PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank") });
                 allAvailable.push({
                     id: "downloadInvoicePdf", label: "Download Invoice PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
@@ -353,9 +399,6 @@ export default function OrderDetails({ id }) {
                         }
                     }
                 });
-            }
-            if (can?.("orderUpdate")) {
-                allAvailable.push({ id: "regenerateInvoicePdf", label: "Regenerate Invoice PDF", icon: <RefreshCw className="h-4 w-4" />, onClick: handleRegeneratePdf });
             }
         } else if (q.status === "DELIVERED") {
             if (can?.("invoiceAdd")) {
@@ -364,7 +407,8 @@ export default function OrderDetails({ id }) {
             if (can?.("orderUpdate") !== false) {
                 allAvailable.push({ id: "closeOrder", label: "Close Order", icon: <CheckCircle className="h-4 w-4" />, onClick: () => handleStatusUpdate("CLOSE") });
             }
-            if (q.invoicePdfPath) {
+            const pdfStatus = q.pdfStatus ?? "NONE";
+            if (pdfStatus === "READY" && q.invoicePdfPath) {
                 allAvailable.push({ id: "viewInvoicePdf", label: "View Invoice PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank") });
                 allAvailable.push({
                     id: "downloadInvoicePdf", label: "Download Invoice PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
@@ -377,8 +421,30 @@ export default function OrderDetails({ id }) {
                     }
                 });
             }
-            if (can?.("orderUpdate")) {
-                allAvailable.push({ id: "regenerateInvoicePdf", label: "Regenerate Invoice PDF", icon: <RefreshCw className="h-4 w-4" />, onClick: handleRegeneratePdf });
+            if (can?.("orderUpdate") !== false) {
+                if (pdfStatus === "FAILED") {
+                    allAvailable.push({
+                        id: "regenerateInvoicePdf",
+                        label: "Retry Invoice PDF",
+                        icon: <RefreshCw className="h-4 w-4" />,
+                        onClick: handleRegeneratePdf,
+                        title: q.pdfStatusMessage || "Retry generating invoice PDF",
+                    });
+                } else if (pdfStatus === "NONE") {
+                    allAvailable.push({
+                        id: "regenerateInvoicePdf",
+                        label: "Generate Invoice PDF",
+                        icon: <RefreshCw className="h-4 w-4" />,
+                        onClick: handleRegeneratePdf,
+                    });
+                } else if (pdfStatus === "READY") {
+                    allAvailable.push({
+                        id: "regenerateInvoicePdf",
+                        label: "Regenerate Invoice PDF",
+                        icon: <RefreshCw className="h-4 w-4" />,
+                        onClick: handleRegeneratePdf,
+                    });
+                }
             }
         }
     }
@@ -419,6 +485,25 @@ export default function OrderDetails({ id }) {
                     <h1 className="text-2xl font-semibold text-[#1f2937]">Order</h1>
 
                     <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                        {q.status === "DELIVERED" && (q.pdfStatus === "PENDING" || q.pdfStatus === "PROCESSING") && (
+                            <button
+                                type="button"
+                                disabled
+                                className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-semibold border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                title="PDF is being generated in the background"
+                            >
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                Generating PDF…
+                            </button>
+                        )}
+                        {q.status === "DELIVERED" && q.pdfStatus === "FAILED" && (
+                            <span
+                                className="flex items-center gap-1.5 rounded-sm px-3 py-2 text-xs font-semibold border border-red-200 bg-red-50 text-red-600"
+                                title={q.pdfStatusMessage || "PDF generation failed"}
+                            >
+                                PDF Failed
+                            </span>
+                        )}
                         <ActionButtonGroup
                             allAvailable={allAvailable}
                             plainCandidates={plainCandidates}

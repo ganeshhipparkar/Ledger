@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { attachmentMulterConfig } from 'src/packages/config/multer.config';
 import {
   PermissionsGuard,
@@ -27,15 +29,17 @@ import {
   OrderUpdatePriceDto,
 } from './dto/order.dto';
 import { encryptResponse } from 'src/utilities/crypto';
-
-import { OrderPdfService } from './order.pdf.service';
+import { OrderEntity, OrderStatus } from './entity/order.entity';
+import { OrderPdfProducerService } from './order.pdf.producer.service';
 
 @Controller('order')
 export class OrderController {
   constructor(
     private readonly orderService: OrderService,
     private readonly orderListService: OrderListService,
-    private readonly orderPdfService: OrderPdfService,
+    private readonly orderPdfProducerService: OrderPdfProducerService,
+    @InjectRepository(OrderEntity)
+    private readonly orderRepo: Repository<OrderEntity>,
   ) { }
 
   @Post('order-list')
@@ -187,13 +191,47 @@ export class OrderController {
     @Req() _req: any,
     @Param('orderId') orderId: string,
   ) {
+    const order = await this.orderRepo.findOne({
+      where: { orderId: Number(orderId) },
+      select: ['orderId', 'status'],
+    });
+
+    if (!order) {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Order not found',
+        }),
+      };
+    }
+
+    if (order.status !== OrderStatus.DELIVERED) {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Invoice PDF can only be generated for DELIVERED orders',
+        }),
+      };
+    }
+
     try {
-      const invoicePdfPath = await this.orderPdfService.generateAndStoreInvoicePdf(
+      const result = await this.orderPdfProducerService.enqueue(
         Number(orderId),
       );
-      return { encrypted: encryptResponse({ success: 1, invoicePdfPath }) };
-    } catch (err: any) {
-      return { encrypted: encryptResponse({ success: 0, message: err.message }) };
+      return {
+        encrypted: encryptResponse({
+          success: 1,
+          queued: result.queued,
+          alreadyQueued: result.alreadyQueued,
+        }),
+      };
+    } catch {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'PDF generation service temporarily unavailable. Please try again shortly.',
+        }),
+      };
     }
   }
 }

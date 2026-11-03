@@ -16,6 +16,7 @@ import { QuotationItemEntity } from './quotation.item.entity';
 import { QuotationDiscountEntity } from './quotation.discount.entity';
 import { QuotationExtraChargeEntity } from './quotation.extra.charge.entity';
 import { QuotationAttachmentsEntity } from './quotation.attachments';
+import { PdfStatus } from 'src/utilities/pdf-status.enum';
 
 export enum QuotationStatus {
   DRAFT = 'DRAFT',
@@ -29,14 +30,6 @@ export enum QuotationStatus {
 export enum VatWithheld {
   YES = 'YES',
   NO = 'NO',
-}
-
-export enum PdfStatus {
-  NONE       = 'NONE',
-  PENDING    = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  READY      = 'READY',
-  FAILED     = 'FAILED',
 }
 
 @Entity('quotation')

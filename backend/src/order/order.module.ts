@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { GroupPermissionEntity } from 'src/group/entity/capability.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
@@ -23,6 +24,9 @@ import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { OrderListService } from './order.list.service';
 import { OrderPdfService } from './order.pdf.service';
+import { OrderPdfProducerService } from './order.pdf.producer.service';
+import { OrderPdfProcessor } from './order.pdf.processor';
+import { ORDER_PDF_GENERATION_QUEUE } from './order.pdf.queue';
 
 @Module({
   imports: [
@@ -46,9 +50,25 @@ import { OrderPdfService } from './order.pdf.service';
       ManufacturerEntity,
       taxGroupEntity,
     ]),
+    BullModule.registerQueue({ name: ORDER_PDF_GENERATION_QUEUE }),
   ],
   controllers: [OrderController],
-  providers: [OrderService, OrderListService, Filter, FileTransfer, CodeGeneratorService, OrderPdfService],
-  exports: [TypeOrmModule, OrderService, OrderListService, OrderPdfService],
+  providers: [
+    OrderService,
+    OrderListService,
+    Filter,
+    FileTransfer,
+    CodeGeneratorService,
+    OrderPdfService,
+    OrderPdfProducerService,
+    OrderPdfProcessor,
+  ],
+  exports: [
+    TypeOrmModule,
+    OrderService,
+    OrderListService,
+    OrderPdfService,
+    OrderPdfProducerService,
+  ],
 })
 export class OrderModule {}
