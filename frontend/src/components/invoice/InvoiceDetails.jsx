@@ -1,29 +1,20 @@
 "use client";
 import Link from "next/link";
 
-import { useContext, useEffect, useState, useMemo, useRef } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
     LayoutList,
-    ChevronLeft, ChevronRight, Edit2, CheckCircle, ChevronDown,
-    RefreshCw, Copy, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet, FileMinus, FilePlus
+    ChevronLeft, ChevronRight, Edit2, CheckCircle,
+    RefreshCw, ClipboardList, Eye, Download, Activity, FileText, Trash2, Wallet, FileMinus, FilePlus
 } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import InvoicePaymentsTab from "./InvoicePaymentsTab";
 import Header from "../Header";
 import Loader from "../ui/Loader";
-import AppPagination from "../ui/AppPagination";
-import TabFilterPanel from "../common/TabFilterPanel";
 import EmbeddedTable from "../common/EmbeddedRelatedTable";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 import ActionButtonGroup from "../shared/ActionButtonGroup";
 import { authHeaders } from "@/app/lib/auth";
 import { decryptResponse } from "@/app/lib/crypto";
@@ -149,6 +140,7 @@ export default function InvoiceDetails({ id }) {
     const [selectedCreditNoteId, setSelectedCreditNoteId] = useState(null);
     const [selectedDebitNoteId, setSelectedDebitNoteId] = useState(null);
     const [selectedPaymentTransactionId, setSelectedPaymentTransactionId] = useState(null);
+    const pdfPollRef = useRef(null);
 
     useEffect(() => {
         const fetchPaymentMode = async () => {
@@ -162,14 +154,14 @@ export default function InvoiceDetails({ id }) {
                 if (data?.success === 1) {
                     setPaymentMode(data.mode);
                 }
-            } catch (err) { }
+            } catch { }
         };
         fetchPaymentMode();
     }, []);
 
-    const fetchDetails = async () => {
+    const fetchDetails = async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await fetch("/relayapi", {
                 method: "GET",
                 headers: { ...authHeaders(), endpoint: `invoice-details/${id}`, module: "invoice" },
@@ -177,19 +169,59 @@ export default function InvoiceDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (!data?.invoiceId) {
-                toast.error("Invoice not found.", { position: "top-right" });
-                router.push("/invoice-list");
-                return;
+                if (!silent) {
+                    toast.error("Invoice not found.", { position: "top-right" });
+                    router.push("/invoice-list");
+                }
+                return null;
             }
             setInvoice(data);
+            return data;
         } catch (err) {
-            toast.error(`Error: ${err.message}`, { position: "top-right" });
+            if (!silent) toast.error(`Error: ${err.message}`, { position: "top-right" });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => { fetchDetails(); }, [id, router]);
+
+    useEffect(() => {
+        const pdfStatus = invoice?.pdfStatus;
+        const isGenerating = pdfStatus === "PENDING" || pdfStatus === "PROCESSING";
+
+        if (!isGenerating) {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            return;
+        }
+
+        if (pdfPollRef.current) return;
+
+        let ticks = 0;
+        pdfPollRef.current = setInterval(async () => {
+            ticks++;
+            const data = await fetchDetails({ silent: true });
+            const newStatus = data?.pdfStatus;
+            if (newStatus !== "PENDING" && newStatus !== "PROCESSING") {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+            if (ticks >= 20) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        }, 3000);
+
+        return () => {
+            if (pdfPollRef.current) {
+                clearInterval(pdfPollRef.current);
+                pdfPollRef.current = null;
+            }
+        };
+    }, [invoice?.pdfStatus]);
 
     const handleSubmitInvoice = async () => {
         const result = await MySwal.fire({
@@ -300,8 +332,12 @@ export default function InvoiceDetails({ id }) {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice PDF regenerated.", { position: "top-right" });
-                fetchDetails();
+                if (data.alreadyQueued) {
+                    toast.info("PDF is already being generated.", { position: "top-right" });
+                } else {
+                    toast.success("Invoice PDF generation queued.", { position: "top-right" });
+                }
+                fetchDetails({ silent: true });
             } else {
                 toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
             }
@@ -352,6 +388,25 @@ export default function InvoiceDetails({ id }) {
                     <h1 className="text-2xl font-semibold text-[#1f2937]">Invoice</h1>
 
                     <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                        {q.status !== "DRAFT" && (q.pdfStatus === "PENDING" || q.pdfStatus === "PROCESSING") && (
+                            <button
+                                type="button"
+                                disabled
+                                className="flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-semibold border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                title="PDF is being generated in the background"
+                            >
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                Generating PDF…
+                            </button>
+                        )}
+                        {q.status !== "DRAFT" && q.pdfStatus === "FAILED" && (
+                            <span
+                                className="flex items-center gap-1.5 rounded-sm px-3 py-2 text-xs font-semibold border border-red-200 bg-red-50 text-red-600"
+                                title={q.pdfStatusMessage || "PDF generation failed"}
+                            >
+                                PDF Failed
+                            </span>
+                        )}
                         {(() => {
                             const allAvailable = [];
 
@@ -370,10 +425,10 @@ export default function InvoiceDetails({ id }) {
                             if (q.status !== "DRAFT" && can?.("invoiceAdd")) {
                                 allAvailable.push({ id: "copyInvoice", label: "Copy Invoice", icon: <FileText className="h-4 w-4" />, onClick: () => router.push(`/add-invoice?cloneFrom=${q.invoiceId}`), variant: "outline" });
                             }
-                            if (q.status !== "DRAFT" && q.invoicePdfPath) {
+                            if (q.status !== "DRAFT" && q.pdfStatus === "READY" && q.invoicePdfPath) {
                                 allAvailable.push({ id: "viewPdf", label: "View PDF", icon: <Eye className="h-4 w-4" />, onClick: () => window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}${q.invoicePdfPath}`, "_blank"), variant: "outline" });
                             }
-                            if (q.status !== "DRAFT" && q.invoicePdfPath) {
+                            if (q.status !== "DRAFT" && q.pdfStatus === "READY" && q.invoicePdfPath) {
                                 allAvailable.push({
                                     id: "downloadPdf", label: "Download PDF", icon: <Download className="h-4 w-4" />, onClick: async (e) => {
                                         e.stopPropagation();
@@ -391,8 +446,9 @@ export default function InvoiceDetails({ id }) {
                             if (q.status !== "DRAFT" && can?.("debitNoteAdd")) {
                                 allAvailable.push({ id: "addDebitNote", label: "Add Debit Note", icon: <FileText className="h-4 w-4" />, onClick: () => handleDebitNoteAddNavigation({ router, setShowAddPanel: setDebitNoteInvoice, invoice: q }) });
                             }
-                            if (q.status !== "DRAFT" && can?.("invoiceUpdate")) {
-                                allAvailable.push({ id: "regeneratePdf", label: "Regenerate PDF", icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf });
+                            if (q.status !== "DRAFT" && can?.("invoiceUpdate") && q.pdfStatus !== "PENDING" && q.pdfStatus !== "PROCESSING") {
+                                const pdfLabel = q.pdfStatus === "FAILED" ? "Retry PDF" : q.pdfStatus === "READY" ? "Regenerate PDF" : "Generate PDF";
+                                allAvailable.push({ id: "regeneratePdf", label: pdfLabel, icon: <FaRegFilePdf className="h-4 w-4" />, onClick: handleRegeneratePdf });
                             }
                             if (q.status === "DRAFT" && can?.("invoiceUpdate")) {
                                 allAvailable.push({ id: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4 text-red-600" />, onClick: () => handleStatusUpdate("DELETE"), textClass: "text-red-600 hover:bg-red-50" });
@@ -731,20 +787,6 @@ function InfoCard({ label, value, mono = false, badge }) {
                 {badge && <span className="rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-[10px] font-bold shrink-0">{badge}</span>}
             </div>
         </div>
-    );
-}
-
-function ActionBtn({ onClick, icon, label, variant = "blue", title, ...rest }) {
-    const VARIANTS = {
-        blue: "bg-blue-600 text-white hover:bg-blue-700",
-        green: "bg-green-600 text-white hover:bg-green-700",
-        amber: "bg-amber-500 text-white hover:bg-amber-600",
-        outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
-    };
-    return (
-        <button type="button" onClick={onClick} title={title} {...rest} className={`flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-semibold transition cursor-pointer ${VARIANTS[variant] ?? VARIANTS.outline}`}>
-            {icon} {label}
-        </button>
     );
 }
 

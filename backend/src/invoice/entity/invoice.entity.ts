@@ -1,3 +1,4 @@
+import { PdfStatus } from 'src/utilities/pdf-status.enum';
 import {
   Column,
   DeleteDateColumn,
@@ -160,6 +161,12 @@ export class InvoiceEntity {
 
   @Column({ type: 'varchar', nullable: true })
   invoicePdfPath?: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: PdfStatus.NONE })
+  pdfStatus!: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  pdfStatusMessage?: string | null;
 
   @Column({
     type: 'enum',

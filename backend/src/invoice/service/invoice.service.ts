@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -42,6 +43,7 @@ import {
   VaultPaymentBodyDto,
 } from '../dto/invoice.dto';
 import { InvoicePdfService } from '../invoice.pdf.service';
+import { InvoicePdfProducerService } from '../invoice.pdf.producer.service';
 import { VaultService } from 'src/vault/vault.service';
 import { ModSettings } from 'src/user/entity/mod.settings';
 
@@ -68,6 +70,7 @@ type TaxValidationResult =
 
 @Injectable()
 export class InvoiceService {
+  private readonly logger = new Logger(InvoiceService.name);
   private readonly dataSource: DataSource;
 
   constructor(
@@ -121,6 +124,7 @@ export class InvoiceService {
     private readonly fileTransfer: FileTransfer,
     private readonly eventEmitter: EventEmitter2,
     private readonly invoicePdfService: InvoicePdfService,
+    private readonly invoicePdfProducerService: InvoicePdfProducerService,
   ) {
     this.dataSource = this.invoiceRepo.manager.connection;
   }
@@ -1240,14 +1244,14 @@ export class InvoiceService {
         }
       }
 
-      this.invoicePdfService
-        .generateAndStoreInvoicePdf(invoiceId)
-        .catch((err: Error) =>
-          console.error(
-            `[PDF] Failed to generate invoice PDF for invoice ${invoiceId}:`,
-            err.message,
-          ),
+      try {
+        await this.invoicePdfProducerService.enqueue(invoiceId);
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to enqueue PDF job for invoice ${invoiceId}: ${err?.message}`,
+          err?.stack,
         );
+      }
 
       const { performerId, performerEmail } = this.resolvePerformer(req, invoice.addedBy);
       this.eventEmitter.emit('activity.log', {
@@ -1353,14 +1357,14 @@ export class InvoiceService {
         await queryRunner.release();
       }
 
-      this.invoicePdfService
-        .generateAndStoreInvoicePdf(invoiceId)
-        .catch((err: Error) =>
-          console.error(
-            `[PDF] Failed to regenerate invoice PDF for invoice ${invoiceId}:`,
-            err.message,
-          ),
+      try {
+        await this.invoicePdfProducerService.enqueue(invoiceId);
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to enqueue PDF job for invoice ${invoiceId}: ${err?.message}`,
+          err?.stack,
         );
+      }
 
       const { performerId, performerEmail } = this.resolvePerformer(req);
       this.eventEmitter.emit('activity.log', {

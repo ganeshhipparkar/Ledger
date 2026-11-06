@@ -12,6 +12,8 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { attachmentMulterConfig } from 'src/packages/config/multer.config';
@@ -22,7 +24,8 @@ import {
 import { encryptResponse } from 'src/utilities/crypto';
 import { InvoiceService } from './service/invoice.service';
 import { InvoiceListService } from './service/invoice.list.service';
-import { InvoicePdfService } from './invoice.pdf.service';
+import { InvoicePdfProducerService } from './invoice.pdf.producer.service';
+import { InvoiceEntity, InvoiceStatus } from './entity/invoice.entity';
 import {
   InvoiceDto,
   InvoiceListDto,
@@ -36,7 +39,9 @@ export class InvoiceController {
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly invoiceListService: InvoiceListService,
-    private readonly invoicePdfService: InvoicePdfService,
+    private readonly invoicePdfProducerService: InvoicePdfProducerService,
+    @InjectRepository(InvoiceEntity)
+    private readonly invoiceRepo: Repository<InvoiceEntity>,
   ) {}
 
   @Post('invoice-list')
@@ -176,13 +181,47 @@ export class InvoiceController {
     @Req() _req: any,
     @Param('id') id: string,
   ) {
+    const invoice = await this.invoiceRepo.findOne({
+      where: { invoiceId: Number(id) },
+      select: ['invoiceId', 'status'],
+    });
+
+    if (!invoice) {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Invoice not found',
+        }),
+      };
+    }
+
+    if (invoice.status === InvoiceStatus.DRAFT) {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'Invoice PDF can only be generated for submitted invoices',
+        }),
+      };
+    }
+
     try {
-      const invoicePdfPath = await this.invoicePdfService.generateAndStoreInvoicePdf(
+      const result = await this.invoicePdfProducerService.enqueue(
         Number(id),
       );
-      return { encrypted: encryptResponse({ success: 1, invoicePdfPath }) };
-    } catch (err: any) {
-      return { encrypted: encryptResponse({ success: 0, message: err.message }) };
+      return {
+        encrypted: encryptResponse({
+          success: 1,
+          queued: result.queued,
+          alreadyQueued: result.alreadyQueued,
+        }),
+      };
+    } catch {
+      return {
+        encrypted: encryptResponse({
+          success: 0,
+          message: 'PDF generation service temporarily unavailable. Please try again shortly.',
+        }),
+      };
     }
   }
 

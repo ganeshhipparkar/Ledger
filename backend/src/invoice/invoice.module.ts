@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { CompanyEntity } from 'src/company/entity/company.entity';
 import { GroupPermissionEntity } from 'src/group/entity/capability.entity';
 import { UserCompanyGroupEntity } from 'src/packages/entity/user.company.group.entity';
@@ -28,6 +29,9 @@ import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './service/invoice.service';
 import { InvoiceListService } from './service/invoice.list.service';
 import { InvoicePdfService } from './invoice.pdf.service';
+import { InvoicePdfProducerService } from './invoice.pdf.producer.service';
+import { InvoicePdfProcessor } from './invoice.pdf.processor';
+import { INVOICE_PDF_GENERATION_QUEUE } from './invoice.pdf.queue';
 
 @Module({
   imports: [
@@ -54,9 +58,19 @@ import { InvoicePdfService } from './invoice.pdf.service';
       ModSettings,
     ]),
     VaultModule,
+    BullModule.registerQueue({ name: INVOICE_PDF_GENERATION_QUEUE }),
   ],
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoiceListService, InvoicePdfService, Filter, FileTransfer, CodeGeneratorService],
+  providers: [
+    InvoiceService,
+    InvoiceListService,
+    InvoicePdfService,
+    InvoicePdfProducerService,
+    InvoicePdfProcessor,
+    Filter,
+    FileTransfer,
+    CodeGeneratorService,
+  ],
   exports: [TypeOrmModule, InvoiceService, InvoiceListService],
 })
 export class InvoiceModule {}

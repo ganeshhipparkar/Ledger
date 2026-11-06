@@ -22,7 +22,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getInitials, formatDisplayDate, downloadFile } from "@/lib/utils";
+import { getInitials, formatDisplayDate } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import CustomerSidePanel from "../customer/CustomerSidePanel";
 import UserSidePanel from "../user/UserSidePanel";
@@ -102,7 +102,7 @@ export default function InvoiceList() {
                 if (data?.success === 1) {
                     setPaymentMode(data.mode);
                 }
-            } catch (err) { }
+            } catch { }
         };
         fetchPaymentMode();
     }, []);
@@ -261,7 +261,11 @@ export default function InvoiceList() {
             const payload = await res.json();
             const data = payload.encrypted ? decryptResponse(payload.encrypted) : payload;
             if (data?.success === 1) {
-                toast.success("Invoice PDF regenerated.", { position: "top-right" });
+                if (data.alreadyQueued) {
+                    toast.info("PDF is already being generated.", { position: "top-right" });
+                } else {
+                    toast.success("Invoice PDF generation queued.", { position: "top-right" });
+                }
                 fetchList(page, limit, statusFilter, currentFilters);
             } else {
                 toast.error(data?.message || "Failed to regenerate PDF.", { position: "top-right" });
